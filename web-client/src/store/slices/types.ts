@@ -1125,6 +1125,8 @@ export type GameStore = {
   dismissTriggerOrderNotice: () => void
   /** A forced question is waiting to be answered for the player (see `autoAnswer.ts`). */
   autoAnswerPending: boolean
+  aiControlEnabled: boolean
+  aiControlPending: boolean
   createGame: (deckList: Record<string, number>, setCode?: string) => void
   createAiGame: (deckList: Record<string, number>, setCode?: string) => void
   joinGame: (sessionId: string, deckList: Record<string, number>) => void
@@ -1168,6 +1170,7 @@ export type GameStore = {
   toggleAutoTap: () => void
   cancelGame: () => void
   setFullControl: (enabled: boolean) => void
+  setAiControl: (enabled: boolean) => void
   cyclePriorityMode: () => void
   toggleStopOverride: (step: Step, isMyTurn: boolean) => void
   setAbilityYield: (cardDefinitionId: string, abilityId: string, kind: YieldKind) => void

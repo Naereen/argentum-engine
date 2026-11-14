@@ -345,6 +345,7 @@ export type {
   KickPlayerMessage,
   // Game Settings types
   SetFullControlMessage,
+  SetAiControlMessage,
   SetPriorityModeMessage,
   SetStopOverridesMessage,
   SetAbilityYieldMessage,
@@ -416,6 +417,7 @@ export {
   createChooseBottomCardsMessage,
   createConcedeMessage,
   createCancelGameMessage,
+  createSetAiControlMessage,
   // Sealed Draft message factories
   createCreateSealedGameMessage,
   createJoinSealedGameMessage,

@@ -30,6 +30,13 @@ export interface Announcement {
 
 export const ANNOUNCEMENTS: readonly Announcement[] = [
   {
+    id: 'feature-otaria-ai-takeover',
+    date: '2026-11-14',
+    kind: 'feature',
+    title: 'Let AI take over your Otaria seat',
+    body: 'The Otaria playtest now lets you hand your seat to the AI while you step away. The game keeps progressing, and you can take control back whenever you return.',
+  },
+  {
     id: 'set-ori',
     date: '2026-11-14',
     kind: 'set',

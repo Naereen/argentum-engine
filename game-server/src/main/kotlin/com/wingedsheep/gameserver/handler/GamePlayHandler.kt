@@ -114,6 +114,18 @@ class GamePlayHandler(
     var postGameCallback: ((GameSession) -> Unit)? = null
 
     fun handle(session: WebSocketSession, message: ClientMessage) {
+        val playerSession = sessionRegistry.getPlayerSession(session.id)
+        val gameSessionId = playerSession?.currentGameSessionId
+        if (
+            playerSession != null &&
+            gameSessionId != null &&
+            aiGameManager.isHumanTakeover(gameSessionId, playerSession.playerId) &&
+            isHumanGameControlMessage(message)
+        ) {
+            sender.sendError(session, ErrorCode.INVALID_ACTION, "The AI is playing your seat. Take back control first.")
+            return
+        }
+
         when (message) {
             is ClientMessage.CreateGame -> handleCreateGame(session, message)
             is ClientMessage.JoinGame -> handleJoinGame(session, message)
@@ -126,6 +138,7 @@ class GamePlayHandler(
             is ClientMessage.UpdateAttackerTargets -> handleUpdateAttackerTargets(session, message)
             is ClientMessage.UpdateBlockerAssignments -> handleUpdateBlockerAssignments(session, message)
             is ClientMessage.SetFullControl -> handleSetFullControl(session, message)
+            is ClientMessage.SetAiControl -> handleSetAiControl(session, message)
             is ClientMessage.SetPriorityMode -> handleSetPriorityMode(session, message)
             is ClientMessage.SetStopOverrides -> handleSetStopOverrides(session, message)
             is ClientMessage.SetAbilityYield -> handleSetAbilityYield(session, message)
@@ -137,6 +150,63 @@ class GamePlayHandler(
             is ClientMessage.RequestResync -> handleRequestResync(session)
             else -> {}
         }
+    }
+
+    private fun handleSetAiControl(session: WebSocketSession, message: ClientMessage.SetAiControl) {
+        val playerSession = sessionRegistry.getPlayerSession(session.id)
+        if (playerSession == null) {
+            sender.sendError(session, ErrorCode.NOT_CONNECTED, "Not connected")
+            return
+        }
+        val gameSession = getGameSession(session, playerSession) ?: return
+        val playerId = playerSession.playerId
+        val gameId = gameSession.sessionId
+
+        if (gameSession.getStateSnapshot()?.otaria == null ||
+            gameSession.getPlayerSession(playerId)?.webSocketSession?.id != session.id ||
+            aiGameManager.isAiPlayer(playerId)
+        ) {
+            sender.sendError(session, ErrorCode.INVALID_ACTION, "AI control is only available to your human Otaria seat")
+            return
+        }
+
+        if (message.enabled == aiGameManager.isHumanTakeover(gameId, playerId)) {
+            return
+        }
+
+        if (message.enabled) {
+            if (!aiGameManager.isEnabled) {
+                sender.sendError(session, ErrorCode.INVALID_ACTION, "AI is not enabled on this server")
+                return
+            }
+            val started = aiGameManager.startHumanTakeover(
+                gameSession = gameSession,
+                playerId = playerId,
+                onActionReady = { id, action, epoch -> handleAiAction(gameSession, id, action, epoch) },
+                onMulliganKeep = { id -> handleAiMulliganKeep(gameSession, id) },
+                onMulliganTake = { id -> handleAiMulliganTake(gameSession, id) },
+                onBottomCards = { id, cards -> handleAiBottomCards(gameSession, id, cards) },
+            )
+            if (!started) {
+                sender.sendError(session, ErrorCode.INVALID_ACTION, "Could not start AI control for this seat")
+                return
+            }
+
+            val aiSession = aiGameManager.humanTakeoverSession(gameId, playerId)
+            if (aiSession != null) {
+                when {
+                    gameSession.isAwaitingBottomCards(playerId) ->
+                        gameSession.getChooseBottomCardsMessage(playerId)?.let { sender.send(aiSession, it) }
+                    gameSession.isMulliganPhase && !gameSession.hasMulliganComplete(playerId) ->
+                        sender.send(aiSession, gameSession.getMulliganDecision(playerId))
+                }
+            }
+            logger.info("AI control enabled for {} in Otaria game {}", playerSession.playerName, gameId)
+        } else {
+            aiGameManager.stopHumanTakeover(gameSession, playerId)
+            logger.info("AI control disabled for {} in Otaria game {}", playerSession.playerName, gameId)
+        }
+        broadcastStateUpdate(gameSession, emptyList())
     }
 
     private fun handleCreateGame(session: WebSocketSession, message: ClientMessage.CreateGame) {
@@ -221,6 +291,24 @@ class GamePlayHandler(
             logger.info("Game created: ${gameSession.sessionId} by ${playerSession.playerName}")
             sender.send(session, ServerMessage.GameCreated(gameSession.sessionId))
         }
+    }
+
+    private fun isHumanGameControlMessage(message: ClientMessage): Boolean = when (message) {
+        is ClientMessage.SubmitAction,
+        is ClientMessage.KeepHand,
+        is ClientMessage.Mulligan,
+        is ClientMessage.ChooseBottomCards,
+        is ClientMessage.UpdateAttackerTargets,
+        is ClientMessage.UpdateBlockerAssignments,
+        is ClientMessage.SetFullControl,
+        is ClientMessage.SetPriorityMode,
+        is ClientMessage.SetStopOverrides,
+        is ClientMessage.SetAbilityYield,
+        is ClientMessage.ClearAbilityYield,
+        is ClientMessage.ClearAllYields,
+        is ClientMessage.SetTriggerOrdering,
+        ClientMessage.RequestUndo -> true
+        else -> false
     }
 
     private fun handleCancelGame(session: WebSocketSession) {
@@ -1044,8 +1132,29 @@ class GamePlayHandler(
                     session.playerId, allEvents,
                     useEngineDecisionIds = usesEngineDecisionIds(session),
                 )
-                if (update != null) sender.send(session.webSocketSession, update)
+                if (update != null) {
+                    sender.send(
+                        session.webSocketSession,
+                        update.withAiControlState(
+                            aiGameManager.isHumanTakeover(gameSession.sessionId, session.playerId),
+                        ),
+                    )
+                }
                 else logger.warn("createStateUpdate returned null for player ${session.playerId.value}")
+            }
+
+            sessionPlayers.forEach { player ->
+                val aiSession = aiGameManager.humanTakeoverSession(gameSession.sessionId, player.playerId)
+                    ?: return@forEach
+                val transportId = EntityId(aiSession.id)
+                val update = gameSession.createStateUpdate(
+                    playerId = player.playerId,
+                    events = allEvents,
+                    useEngineDecisionIds = true,
+                    transportPlayerId = transportId,
+                    appendGameLog = false,
+                )
+                if (update != null) sender.send(aiSession, update)
             }
 
             // After the state (so a client's roster already shows the seat as lost, and its board
@@ -1116,7 +1225,7 @@ class GamePlayHandler(
             // Never auto-pass combat declarations for AI players — the AI controller
             // needs to decide which creatures to attack/block with. executeAutoPass would
             // submit empty maps (= no attacks, no blocks).
-            if (aiGameManager.isAiPlayer(autoPassPlayer)) {
+            if (aiGameManager.isAiActingFor(gameSession.sessionId, autoPassPlayer)) {
                 val state = gameSession.getStateForTesting()
                 if (state != null && (state.step == com.wingedsheep.sdk.core.Step.DECLARE_ATTACKERS || state.step == com.wingedsheep.sdk.core.Step.DECLARE_BLOCKERS)) {
                     logger.debug("Skipping auto-pass for AI player at {} — AI will handle combat", state.step)
@@ -1388,8 +1497,17 @@ class GamePlayHandler(
             useEngineDecisionIds = usesEngineDecisionIds(playerSession),
         )
         if (update != null) {
-            sender.send(session, update)
+            sender.send(
+                session,
+                update.withAiControlState(aiGameManager.isHumanTakeover(gameSessionId, playerSession.playerId)),
+            )
         }
+    }
+
+    private fun ServerMessage.withAiControlState(enabled: Boolean): ServerMessage = when (this) {
+        is ServerMessage.StateUpdate -> copy(aiControlEnabled = enabled)
+        is ServerMessage.StateDeltaUpdate -> copy(aiControlEnabled = enabled)
+        else -> this
     }
 
     /**
@@ -1525,6 +1643,7 @@ class GamePlayHandler(
                 }
                 is GameSession.ActionResult.Failure -> {
                     val aiSession = gameSession.getPlayerSession(aiPlayerId)?.webSocketSession as? AiWebSocketSession
+                        ?: aiGameManager.humanTakeoverSession(gameSession.sessionId, aiPlayerId)
                     if (aiSession?.allowActionsOnlyFallback == false) {
                         logger.error(
                             "External AI action failed for seat {} in game {}: {} — refusing server-side strategic fallback",

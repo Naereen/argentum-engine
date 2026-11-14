@@ -100,6 +100,7 @@ class GameWebSocketHandler(
                 is ClientMessage.UpdateAttackerTargets,
                 is ClientMessage.UpdateBlockerAssignments,
                 is ClientMessage.SetFullControl,
+                is ClientMessage.SetAiControl,
                 is ClientMessage.SetPriorityMode,
                 is ClientMessage.SetStopOverrides,
                 is ClientMessage.SetAbilityYield,

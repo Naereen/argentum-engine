@@ -1222,6 +1222,8 @@ class GameSession(
         playerId: EntityId,
         events: List<GameEvent>,
         useEngineDecisionIds: Boolean = false,
+        transportPlayerId: EntityId = playerId,
+        appendGameLog: Boolean = true,
     ): ServerMessage? = synchronized(stateLock) {
         val state = gameState ?: return null
         val names = if (useEngineDecisionIds) null else seatIdentities.getOrPut(playerId) { SeatIdentities() }
@@ -1281,7 +1283,7 @@ class GameSession(
                 it !is ClientEvent.ManaAdded && it !is ClientEvent.AbilityResolved
         }
         val playerLog = gameLogs.getOrPut(playerId) { mutableListOf() }
-        playerLog.addAll(logEntries)
+        if (appendGameLog) playerLog.addAll(logEntries)
 
         // Calculate next stop point for the Pass button (only if player has priority,
         // or is the actor for whoever has priority during a hijacked turn).
@@ -1326,9 +1328,9 @@ class GameSession(
         }
 
         // Check if we have a previous state for delta computation
-        val previous = lastSentState[playerId]
-        lastSentState[playerId] = stateWithLog
-        val version = stateVersions.merge(playerId, 1L) { old, inc -> old + inc }!!
+        val previous = lastSentState[transportPlayerId]
+        lastSentState[transportPlayerId] = stateWithLog
+        val version = stateVersions.merge(transportPlayerId, 1L) { old, inc -> old + inc }!!
 
         val interactionEpoch = liveInteractionEpoch
         if (previous != null) {

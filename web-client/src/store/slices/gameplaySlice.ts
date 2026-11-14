@@ -15,6 +15,7 @@ import {
   createConcedeMessage,
   createCancelGameMessage,
   createSetFullControlMessage,
+  createSetAiControlMessage,
   createSetPriorityModeMessage,
   createSetStopOverridesMessage,
   createSetAbilityYieldMessage,
@@ -65,6 +66,8 @@ export interface GameplaySliceState {
    * may look actionable meanwhile — the Pass button above all.
    */
   autoAnswerPending: boolean
+  aiControlEnabled: boolean
+  aiControlPending: boolean
 }
 
 export interface GameplaySliceActions {
@@ -104,6 +107,7 @@ export interface GameplaySliceActions {
   concede: () => void
   cancelGame: () => void
   setFullControl: (enabled: boolean) => void
+  setAiControl: (enabled: boolean) => void
   cyclePriorityMode: () => void
   toggleStopOverride: (step: Step, isMyTurn: boolean) => void
   setAbilityYield: (cardDefinitionId: string, abilityId: string, kind: YieldKind) => void
@@ -152,6 +156,8 @@ export const createGameplaySlice: SliceCreator<GameplaySlice> = (set, get) => ({
   autoAnswerNotice: null,
   initiativeResultNotice: null,
   autoAnswerPending: false,
+  aiControlEnabled: false,
+  aiControlPending: false,
   triggerOrderNotice: null,
 
   // Actions
@@ -172,6 +178,7 @@ export const createGameplaySlice: SliceCreator<GameplaySlice> = (set, get) => ({
 
   submitAction: (action, interactionEpoch) => {
     if (!get().sessionId || !get().gameState) return
+    if (get().aiControlEnabled) return
     if (!interactionEpoch || interactionEpoch !== get().interactionEpoch) return
     const play = get().pendingDecision
     if (play?.type === 'PlayCardDecision' && (action.type === 'CastSpell' || action.type === 'PlayLand')) {
@@ -610,6 +617,13 @@ export const createGameplaySlice: SliceCreator<GameplaySlice> = (set, get) => ({
     set({ fullControl: enabled })
   },
 
+  setAiControl: (enabled) => {
+    const websocket = getWebSocket()
+    if (!websocket) return
+    set({ aiControlPending: true })
+    websocket.send(createSetAiControlMessage(enabled))
+  },
+
   cyclePriorityMode: () => {
     const { priorityMode } = get()
     const nextMode: PriorityModeValue =
@@ -667,6 +681,8 @@ export const createGameplaySlice: SliceCreator<GameplaySlice> = (set, get) => ({
       opponentName: null,
       gameState: null,
       interactionEpoch: null,
+      aiControlEnabled: false,
+      aiControlPending: false,
       legalActions: [],
       pendingDecision: null,
       mulliganState: null,

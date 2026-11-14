@@ -154,6 +154,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
   const eliminatedBottomSeatId = useEliminatedBottomSeatId()
   const setEliminatedBottomSeat = useGameStore((state) => state.setEliminatedBottomSeat)
   const returnToMenu = useGameStore((state) => state.returnToMenu)
+  const aiControlEnabled = useGameStore((state) => state.aiControlEnabled)
   const viewingPlayer = useViewingPlayer()
   // Eliminated-spectator layout: the local player is out of a multiplayer game that plays on —
   // their own board is dead and all action UI hides, so they watch the surviving seats spread
@@ -741,7 +742,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
         (youAreHijacking != null && gameState.priorityPlayerId === youAreHijacking))
   // A question answered for us is still a question: nothing else is ours to do until it is.
   const autoAnswerPending = useGameStore((state) => state.autoAnswerPending)
-  const canAct = hasPriority && !opponentDecisionStatus && !autoAnswerPending
+  const canAct = hasPriority && !opponentDecisionStatus && !autoAnswerPending && !aiControlEnabled
   /**
    * Two-Headed Giant: pair your hand with your ally's in one centered row at the bottom of the
    * screen. Outside a team game (and while spectating) this hands the fan straight back and the
@@ -939,7 +940,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
           affected player even when the rest of the UI is disabled by hijack. An
           eliminated spectator has nothing to concede — they get a Leave button. */}
       {!spectatorMode && !isEliminatedSpectator && <ConcedeButton />}
-      {!spectatorMode && !isEliminatedSpectator && <PlayerActionBar />}
+      {!spectatorMode && !isEliminatedSpectator && !aiControlEnabled && <PlayerActionBar />}
       {isEliminatedSpectator && (
         <>
           <button

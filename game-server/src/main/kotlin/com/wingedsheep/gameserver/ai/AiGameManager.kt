@@ -49,6 +49,8 @@ class AiGameManager(
      * one of them and leaked the rest.
      */
     private val activeSessions = ConcurrentHashMap<String, ConcurrentHashMap<EntityId, AiWebSocketSession>>()
+    private val humanTakeovers = ConcurrentHashMap<String, ConcurrentHashMap<EntityId, AiWebSocketSession>>()
+    private val takeoverLocks = ConcurrentHashMap<Pair<String, EntityId>, Any>()
 
     /** Register [session] as [aiPlayerId]'s live session in [gameSessionId], shutting down any predecessor. */
     private fun trackSession(gameSessionId: String, aiPlayerId: EntityId, session: AiWebSocketSession) {
@@ -627,6 +629,87 @@ class AiGameManager(
     }
 
     /**
+     * Let the configured AI drive a seated human's game actions without replacing their browser
+     * session. The human keeps receiving their own masked state and can reclaim the seat at any time.
+     */
+    fun startHumanTakeover(
+        gameSession: GameSession,
+        playerId: EntityId,
+        onActionReady: (EntityId, GameAction, String?) -> Unit,
+        onMulliganKeep: (EntityId) -> Unit,
+        onMulliganTake: (EntityId) -> Unit,
+        onBottomCards: (EntityId, List<EntityId>) -> Unit,
+    ): Boolean = synchronized(takeoverLock(gameSession.sessionId, playerId)) {
+        if (!isEnabled || isAiPlayer(playerId) || isHumanTakeover(gameSession.sessionId, playerId)) return false
+
+        val controller = createController(playerId, gameSession)
+        gameSession.getStartingDeckList(playerId)
+            ?.groupingBy { it }
+            ?.eachCount()
+            ?.let(controller::setDeckList)
+
+        val session = buildAiSession(
+            aiPlayerId = playerId,
+            controller = controller,
+            gameSession = gameSession,
+            onActionReady = { id, action, epoch ->
+                runIfHumanTakeoverActive(gameSession.sessionId, id) { onActionReady(id, action, epoch) }
+            },
+            onMulliganKeep = { id ->
+                runIfHumanTakeoverActive(gameSession.sessionId, id) { onMulliganKeep(id) }
+            },
+            onMulliganTake = { id ->
+                runIfHumanTakeoverActive(gameSession.sessionId, id) { onMulliganTake(id) }
+            },
+            onBottomCards = { id, cards ->
+                runIfHumanTakeoverActive(gameSession.sessionId, id) { onBottomCards(id, cards) }
+            },
+        )
+        val sessions = activeSessions.computeIfAbsent(gameSession.sessionId) { ConcurrentHashMap() }
+        if (sessions.putIfAbsent(playerId, session) != null) {
+            session.shutdown()
+            return false
+        }
+        humanTakeovers.computeIfAbsent(gameSession.sessionId) { ConcurrentHashMap() }[playerId] = session
+        logger.info("AI took control of human seat {} in game {}", playerId.value, gameSession.sessionId)
+        true
+    }
+
+    /** Reclaim a human seat and discard any asynchronous response from its former AI controller. */
+    fun stopHumanTakeover(gameSession: GameSession, playerId: EntityId): Boolean =
+        synchronized(takeoverLock(gameSession.sessionId, playerId)) {
+            val session = humanTakeovers[gameSession.sessionId]?.remove(playerId) ?: return false
+            activeSessions[gameSession.sessionId]?.remove(playerId, session)
+            if (activeSessions[gameSession.sessionId]?.isEmpty() == true) {
+                activeSessions.remove(gameSession.sessionId)
+            }
+            gameSession.clearLastSentState(EntityId(session.id))
+            session.shutdown()
+            logger.info("Human reclaimed seat {} in game {}", playerId.value, gameSession.sessionId)
+            true
+        }
+
+    fun isHumanTakeover(gameSessionId: String, playerId: EntityId): Boolean =
+        humanTakeovers[gameSessionId]?.containsKey(playerId) == true
+
+    fun humanTakeoverSession(gameSessionId: String, playerId: EntityId): AiWebSocketSession? =
+        humanTakeovers[gameSessionId]?.get(playerId)
+
+    /**
+     * Serialize an in-flight AI response with a reclaim request so no bot action can execute after
+     * reclaim has completed.
+     */
+    fun runIfHumanTakeoverActive(gameSessionId: String, playerId: EntityId, action: () -> Unit): Boolean =
+        synchronized(takeoverLock(gameSessionId, playerId)) {
+            if (!isHumanTakeover(gameSessionId, playerId)) return false
+            action()
+            true
+        }
+
+    private fun takeoverLock(gameSessionId: String, playerId: EntityId): Any =
+        takeoverLocks.computeIfAbsent(gameSessionId to playerId) { Any() }
+
+    /**
      * Adjust the per-decision thinking delay of an AI player's live session. Used by the
      * LLM-tournament pacing control to speed up / slow down an in-progress AI-vs-AI game.
      * No-op if the player isn't an AI or has no live session.
@@ -646,6 +729,10 @@ class AiGameManager(
      */
     fun isAiPlayer(playerId: EntityId): Boolean = playerId in aiPlayerIds
 
+    /** True for an AI seat or a human seat the AI currently drives in this particular game. */
+    fun isAiActingFor(gameSessionId: String, playerId: EntityId): Boolean =
+        isAiPlayer(playerId) || activeSessions[gameSessionId]?.containsKey(playerId) == true
+
     /**
      * Whether AI seat [aiPlayerId] of [gameSessionId] wants to act in the window the auto-pass loop
      * is about to pass for it ([com.wingedsheep.ai.AiPlayerController.wantsPriority]).
@@ -657,9 +744,13 @@ class AiGameManager(
      * Clean up AI resources when a game ends.
      */
     fun cleanupGame(gameSessionId: String) {
-        val sessions = activeSessions.remove(gameSessionId) ?: return
-        sessions.values.forEach { it.shutdown() }
-        logger.info("Cleaned up {} AI session(s) for game {}", sessions.size, gameSessionId)
+        humanTakeovers.remove(gameSessionId)
+        val sessions = activeSessions.remove(gameSessionId)
+        sessions?.values?.forEach { it.shutdown() }
+        takeoverLocks.keys.removeIf { it.first == gameSessionId }
+        if (sessions != null) {
+            logger.info("Cleaned up {} AI session(s) for game {}", sessions.size, gameSessionId)
+        }
     }
 
     /**

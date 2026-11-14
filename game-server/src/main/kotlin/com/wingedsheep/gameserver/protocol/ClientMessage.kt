@@ -519,6 +519,11 @@ sealed interface ClientMessage {
     @SerialName("setFullControl")
     data class SetFullControl(val enabled: Boolean) : ClientMessage
 
+    /** Let the built-in AI play the current player's seat in the Otaria playtest. */
+    @Serializable
+    @SerialName("setAiControl")
+    data class SetAiControl(val enabled: Boolean) : ClientMessage
+
     /**
      * Set priority mode for the current game.
      * Values: "auto", "stops", "fullControl"

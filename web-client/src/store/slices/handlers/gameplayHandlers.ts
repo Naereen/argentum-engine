@@ -736,12 +736,14 @@ function processStateUpdate(
 
   // A question with one legal answer, which the server answered for us: never put it in front of
   // the player — not even for a frame — and send that answer after a short delay instead.
-  const autoAnswer = autoAnswerFor(
-    msg.pendingDecision,
-    msg.autoAnswer,
-    getPreferences().gameplay.forcedChoices,
-    msg.autoAnswerPublic === true
-  )
+  const autoAnswer = get().aiControlEnabled
+    ? null
+    : autoAnswerFor(
+        msg.pendingDecision,
+        msg.autoAnswer,
+        getPreferences().gameplay.forcedChoices,
+        msg.autoAnswerPublic === true
+      )
   const initiativeEvent = msg.events.find(
     (event) => event.type === 'otariaNotice' && event.initiativeOutcome != null
   )
@@ -928,7 +930,12 @@ export function createGameplayHandlers(set: SetState, get: GetState): Pick<Messa
       setInGame(true)
 
       // Clear spectating state — active game takes priority. Fresh game, fresh camera.
-      set({ spectatingState: null, triggerOrderNotice: null })
+      set({
+        spectatingState: null,
+        triggerOrderNotice: null,
+        aiControlEnabled: false,
+        aiControlPending: false,
+      })
       useTableTalkStore.getState().resetForNewGame()
       get().resetBoardView()
 
@@ -1008,6 +1015,8 @@ export function createGameplayHandlers(set: SetState, get: GetState): Pick<Messa
         opponentName: null,
         gameState: null,
         interactionEpoch: null,
+        aiControlEnabled: false,
+        aiControlPending: false,
         legalActions: [],
         mulliganState: null,
         deckBuildingState: null,
@@ -1021,6 +1030,7 @@ export function createGameplayHandlers(set: SetState, get: GetState): Pick<Messa
       // flows, so this never drops a legitimate in-game update.
       if (get().sessionId == null) return
       getWebSocket()?.onStateVersionReceived(msg.stateVersion)
+      set({ aiControlEnabled: msg.aiControlEnabled === true, aiControlPending: false })
       processStateUpdate(msg.state, msg, set, get)
     },
 
@@ -1038,6 +1048,7 @@ export function createGameplayHandlers(set: SetState, get: GetState): Pick<Messa
         return
       }
       const newState = applyStateDelta(currentState, msg.delta)
+      set({ aiControlEnabled: msg.aiControlEnabled === true, aiControlPending: false })
       processStateUpdate(newState, msg, set, get)
     },
 
@@ -1122,6 +1133,8 @@ export function createGameplayHandlers(set: SetState, get: GetState): Pick<Messa
           gameId: msg.gameId,
           ...(msg.ante ? { ante: msg.ante } : {}),
         },
+        aiControlEnabled: false,
+        aiControlPending: false,
         ...CLEARED_ANIMATIONS,
       })
     },
@@ -1141,11 +1154,14 @@ export function createGameplayHandlers(set: SetState, get: GetState): Pick<Messa
           gameId: msg.gameId,
           eliminated: true,
         },
+        aiControlEnabled: false,
+        aiControlPending: false,
         ...CLEARED_ANIMATIONS,
       })
     },
 
     onError: (msg) => {
+      set({ aiControlPending: false })
       // NOT_CONNECTED means the server no longer recognizes this socket as an
       // authenticated session (e.g. it restarted while the tab was backgrounded).
       // Re-send the connect message with the stored token instead of surfacing the

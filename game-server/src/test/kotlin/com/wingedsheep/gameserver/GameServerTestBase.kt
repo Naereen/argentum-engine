@@ -193,6 +193,17 @@ abstract class GameServerTestBase : FunSpec() {
             return messages.filterIsInstance<ServerMessage.Connected>().first().playerId
         }
 
+        suspend fun reconnectAs(playerName: String, token: String): String {
+            connect()
+            send(ClientMessage.Connect(playerName, token))
+            eventually(5.seconds) {
+                (messages.any { it is ServerMessage.Reconnected } ||
+                    messages.any { it is ServerMessage.Connected }) shouldBe true
+            }
+            return messages.filterIsInstance<ServerMessage.Reconnected>().firstOrNull()?.playerId
+                ?: messages.filterIsInstance<ServerMessage.Connected>().first().playerId
+        }
+
         fun latestState(): ClientGameState? = resolvedState
 
         fun requireLatestState(): ClientGameState =

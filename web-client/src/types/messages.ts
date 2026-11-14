@@ -245,6 +245,8 @@ export interface StateUpdateMessage {
    * human-like pause. Absent or false whenever that is unknown or could depend on a hidden card.
    */
   readonly autoAnswerPublic?: boolean
+  /** True while the server-side AI is driving this player's Otaria seat. */
+  readonly aiControlEnabled?: boolean
 }
 
 /**
@@ -339,6 +341,8 @@ export interface StateDeltaUpdateMessage {
    * human-like pause. Absent or false whenever that is unknown or could depend on a hidden card.
    */
   readonly autoAnswerPublic?: boolean
+  /** True while the server-side AI is driving this player's Otaria seat. */
+  readonly aiControlEnabled?: boolean
 }
 
 // ============================================================================
@@ -2549,6 +2553,7 @@ export type ClientMessage =
   | UpdateBlockerAssignmentsMessage
   // Game Settings Messages
   | SetFullControlMessage
+  | SetAiControlMessage
   | SetPriorityModeMessage
   | SetStopOverridesMessage
   | SetAbilityYieldMessage
@@ -3141,6 +3146,12 @@ export interface SetFullControlMessage {
   readonly enabled: boolean
 }
 
+/** Give or reclaim control of the current player's Otaria seat. */
+export interface SetAiControlMessage {
+  readonly type: 'setAiControl'
+  readonly enabled: boolean
+}
+
 /**
  * Set priority mode for the current game.
  * Values: "auto", "stops", "fullControl"
@@ -3415,6 +3426,10 @@ export function createUpdateBlockerAssignmentsMessage(
 
 export function createSetFullControlMessage(enabled: boolean): SetFullControlMessage {
   return { type: 'setFullControl', enabled }
+}
+
+export function createSetAiControlMessage(enabled: boolean): SetAiControlMessage {
+  return { type: 'setAiControl', enabled }
 }
 
 export function createSetPriorityModeMessage(mode: PriorityModeValue): SetPriorityModeMessage {

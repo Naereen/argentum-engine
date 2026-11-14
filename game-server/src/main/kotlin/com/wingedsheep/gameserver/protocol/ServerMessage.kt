@@ -172,6 +172,8 @@ sealed interface ServerMessage {
          * nothing away. False whenever that is unknown, or could depend on a hidden card.
          */
         val autoAnswerPublic: Boolean = false,
+        /** Whether the AI is currently controlling this human seat. */
+        val aiControlEnabled: Boolean = false,
     ) : ServerMessage
 
     /**
@@ -212,6 +214,8 @@ sealed interface ServerMessage {
          * nothing away. False whenever that is unknown, or could depend on a hidden card.
          */
         val autoAnswerPublic: Boolean = false,
+        /** Whether the AI is currently controlling this human seat. */
+        val aiControlEnabled: Boolean = false,
     ) : ServerMessage
 
     /**
