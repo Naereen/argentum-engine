@@ -5819,6 +5819,7 @@ Eviscerator's Insight
 Evolution Charm
 Evolution Sage
 Evolution Witness
+Evolutionary Leap
 Evolved Sleeper	intent: SetCreatureSubtypesEffect
 Evolved Spinoderm
 Evolving Adaptive
@@ -7028,6 +7029,7 @@ Gates of Istfell
 Gateway Plaza
 Gateway Sneak
 Gather Courage
+Gather the Pack
 Gather the Townsfolk
 Gather the White Lotus
 Gathering Place
@@ -8360,6 +8362,7 @@ Hellspur Brute
 Hellspur Posse Boss
 Helm of Chatzuk	intent: GrantKeywordEffect; polarity: GrantKeywordEffect
 Helm of the Ghastlord	polarity: Aura>ConditionalStaticAbility
+Helm of the Gods
 Helm of the Host	intent: CreateTokenCopyOfEquippedCreatureEffect
 Helpful Hunter
 Helping Hand
@@ -8598,6 +8601,7 @@ Honorbound Page
 Honored Crop-Captain
 Honored Dreyleader
 Honored Heirloom
+Honored Hierarch
 Honored Hydra
 Honored Knight-Captain
 Hooded Assassin
@@ -10607,6 +10611,7 @@ Llanowar Cavalry
 Llanowar Dead
 Llanowar Elite
 Llanowar Elves
+Llanowar Empath
 Llanowar Envoy
 Llanowar Greenwidow
 Llanowar Knight
@@ -10892,6 +10897,8 @@ Mage Tower Referee
 Mage's Attendant
 Mage's Guile
 Mage-Ring Bully
+Mage-Ring Network
+Mage-Ring Responder
 Magebane Lizard
 Mages' Contest	intent: OpenLifeBidEffect; polarity: OpenLifeBidEffect
 Mageta's Boon
@@ -12361,7 +12368,9 @@ Nissa of Shadowed Boughs	intent: AddCountersToCollectionEffect; intent: Pipeline
 Nissa's Defeat
 Nissa's Encouragement
 Nissa's Judgment
+Nissa's Pilgrimage
 Nissa's Renewal
+Nissa's Revelation
 Nissa's Triumph
 Nissa's Zendikon
 Nissa, Ascended Animist
@@ -12369,6 +12378,7 @@ Nissa, Genesis Mage
 Nissa, Nature's Artisan
 Nissa, Resurgent Animist
 Nissa, Steward of Elements
+Nissa, Vastwood Seer
 Nissa, Vital Force
 Nissa, Voice of Zendikar
 Nissa, Who Shakes the World
@@ -12753,8 +12763,10 @@ Orazca Raptor
 Orazca Relic
 Orb of Dragonkind
 Orbital Plunge
+Orbs of Warding
 Orbweaver Kumo
 Orc General
+Orchard Spirit
 Orchard Strider
 Orcish Artillery
 Orcish Bowmasters
@@ -13625,6 +13637,7 @@ Prince Imrahil the Fair
 Princess Lucrezia
 Prishe's Wanderings
 Prism Array
+Prism Ring
 Prismabasher
 Prismari Apprentice
 Prismari Campus
@@ -13645,6 +13658,7 @@ Private Eye
 Privileged Position
 Prized Amalgam
 Prized Griffin
+Prized Unicorn
 Prizefight
 Prizefighter Construct
 Probe
@@ -14318,6 +14332,7 @@ Reclaim
 Reclaim the Wastes
 Reclaiming Vines
 Reclamation Sage
+Reclusive Artificer
 Reclusive Taxidermist
 Reclusive Wight
 Recoil
@@ -15747,6 +15762,7 @@ Seething Song
 Segovian Angel
 Segovian Leviathan
 Seifer Almasy
+Seismic Elemental
 Seismic Mage
 Seismic Monstrosaur
 Seismic Rupture
@@ -16238,6 +16254,7 @@ Sigardian Priest
 Sigardian Savior
 Sight Beyond Sight
 Sigil of Sleep	polarity: Aura>MoveToZoneEffect
+Sigil of Valor
 Sigil of the Empty Throne
 Sigil of the New Dawn
 Sigiled Contender
@@ -16619,6 +16636,7 @@ Slumbering Walker
 Sly Requisitioner
 Smash
 Smash to Dust
+Smash to Smithereens
 Smashing Success
 Smaug the Magnificent
 Smaug's Fury
@@ -18473,6 +18491,7 @@ The Gitrog Monster
 The Gitrog, Ravenous Ride
 The Gold Saucer	intent: FlipCoinEffect
 The Goose Mother
+The Great Aurora
 The Great Goblin
 The Great Henge
 The Grey Havens
@@ -18915,6 +18934,7 @@ Timber Wolves
 Timberland Ancient
 Timberland Guide
 Timberland Ruins
+Timberpack Wolf
 Timberwatch Elf
 Time Ebb
 Time Elemental
@@ -19800,6 +19820,7 @@ Valakut Predator
 Valduk, Keeper of the Flame
 Valentin, Dean of the Vein
 Valeron Outlander
+Valeron Wardens
 Valgavoth's Faithful
 Valgavoth's Lair
 Valgavoth's Onslaught	intent: AddCountersToCollectionEffect; intent: EmitManifestedDreadEventEffect; intent: Pipeline(EnteredViaThisResolution|TopOfLibrary→battlefield|graveyard)
@@ -20507,7 +20528,7 @@ Warning
 Warp Artifact	polarity: Aura>DealDamageEffect
 Warp Core	intent: AddCountersEffect; polarity: AddCountersEffect
 Warp Speed
-Warp World	intent: ForEach>Pipeline(BattlefieldMatching|TopOfLibrary→library); intent: Pipeline(?→battlefield|library)
+Warp World
 Warpath Ghoul
 Warped Landscape
 Warped Researcher
@@ -21036,6 +21057,7 @@ Wooded Ridgeline
 Wooden Sphere
 Woodfall Primus
 Woodland Acolyte
+Woodland Bellower
 Woodland Cemetery
 Woodland Champion
 Woodland Changeling
