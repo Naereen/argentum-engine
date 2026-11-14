@@ -59,6 +59,7 @@ export interface GameplaySliceState {
   spectatorNames: readonly string[]
   /** The last forced question this client answered for the player, shown as a brief notice. */
   autoAnswerNotice: AutoAnswerNotice | null
+  initiativeResultNotice: { key: number; explorerName: string; explorerIsYou: boolean; outcome: 'explorerWon' | 'encounterWon'; rolls: string | null } | null
   /**
    * A forced question is waiting to be answered for the player. It is off screen, so nothing else
    * may look actionable meanwhile — the Pass button above all.
@@ -119,6 +120,7 @@ export interface GameplaySliceActions {
   setError: (error: ErrorState) => void
   clearError: () => void
   dismissAutoAnswerNotice: () => void
+  dismissInitiativeResultNotice: () => void
   triggerOrderNotice: { key: number; count: number } | null
   dismissTriggerOrderNotice: () => void
 }
@@ -148,6 +150,7 @@ export const createGameplaySlice: SliceCreator<GameplaySlice> = (set, get) => ({
   spectatorCount: 0,
   spectatorNames: [],
   autoAnswerNotice: null,
+  initiativeResultNotice: null,
   autoAnswerPending: false,
   triggerOrderNotice: null,
 
@@ -691,6 +694,7 @@ export const createGameplaySlice: SliceCreator<GameplaySlice> = (set, get) => ({
       nextStopPoint: null,
       opponentDisconnectCountdown: null,
       eventLog: [],
+      initiativeResultNotice: null,
       gameOverState: null,
       lastError: null,
       spectatorCount: 0,
@@ -722,5 +726,6 @@ export const createGameplaySlice: SliceCreator<GameplaySlice> = (set, get) => ({
   },
 
   dismissAutoAnswerNotice: () => set({ autoAnswerNotice: null }),
+  dismissInitiativeResultNotice: () => set({ initiativeResultNotice: null }),
   dismissTriggerOrderNotice: () => set({ triggerOrderNotice: null }),
 })

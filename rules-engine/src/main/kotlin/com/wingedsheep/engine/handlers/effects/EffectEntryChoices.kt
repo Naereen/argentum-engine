@@ -1,7 +1,10 @@
 package com.wingedsheep.engine.handlers.effects
 
+import com.wingedsheep.engine.core.AnswerContinuation
+import com.wingedsheep.engine.core.DecisionResponse
 import com.wingedsheep.engine.core.EffectEntryChoiceContinuation
 import com.wingedsheep.engine.core.EffectResult
+import com.wingedsheep.engine.core.EntersWithChoiceOnBattlefieldContinuation
 import com.wingedsheep.engine.core.suspendForDecision
 import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.handlers.PredicateEvaluator
@@ -69,6 +72,21 @@ object EffectEntryChoices {
         entrants: Map<EntityId, EntityId>,
         registry: CardRegistry,
         predicateEvaluator: PredicateEvaluator,
+    ): EffectResult? = prepare(
+        state, context, entrants, registry, predicateEvaluator,
+    ) { asking, id, question -> EffectEntryChoiceContinuation(effect, asking, id, question) }
+
+    /**
+     * Prepare the same pre-entry choices for a caller whose continuation is not an SDK effect.
+     * No entrant is moved until every answer has been collected.
+     */
+    fun prepare(
+        state: GameState,
+        context: EffectContext,
+        entrants: Map<EntityId, EntityId>,
+        registry: CardRegistry,
+        predicateEvaluator: PredicateEvaluator,
+        answer: (EffectContext, EntityId, EntersWithChoiceOnBattlefieldContinuation) -> AnswerContinuation,
     ): EffectResult? {
         val playerOrder = state.apnapOrder.withIndex().associate { it.value to it.index }
         for ((id, controller) in entrants.entries.sortedBy { playerOrder[it.value] ?: Int.MAX_VALUE }) {
@@ -106,7 +124,7 @@ object EffectEntryChoices {
                     answers = answers.copy(asked = answers.asked + choice.choiceType)
                     continue
                 }
-                return ask(prompt, effect, context, id, answers)
+                return ask(prompt, context, id, answers, answer)
             }
 
             val riotInstances = answers.riotInstances
@@ -118,7 +136,7 @@ object EffectEntryChoices {
                     state, id, controller, entering, RiotSynthesis.RIOT_CHOICE, fromZone = null,
                     syntheticRiot = true, syntheticRiotRemaining = owed - 1,
                 ) ?: continue
-                return ask(prompt, effect, context, id, answers)
+                return ask(prompt, context, id, answers, answer)
             }
         }
         return null
@@ -126,15 +144,15 @@ object EffectEntryChoices {
 
     private fun ask(
         prompt: PermanentEntryReplacements.EntersChoicePrompt,
-        effect: Effect,
         context: EffectContext,
         id: EntityId,
         answers: EntryChoiceAnswers,
+        answer: (EffectContext, EntityId, EntersWithChoiceOnBattlefieldContinuation) -> AnswerContinuation,
     ): EffectResult {
         val asking = context.copy(entryChoices = context.entryChoices + (id to answers))
         return EffectResult.from(prompt.state.suspendForDecision(
             prompt.question,
-            EffectEntryChoiceContinuation(effect, asking, id, prompt.answer),
+            answer(asking, id, prompt.answer),
             prompt.events,
         ))
     }
@@ -183,5 +201,26 @@ object EffectEntryChoices {
         return context.copy(entryChoices = context.entryChoices + (entityId to prior.copy(
             riotModes = prior.riotModes + modeId,
         )))
+    }
+
+    /** Decode one response for either an effect-driven entry or another simultaneous entry. */
+    fun recordAnswer(
+        state: GameState,
+        context: EffectContext,
+        entityId: EntityId,
+        question: EntersWithChoiceOnBattlefieldContinuation,
+        response: DecisionResponse,
+    ): EffectContext? {
+        val decoded = PermanentEntryReplacements.decodeEntersChoice(state, question, response)
+        if (decoded == null) {
+            return if (PermanentEntryReplacements.isDeclinedEntersChoice(question.choiceType, response)) {
+                declined(context, entityId, question.choiceType)
+            } else null
+        }
+        if (question.syntheticRiot) {
+            val mode = (decoded.second as? ChoiceValue.TextChoice)?.text ?: return null
+            return answeredRiot(context, entityId, mode)
+        }
+        return answered(context, entityId, question.choiceType, decoded.first, decoded.second)
     }
 }

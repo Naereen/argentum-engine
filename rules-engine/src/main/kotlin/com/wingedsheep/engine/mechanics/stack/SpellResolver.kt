@@ -65,7 +65,7 @@ internal class SpellResolver(
             // 608.2b re-checks targets against the spell's text as it is now (CR 613.1c) — the
             // stack keeps the printed requirements, so a text change that began or ended while
             // the spell waited is honoured.
-            val spellText = TextChanges.forSpell(state, spellId)
+            val spellText = TextChanges.forSpell(state, spellId, spellComponent.casterId)
             val validTargets = targetValidator.validateTargets(
                 state, targetsComponent.targets, sourceColors, sourceSubtypes,
                 spellComponent.casterId,

@@ -22,6 +22,15 @@ sealed interface ClientEvent {
     /** A description of what happened for display */
     val description: String
 
+    @Serializable
+    @SerialName("otariaNotice")
+    data class OtariaNotice(
+        override val description: String,
+        val initiativeOutcome: String? = null,
+        val explorerId: EntityId? = null,
+        val initiativeRolls: String? = null,
+    ) : ClientEvent
+
     // =========================================================================
     // Life/Damage Events
     // =========================================================================
@@ -1137,26 +1146,29 @@ object ClientEventTransformer {
         state: GameState? = null,
         visibility: Visibility? = null,
     ): List<ClientEvent> {
-        val transformed = events.flatMap { event -> transformEventToList(event, viewingPlayerId, state) }
+        val effectiveVisibility = visibility ?: controllerOnlyVisibility
+        val transformed = events.flatMap { event ->
+            transformEventToList(event, viewingPlayerId, state, effectiveVisibility)
+        }
         if (state == null) return transformed
         val masker = visibility?.let(::FaceDownEventMasker) ?: controllerOnlyMasker
         return masker.mask(transformed, state, viewingPlayerId)
     }
 
     /** Masks with no card registry, so no static grants anyone a look under a face-down object. */
-    private val controllerOnlyMasker by lazy {
-        FaceDownEventMasker(
-            Visibility(
-                com.wingedsheep.engine.registry.CardRegistry(),
-                conditionEvaluator = com.wingedsheep.engine.handlers.PredicateEvaluator(cardRegistry = null).conditions,
-            )
+    private val controllerOnlyVisibility by lazy {
+        Visibility(
+            com.wingedsheep.engine.registry.CardRegistry(),
+            conditionEvaluator = com.wingedsheep.engine.handlers.PredicateEvaluator(cardRegistry = null).conditions,
         )
     }
+    private val controllerOnlyMasker by lazy { FaceDownEventMasker(controllerOnlyVisibility) }
 
     private fun transformEventToList(
         event: GameEvent,
         viewingPlayerId: EntityId,
         state: GameState?,
+        visibility: Visibility,
     ): List<ClientEvent> {
         // AttackersDeclaredEvent and BlockersDeclaredEvent produce multiple client events
         when (event) {
@@ -1188,7 +1200,7 @@ object ClientEventTransformer {
                 }
             }
             else -> {
-                val result = transformEvent(event, viewingPlayerId, state)
+                val result = transformEvent(event, viewingPlayerId, state, visibility)
                 return if (result != null) listOf(result) else emptyList()
             }
         }
@@ -1202,6 +1214,7 @@ object ClientEventTransformer {
         event: GameEvent,
         viewingPlayerId: EntityId,
         state: GameState?,
+        visibility: Visibility,
     ): ClientEvent? {
         return when (event) {
             // Public identity bookkeeping has no separate client animation or log entry.
@@ -1361,15 +1374,11 @@ object ClientEventTransformer {
                 val hiddenMove = hiddenOrigin && event.toZone in HIDDEN_ZONES
                 val identified = !hiddenMove ||
                     (isYours && (event.fromZone == Zone.HAND || event.toZone == Zone.HAND))
-                // A card that landed face down (manifested, foretold, exiled face down) keeps its
-                // face from everyone but its owner, who may look at it.
-                val faceDownName = if (isYours) null else state?.let { faceDownDisplayName(it, event.entityId) }
+                val faceDownName = state?.takeIf {
+                    visibility.isCardIdentityHiddenFrom(it, event.entityId, viewingPlayerId)
+                }?.let { faceDownDisplayName(it, event.entityId) }
                 val movedCardId = if (identified) event.entityId else null
-                val movedCardName = when {
-                    !identified -> "card"
-                    faceDownName != null -> faceDownName
-                    else -> event.entityName
-                }
+                val movedCardName = if (!identified) "card" else faceDownName ?: event.entityName
                 when (event.toZone) {
                     com.wingedsheep.sdk.core.Zone.BATTLEFIELD -> ClientEvent.PermanentEntered(
                         cardId = event.entityId,
@@ -1377,7 +1386,7 @@ object ClientEventTransformer {
                         controllerId = event.ownerId,
                         enteredTapped = false, // Would need to check state
                         isYours = isYours,
-                        copyOf = event.copyOfOriginalName
+                        copyOf = event.copyOfOriginalName.takeIf { faceDownName == null }
                     )
                     com.wingedsheep.sdk.core.Zone.GRAVEYARD -> ClientEvent.PermanentLeft(
                         cardId = event.entityId,
@@ -1607,6 +1616,48 @@ object ClientEventTransformer {
 
             is GameEndedEvent -> ClientEvent.GameEnded(
                 winnerId = event.winnerId
+            )
+
+            is OtariaSetupEvent, is OtariaTurnActionChosenEvent, is OtariaEncounterManaAddedEvent,
+            is OtariaReinforcementRolledEvent, is OtariaEncounterSupportHandCreatedEvent,
+            is OtariaEncounterJoinedEvent,
+            is OtariaStartingLandsPlacedEvent,
+            is OtariaPlayerMovedEvent, is OtariaPreparedEvent,
+            is OtariaExplorationStartedEvent,
+            is OtariaExplorationEmptyEvent, is OtariaExplorationPileShuffledEvent, is OtariaCardAddedToReserveEvent,
+            is OtariaDiscoveryTreasureResolvedEvent,
+            is OtariaDiscoveryFinishedEvent, is OtariaEventCopiesCreatedEvent,
+            is OtariaEventCopyFinishedEvent, is OtariaEventFinishedEvent -> null
+
+            is OtariaCardSkippedEvent -> ClientEvent.OtariaNotice(
+                "${event.cardName} is not scripted yet: it was discarded and the exploration ends."
+            )
+            is OtariaEncounterStartedEvent -> ClientEvent.OtariaNotice("An Otaria creature encounter has begun.")
+            is OtariaInitiativeDeterminedEvent -> {
+                val rolls = event.plan.contest?.rounds?.joinToString("; ") { "${it.explorer} vs ${it.opponent}" }
+                val explorerWon = event.plan.first == com.wingedsheep.engine.otaria.OtariaInitiativeSide.EXPLORER
+                ClientEvent.OtariaNotice(
+                    description = if (explorerWon) {
+                        "The explorer won initiative${rolls?.let { " ($it)" } ?: ""}: fight or flee freely."
+                    } else if (rolls == null) {
+                        "The encounter has haste and wins initiative. The explorer's turn ends."
+                    } else {
+                        "The encounter won initiative ($rolls). The explorer's turn ends."
+                    },
+                    initiativeOutcome = if (explorerWon) "explorerWon" else "encounterWon",
+                    explorerId = event.explorerId,
+                    initiativeRolls = rolls,
+                )
+            }
+            is OtariaCreatureCapturedEvent -> ClientEvent.OtariaNotice(
+                if (event.playerId == viewingPlayerId) "You captured a defeated creature. Open your Otaria reserve."
+                else "A defeated creature was captured into an explorer's reserve."
+            )
+            is OtariaEncounterReturnedEvent -> ClientEvent.OtariaNotice("The encounter was shuffled back into its exploration pile.")
+            is OtariaEncounterEndedEvent -> ClientEvent.OtariaNotice("The Otaria encounter has ended.")
+            is OtariaRetreatDeterminedEvent -> ClientEvent.OtariaNotice(
+                if (event.plan.succeeds) "The explorer retreats successfully."
+                else "The retreat failed. The explorer stays in place."
             )
 
             is HandLookedAtEvent -> {

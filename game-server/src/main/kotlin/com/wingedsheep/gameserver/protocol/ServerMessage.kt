@@ -1581,6 +1581,7 @@ enum class GameOverReason {
     DISCONNECTION,
     CARD_EFFECT,
     DRAW,
+    OTARIA_MIRARI,
     /** Commander format: 21+ combat damage from a single commander (CR 903.10a). */
     COMMANDER_DAMAGE,
 }
@@ -1618,4 +1619,3 @@ data class AnteTransferInfo(
     /** EVENT scope only: the basic land that topped the loser's deck back up to 40, if one was added. */
     val refilledWith: String? = null,
 )
-

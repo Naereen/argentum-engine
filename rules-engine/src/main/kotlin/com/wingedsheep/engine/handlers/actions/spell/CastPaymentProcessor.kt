@@ -26,7 +26,7 @@ import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.engine.mechanics.mana.ManaPool
 import com.wingedsheep.engine.mechanics.mana.SpellPaymentContext
 import com.wingedsheep.engine.mechanics.mana.SpentManaProvenance
-import com.wingedsheep.engine.mechanics.mana.isSatisfiedBy
+import com.wingedsheep.engine.mechanics.mana.isEligibleForPayment
 import com.wingedsheep.engine.mechanics.mana.paysGeneric
 import com.wingedsheep.engine.state.components.player.RestrictedManaEntry
 import com.wingedsheep.sdk.scripting.effects.ManaSpellRider
@@ -286,7 +286,7 @@ class CastPaymentProcessor(
                 // A color-restricted X can't be paid with off-color or colorless restricted mana.
                 if (entry.color != null && entry.color !in xColorsAllowed) continue
                 if (entry.color == null && xManaRestriction.isNotEmpty()) continue
-                if (entry.restriction.isSatisfiedBy(spellContext) && entry.restriction.paysGeneric) {
+                if (entry.isEligibleForPayment(spellContext) && entry.restriction.paysGeneric) {
                     val spent = poolAfterPayment.spendRestricted(entry.color, spellContext, forGeneric = true)
                     if (spent != null) {
                         poolAfterPayment = spent
@@ -443,7 +443,7 @@ class CastPaymentProcessor(
                 // A color-restricted X can't be paid with off-color or colorless restricted mana.
                 if (entry.color != null && entry.color !in xColorsAllowed) continue
                 if (entry.color == null && xManaRestriction.isNotEmpty()) continue
-                if (entry.restriction.isSatisfiedBy(spellContext) && entry.restriction.paysGeneric) {
+                if (entry.isEligibleForPayment(spellContext) && entry.restriction.paysGeneric) {
                     val spent = poolAfterPayment.spendRestricted(entry.color, spellContext, forGeneric = true)
                     if (spent != null) {
                         poolAfterPayment = spent

@@ -488,6 +488,9 @@ class TargetValidator(
             is TargetOther -> validateSingleTarget(state, target, requirement.baseRequirement, casterId, sourceColors, sourceSubtypes, sourceId, xValue, allTargets, targetingSourceType, namedTargets)
         }
         if (error != null) return error
+        if (!com.wingedsheep.engine.otaria.OtariaRange.contains(state, casterId, target.toEntityId())) {
+            return "Target is outside Otaria range"
+        }
 
         // Check player-level protection, e.g. The One Ring's "protection from everything" (Rule 702.16),
         // and "hexproof from [quality]" (Veil of Summer, Rule 702.11d): both depend on the source.

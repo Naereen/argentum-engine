@@ -9,6 +9,7 @@ import { EntityId } from './entities'
  */
 export type GameAction =
   | PassPriorityAction
+  | ClaimOtariaMirariVictoryAction
   | CastSpellAction
   | TakePlayerAction
   | ActivateAbilityAction
@@ -40,6 +41,13 @@ export type GameAction =
 export interface PassPriorityAction {
   readonly type: 'PassPriority'
   readonly playerId: EntityId
+}
+
+/** An immediate game-rule win, offered by the server while the player has priority. */
+export interface ClaimOtariaMirariVictoryAction {
+  readonly type: 'ClaimOtariaMirariVictory'
+  readonly playerId: EntityId
+  readonly mirariId: EntityId
 }
 
 // =============================================================================
@@ -532,6 +540,8 @@ export function getActionSubject(action: GameAction): EntityId | null {
       return action.mountId
     case 'UnlockRoomDoor':
       return action.roomId
+    case 'ClaimOtariaMirariVictory':
+      return action.mirariId
     default:
       return null
   }

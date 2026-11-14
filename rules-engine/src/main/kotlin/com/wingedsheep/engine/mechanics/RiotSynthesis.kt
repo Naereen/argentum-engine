@@ -5,6 +5,7 @@ import com.wingedsheep.engine.handlers.PredicateEvaluator
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.identity.CardComponent
+import com.wingedsheep.engine.state.components.identity.ControllerComponent
 import com.wingedsheep.engine.state.components.stack.SpellOnStackComponent
 import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.dsl.RIOT_MODE_OPTIONS
@@ -78,6 +79,9 @@ object RiotSynthesis {
         for (sourceId in state.getBattlefield()) {
             val def = state.getEntity(sourceId)?.faceUpCardDefinition(cardRegistry) ?: continue
             val srcController = state.projectedState.getController(sourceId) ?: continue
+            val entrantController = state.projectedState.getController(entityId)
+                ?: state.getEntity(entityId)?.get<ControllerComponent>()?.playerId
+            if (!com.wingedsheep.engine.otaria.OtariaRange.betweenControllers(state, srcController, entrantController)) continue
             for (ability in def.staticAbilities) {
                 if (ability !is GrantKeyword || ability.keyword != keyword.name) continue
                 if (ability.filter.excludeSelf && sourceId == entityId) continue

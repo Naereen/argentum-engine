@@ -1044,7 +1044,7 @@ class TriggerProcessor(
 
         // Otherwise, assume it's a card in a zone (graveyard, etc.)
         // Find which zone it's in
-        for (playerId in state.turnOrder) {
+        for (playerId in state.zoneOwners) {
             for (zoneType in listOf(
                 com.wingedsheep.sdk.core.Zone.GRAVEYARD,
                 com.wingedsheep.sdk.core.Zone.HAND,

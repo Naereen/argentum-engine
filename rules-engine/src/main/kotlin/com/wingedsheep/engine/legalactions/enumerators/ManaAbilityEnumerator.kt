@@ -25,8 +25,6 @@ import com.wingedsheep.engine.state.components.battlefield.TappedComponent
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.identity.ControllerComponent
 import com.wingedsheep.engine.state.components.identity.FaceDownComponent
-import com.wingedsheep.engine.state.components.identity.TextChanges
-import com.wingedsheep.engine.state.components.identity.TextReplacementComponent
 import com.wingedsheep.sdk.core.Subtype
 import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.model.EntityId
@@ -148,7 +146,7 @@ class ManaAbilityEnumerator(
             }
 
             // Apply text-changing effects to mana ability costs
-            val manaTextReplacement = TextChanges.merge(context.globalTextChanges, container.get<TextReplacementComponent>())
+            val manaTextReplacement = context.textChangesFor(entityId)
 
             // `ability = null` is safe for every ability below: a mana ability is never an equip
             // ability (equip attaches an Equipment, CR 702.6a — it adds no mana, CR 605.1a), so the

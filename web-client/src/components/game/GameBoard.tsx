@@ -1,12 +1,13 @@
 import { PlayerActionBar } from './overlay/PlayerActionBar'
-import { useMemo, useCallback, useRef, useEffect } from 'react'
+import { OtariaBoardButton } from './overlay/OtariaBoard'
+import { Fragment, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useGameStore } from '@/store/gameStore'
 import { useInteraction } from '@/hooks/useInteraction'
 import { useViewingPlayer, useOpponent, useOpponents, useViewedOpponent, useStackCards, selectPriorityMode, useGhostCards, useBattlefieldCards, selectTeamMap, useIdentityColor, useViewerTeamIndex, useIsAlly, identitySeatColor, selectViewingPlayerId, useEliminatedBottomSeatId, useViewerEliminated, useIsSharedLifeTeamGame, useTeamLabelFor, useTeammateNames, useTeamHasPriority, useIsMyTeamTurn, useIsSharedTurnTeamGame, turnQueueHintFor } from '@/store/selectors'
 import { useMultiplayerView, useCombatDefenderFocus } from '@/hooks/useMultiplayerView'
 import { OpponentRail, railReservedWidth, overviewSupported } from './OpponentRail'
-import { hand, getNextStep, StepShortNames } from '@/types'
-import type { ClientPlayer, EntityId } from '@/types'
+import { hand, getNextStep, StepShortNames, actingPlayerFor } from '@/types'
+import type { ClientGameState, ClientPlayer, EntityId } from '@/types'
 import type React from 'react'
 import { StepStrip } from '../ui/StepStrip'
 import { ManaPool } from '../ui/ManaPool'
@@ -39,11 +40,12 @@ import { usePooledBattlefieldLayout } from './board/usePooledBattlefieldLayout'
 import { CardPreview } from './card'
 import { EmotePicker } from '../tableTalk/EmotePicker'
 import { ChatButton } from '@/components/messages/ChatButton'
-import { TargetingOverlay, ManaColorSelectionOverlay, LifeDisplay, ActiveEffectsBadges, SpeedGauge, DayNightBadge, SubgameBadge, SubgameFrame, ConcedeButton, FullscreenButton, GamePreferencesButton, SpectatorCountBadge, TeamLifeBanner, EliminationNotice, AutoAnswerNotice, TriggerOrderNotice } from './overlay'
+import { TargetingOverlay, ManaColorSelectionOverlay, LifeDisplay, ActiveEffectsBadges, SpeedGauge, DayNightBadge, SubgameBadge, SubgameFrame, ConcedeButton, FullscreenButton, GamePreferencesButton, SpectatorCountBadge, TeamLifeBanner, EliminationNotice, InitiativeResultNotice, AutoAnswerNotice, TriggerOrderNotice } from './overlay'
 import { HelpDrawer, HelpDrawerButton } from '../help/HelpDrawer'
 import { markLearnSignal } from '@/learn/signals'
 import { styles } from './board/styles'
-import { canAttackTarget } from '@/utils/attackTargets'
+import { unassignedAttackTargets } from '@/utils/attackTargets'
+import { otariaBottomOrder, otariaOverviewMapPosition } from './otariaOverviewLayout'
 
 /**
  * Props for GameBoard component.
@@ -55,12 +57,33 @@ interface GameBoardProps {
   topOffset?: number
 }
 
+function OtariaOverviewMapSlot({ gameState }: { gameState: ClientGameState }) {
+  return (
+    <div
+      data-otaria-overview-map
+      style={{
+        flex: '0 0 18%',
+        minWidth: 0,
+        minHeight: 0,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'flex-start',
+        padding: 4,
+        boxSizing: 'border-box',
+      }}
+    >
+      <OtariaBoardButton gameState={gameState} miniature />
+    </div>
+  )
+}
+
 /**
  * 2D Game board layout - MTG Arena style.
  * This is the main orchestrator component that composes all game UI elements.
  */
 export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardProps) {
   const blockerDeclarationDescription = useGameStore((s) => s.legalActions.find((a) => a.actionType === 'DeclareBlockers')?.description)
+  const offeredPassAction = useGameStore((s) => s.legalActions.find((a) => a.actionType === 'PassPriority')?.action)
   const pendingDecision = useGameStore((state) => state.pendingDecision)
   const playerGameState = useGameStore((state) => state.gameState)
   const spectatingState = useGameStore((state) => state.spectatingState)
@@ -220,6 +243,11 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
   }, [twoRowActive, gameState, isTeamGame, viewerTeam, teamMap, anchorId])
   const bottomRowIds = twoRow.bottom
   const topRowIds = twoRow.top
+  const otariaMapPosition = otariaOverviewMapPosition(
+    twoRowActive && !!gameState?.otaria && !isTeamGame,
+    topRowIds.length,
+    bottomRowIds.length,
+  )
   // Camera pool = opponents not pulled down to the bottom row (so no board renders in both halves).
   const stripOpponents = useMemo(
     () =>
@@ -366,9 +394,11 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
   )
   // Expanded cells share the width left over by the collapsed tabs.
   const expandedCellBasis =
-    collapsedStripIds.length > 0
-      ? `calc((100% - ${collapsedStripIds.length * COLLAPSED_TAB_WIDTH}px) / ${Math.max(1, expandedStripIds.length)})`
-      : `${100 / Math.max(1, expandedStripIds.length)}%`
+    otariaMapPosition === 'center'
+      ? `calc((82% - ${collapsedStripIds.length * COLLAPSED_TAB_WIDTH}px) / ${Math.max(1, expandedStripIds.length)})`
+      : collapsedStripIds.length > 0
+        ? `calc((100% - ${collapsedStripIds.length * COLLAPSED_TAB_WIDTH}px) / ${Math.max(1, expandedStripIds.length)})`
+        : `${100 / Math.max(1, expandedStripIds.length)}%`
   // Mindslaver-style hijack indicators (Phase 2C). Spectators don't get the UX promotions.
   const youAreHijacking = !spectatorMode ? (gameState?.youAreHijacking ?? null) : null
   const youAreHijackedBy = !spectatorMode ? (gameState?.youAreHijackedBy ?? null) : null
@@ -533,9 +563,10 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
   const bottomRowOrdered = useMemo(() => {
     if (!twoRowActive || !gameState) return []
     if (isTeamGame) return gameState.players.filter((p) => bottomRowIds.includes(p.playerId))
-    // Free-for-all: already in table order, anchor bottom-right under the right-hand orb and zone piles.
-    return bottomRowIds.flatMap((id) => gameState.players.filter((p) => p.playerId === id))
-  }, [twoRowActive, gameState, bottomRowIds, isTeamGame])
+    // Otaria's odd-sized tables move the anchor left to make room for the map on the right.
+    return otariaBottomOrder(bottomRowIds, anchorId, otariaMapPosition)
+      .flatMap((id) => gameState.players.filter((p) => p.playerId === id))
+  }, [twoRowActive, gameState, bottomRowIds, isTeamGame, anchorId, otariaMapPosition])
   // The bottom half becomes a multi-board strip only when it holds more than the anchor (team
   // games; 4+ player free-for-alls). A lone anchor keeps the classic single bottom board — but
   // only when it really is the anchor: the single-board paths below draw the anchor's board, so
@@ -543,7 +574,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
   // the strip or its board would never render at all.
   const bottomStripActive =
     twoRowActive &&
-    (bottomRowOrdered.length > 1 ||
+    (otariaMapPosition !== null || bottomRowOrdered.length > 1 ||
       (bottomRowOrdered.length === 1 && bottomRowOrdered[0]?.playerId !== anchorId))
   // Any bottom board may collapse to a tab — except your own interactive board when *playing*
   // (there's no collapse control on it, and folding the board you act from makes no sense). An
@@ -561,9 +592,11 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
   )
   const bottomExpandedCount = Math.max(1, bottomRowOrdered.length - bottomCollapsedIds.length)
   const bottomCellBasis =
-    bottomCollapsedIds.length > 0
-      ? `calc((100% - ${bottomCollapsedIds.length * COLLAPSED_TAB_WIDTH}px) / ${bottomExpandedCount})`
-      : `${100 / bottomExpandedCount}%`
+    otariaMapPosition
+      ? `calc((82% - ${bottomCollapsedIds.length * COLLAPSED_TAB_WIDTH}px) / ${bottomExpandedCount})`
+      : bottomCollapsedIds.length > 0
+        ? `calc((100% - ${bottomCollapsedIds.length * COLLAPSED_TAB_WIDTH}px) / ${bottomExpandedCount})`
+        : `${100 / bottomExpandedCount}%`
   // Exactly one element per player carries that player's card/life anchors. A rail chip hands
   // them over whenever the seat's own board is on screen: an expanded cell in the top strip, an
   // expanded cell in the bottom row, or the eliminated spectator's bottom board.
@@ -698,7 +731,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
     ? false
     : hotseat
       ? gameState.priorityPlayerId != null
-      : (gameState.priorityPlayerId === viewingPlayer?.playerId ||
+      : (actingPlayerFor(gameState, gameState.priorityPlayerId) === viewingPlayer?.playerId ||
         // Two-Headed Giant (CR 805.5): a *team* holds priority, so your ally's window is yours
         // too — this is what lets you answer what your partner just did instead of waiting for
         // the baton to come round. False in every format that doesn't share team turns.
@@ -743,7 +776,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
   }
   const isMyTurn = spectatorMode
     ? false
-    : (gameState.activePlayerId === viewingPlayer?.playerId ||
+    : (actingPlayerFor(gameState, gameState.activePlayerId) === viewingPlayer?.playerId ||
       // Two-Headed Giant (CR 805.4): a team takes one turn, so your ally's turn is yours — you
       // may play a land and act at sorcery speed on it, and you declare your own attackers.
       teamActiveTurn ||
@@ -753,7 +786,8 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
   // CR 800.4j: a player who leaves the game during their own turn leaves it running with no active
   // player. It stays their turn — the seat after them only inherits its priority windows. A shared
   // team turn (CR 805.4) is still carried by a surviving teammate, so it never runs orphaned.
-  const activeSeat = gameState.players.find((p) => p.playerId === gameState.activePlayerId)
+  const activeEncounter = gameState.otaria?.encounters?.find((encounter) => encounter.actorId === gameState.activePlayerId)
+  const activeSeat = gameState.players.find((p) => p.playerId === (activeEncounter?.managerId ?? gameState.activePlayerId))
   const activeSeatLeft = isMulti && !sharedTurnTeamGame && activeSeat?.hasLost === true
   // Multiplayer: how far off your next turn is, in living seats — "You're next" / "You in 2". The
   // rail lists the table in turn order, but counting chips is the player's job today. Two-Headed
@@ -831,6 +865,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
     if (!isMyTurn) {
       return 'Pass'
     }
+    if (gameState.otaria) return 'Pass'
     const nextStep = getNextStep(gameState.currentStep)
     if (nextStep) {
       if (nextStep === 'END') {
@@ -1138,17 +1173,22 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                 if (!multiView) return stripOpponents.map((o) => renderStripBoard(o, false))
                 return (
                   <>
-                    {visibleStripCells.map((o) =>
-                      collapsedStripIds.includes(o.playerId) ? (
-                        <CollapsedBoardTab
-                          key={`${o.playerId}-collapsed-tab`}
-                          player={o}
-                          onExpand={() => toggleSeatCollapsed(o.playerId)}
-                        />
-                      ) : (
-                        renderStripBoard(o, true)
-                      ),
-                    )}
+                    {visibleStripCells.map((o, index) => (
+                      <Fragment key={o.playerId}>
+                        {otariaMapPosition === 'center' && index === 1 && (
+                          <div aria-hidden="true" style={{ flex: '0 0 18%' }} />
+                        )}
+                        {collapsedStripIds.includes(o.playerId) ? (
+                          <CollapsedBoardTab
+                            key={`${o.playerId}-collapsed-tab`}
+                            player={o}
+                            onExpand={() => toggleSeatCollapsed(o.playerId)}
+                          />
+                        ) : (
+                          renderStripBoard(o, true)
+                        )}
+                      </Fragment>
+                    ))}
                     {offscreenStripBoards.map((o) => renderStripBoard(o, false))}
                   </>
                 )
@@ -1352,9 +1392,11 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
         <AnteIndicator />
         {/* A subgame in progress (CR 729) — what started it and what's waiting outside it. */}
         <SubgameBadge gameState={gameState} />
+        {gameState.otaria && <OtariaBoardButton gameState={gameState} />}
         <StepStrip
           phase={gameState.currentPhase}
           step={gameState.currentStep}
+          otariaTurn={gameState.otaria?.turn}
           // One number per pass around the table, not per seat — older replays predate roundNumber.
           roundNumber={gameState.roundNumber ?? gameState.turnNumber}
           isActivePlayer={isMyTurn}
@@ -1363,7 +1405,8 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
           // Name the active seat in a pod: "Opponent's Turn" says nothing at a four-seat table.
           // While responding the strip keeps saying so — the name is on the rail's turn ring —
           // except in a departed player's turn, which has no ring and no one to respond to.
-          activePlayerName={spectatorMode || (isMulti && !isMyTurn && (priorityMode !== 'responding' || activeSeatLeft))
+          activePlayerName={activeEncounter ? `Encounter (${activeSeat?.name ?? 'managed creature'})` :
+            spectatorMode || (isMulti && !isMyTurn && (priorityMode !== 'responding' || activeSeatLeft))
             ? activeSeat?.name
             : undefined
           }
@@ -1492,7 +1535,12 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
           {teamBannerSeats && (
             <TeamLifeBanner teamMemberIds={teamBannerSeats.mine} anchor="bottom" isEnemyTeam={false} />
           )}
-          {bottomRowOrdered.map((p) => {
+          {bottomRowOrdered.map((p, index) => (
+            <Fragment key={p.playerId}>
+              {otariaMapPosition === 'center' && index === 1 && (
+                <OtariaOverviewMapSlot gameState={gameState} />
+              )}
+              {(() => {
             // Only a *playing* viewer has an interactive board down here; an observer's anchor
             // seat (spectator stream, eliminated player) is somebody else's board.
             const isAnchorSelf = !viewerIsObserver && p.playerId === anchorId
@@ -1555,7 +1603,10 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                 {...(isTeamGame && !spectatorMode ? { allyColor: selfSeatColor.base } : {})}
               />
             )
-          })}
+              })()}
+            </Fragment>
+          ))}
+          {otariaMapPosition === 'right' && <OtariaOverviewMapSlot gameState={gameState} />}
         </div>
       ) : isEliminatedSpectator ? null : (
         <div ref={playerRowRef} style={styles.playerArea}>
@@ -1786,7 +1837,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
               data-learn="pass"
               disabled={!passEnabled}
               onClick={() => {
-                submitAction({
+                submitAction(offeredPassAction ?? {
                   type: 'PassPriority',
                   // In hotseat, pass for whichever seat currently holds priority. During a
                   // Mindslaver-style hijack, pass for the controlled opponent (whose priority
@@ -1834,6 +1885,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
       })()}
 
       {isMulti && <EliminationNotice topOffset={effectiveTopOffset} />}
+      <InitiativeResultNotice topOffset={effectiveTopOffset + (isMulti ? 36 : 0)} />
       {/* Below the elimination notice in a pod, so the two never overlap. */}
       <AutoAnswerNotice topOffset={effectiveTopOffset + (isMulti ? 36 : 0)} />
       <TriggerOrderNotice topOffset={effectiveTopOffset + (isMulti ? 36 : 0)} />
@@ -1880,35 +1932,25 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
         </div>
       )}
 
-      {/* Multiplayer defender pick — pops on the first attacker selection until a
-          defender is chosen; assignment then turns sticky (rail-chip clicks
-          override per attacker). Confirm stays disabled while any selected
-          attacker has no defender, so attacks are never silently misdirected. */}
+      {/* Multiplayer defender pick — assign players or attackable permanents from the server. */}
       {!spectatorMode && isMulti && combatState?.mode === 'declareAttackers' &&
         combatState.selectedAttackers.some((id) => !combatState.attackerTargets[id]) && (() => {
           const unassignedCount = combatState.selectedAttackers.filter((id) => !combatState.attackerTargets[id]).length
-          // Only offer players the engine says are legal attack targets — in Two-Headed Giant
-          // that excludes your own teammate (you can't attack your own team).
-          // and only those at least one still-unassigned attacker may attack (the server narrows
-          // some attackers per defender — Goblin Rock Sled, Blazing Archon).
-          const unassigned = combatState.selectedAttackers.filter((id) => !combatState.attackerTargets[id])
-          const living = opponents.filter(
-            (o) => !o.hasLost &&
-              combatState.validAttackTargets.includes(o.playerId) &&
-              unassigned.some((id) => canAttackTarget(combatState, id, o.playerId)),
-          )
+          const targets = unassignedAttackTargets(combatState, gameState)
           return (
             // One panel — the question and its answers together — rather than a floating label
             // above a loose row of pills, which read as two unrelated things over the board.
             <div
               role="group"
-              aria-label="Attack which player?"
+              aria-label="Choose a defender"
               style={{
                 position: 'fixed',
                 bottom: 110,
                 right: 16,
                 zIndex: 110,
                 maxWidth: 'calc(100vw - 32px)',
+                maxHeight: '50vh',
+                overflowY: 'auto',
                 boxSizing: 'border-box',
                 display: 'flex',
                 flexDirection: 'column',
@@ -1926,21 +1968,22 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                 fontSize: responsive.isMobile ? 11 : 12,
                 fontWeight: 600,
               }}>
-                Attack which player?{combatState.selectedAttackers.length > 1 ? ` (${unassignedCount} unassigned)` : ''}
+                Choose a defender{combatState.selectedAttackers.length > 1 ? ` (${unassignedCount} unassigned)` : ''}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 6 }}>
-                {living.map((o) => {
-                  const idx = gameState.players.findIndex((p) => p.playerId === o.playerId)
-                  const seat = identitySeatColor(teamMap, o.playerId, idx)
+                {targets.map((target) => {
+                  const idx = gameState.players.findIndex((p) => p.playerId === target.seatId)
+                  const seat = identitySeatColor(teamMap, target.seatId, idx)
                   return (
                     <button
-                      key={o.playerId}
-                      onClick={() => useGameStore.getState().assignDefenderToSelectedAttackers(o.playerId)}
+                      key={target.id}
+                      onClick={() => useGameStore.getState().assignDefenderToSelectedAttackers(target.id)}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 6,
-                        height: 30,
+                        minHeight: 30,
+                        maxWidth: '100%',
                         padding: '0 12px',
                         borderRadius: 999,
                         border: `2px solid ${seat.base}`,
@@ -1949,7 +1992,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                         fontSize: responsive.isMobile ? 11 : 12,
                         fontWeight: 700,
                         cursor: 'pointer',
-                        whiteSpace: 'nowrap',
+                        textAlign: 'left',
                       }}
                     >
                       <span aria-hidden style={{
@@ -1959,7 +2002,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                         background: seat.base,
                         boxShadow: `0 0 5px ${seat.base}`,
                       }} />
-                      {o.name}
+                      {target.name}
                     </button>
                   )
                 })}

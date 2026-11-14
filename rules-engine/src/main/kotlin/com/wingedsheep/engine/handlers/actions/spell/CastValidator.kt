@@ -925,7 +925,7 @@ internal class CastValidator(
         }
         // Read through text-changing effects in force (CR 613.1c): the spell exists from 601.2a,
         // before its targets are chosen, so the enumerator offered targets against the changed text.
-        val castText = TextChanges.forSpell(state, action.cardId)
+        val castText = TextChanges.forSpell(state, action.cardId, action.playerId)
         val targetRequirements = buildList {
             addAll(baseTargetReqs)
             // Awaken (CR 702.113b): the awaken ability's "target land you control" is chosen only

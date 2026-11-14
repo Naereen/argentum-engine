@@ -15,6 +15,7 @@ import com.wingedsheep.engine.view.projection.CardProjector
 import com.wingedsheep.engine.view.projection.CombatProjector
 import com.wingedsheep.engine.view.projection.ConditionBadgeProjector
 import com.wingedsheep.engine.view.projection.DeckListProjector
+import com.wingedsheep.engine.view.projection.OtariaProjector
 import com.wingedsheep.engine.view.projection.PlayerActiveEffectsProjector
 import com.wingedsheep.engine.view.projection.PlayerProjector
 import com.wingedsheep.engine.view.projection.SpellOnStackProjector
@@ -65,6 +66,7 @@ class ClientStateTransformer(
     private val playerProjector = PlayerProjector(cardRegistry, conditionEvaluator, PlayerActiveEffectsProjector(predicateEvaluator = predicateEvaluator, visibility = visibility))
     private val combatProjector = CombatProjector(visibility)
     private val deckListProjector = DeckListProjector(cardRegistry, visibility)
+    private val otariaProjector = OtariaProjector(cardRegistry)
 
     /**
      * Transform the game state for a specific player's view.
@@ -260,6 +262,7 @@ class ClientStateTransformer(
             activeYields = activeYields,
             deck = deck,
             subgame = projectSubgame(state),
+            otaria = otariaProjector.project(state, viewingPlayerId, isSpectator),
         )
     }
 

@@ -184,7 +184,10 @@ class LibraryAndZoneContinuationResumer(
                     moverId = continuation.playerId,
                     allPlayers = newState.turnOrder,
                     knownPosition = true,
-                )
+                ),
+                anchor = if (continuation.placement == ZonePlacement.Bottom)
+                    com.wingedsheep.engine.state.components.identity.LibraryPositionAnchor.BOTTOM
+                else com.wingedsheep.engine.state.components.identity.LibraryPositionAnchor.TOP,
             )
         }
 
@@ -230,6 +233,12 @@ class LibraryAndZoneContinuationResumer(
         var newState = state
         for (cardId in orderedCards) newState = newState.removeFromZone(libraryZone, cardId)
         for (cardId in orderedCards) newState = newState.addToZone(libraryZone, cardId)
+        if (newState.otaria != null) {
+            newState = LibraryRevealUtils.markRevealed(
+                newState, orderedCards, setOf(playerId),
+                com.wingedsheep.engine.state.components.identity.LibraryPositionAnchor.BOTTOM,
+            )
+        }
 
         val events = listOf(
             LibraryReorderedEvent(
@@ -801,7 +810,10 @@ class LibraryAndZoneContinuationResumer(
         // choice of position was public, so all players know where it ended up. Mark it revealed
         // to every player so each library viewer shows the card face-up at its new slot.
         val finalState = com.wingedsheep.engine.handlers.effects.library.LibraryRevealUtils
-            .markRevealed(transitionResult.state, listOf(cardId), transitionResult.state.turnOrder.toSet())
+            .markRevealed(
+                transitionResult.state, listOf(cardId), transitionResult.state.turnOrder.toSet(),
+                LibraryRevealUtils.placementAnchor(placement),
+            )
 
         return checkForMore(finalState, transitionResult.events)
     }
@@ -881,7 +893,10 @@ class LibraryAndZoneContinuationResumer(
         // Both players watched the spell get placed at this position — mark it revealed to all
         // so each side's library viewer shows it face-up at the new slot.
         newState = com.wingedsheep.engine.handlers.effects.library.LibraryRevealUtils
-            .markRevealed(newState, listOf(spellId), newState.turnOrder.toSet())
+            .markRevealed(
+                newState, listOf(spellId), newState.turnOrder.toSet(),
+                LibraryRevealUtils.placementAnchor(placement),
+            )
 
         // Not a counter: "the owner of target spell puts it on … their library" (Sudden Setback,
         // Swat Away) moves the spell, so no SpellCounteredEvent — and Guile's counter replacement

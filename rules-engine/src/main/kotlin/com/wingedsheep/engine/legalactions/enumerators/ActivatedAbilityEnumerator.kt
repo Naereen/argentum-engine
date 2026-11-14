@@ -29,8 +29,6 @@ import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.identity.EmblemOwnedActivatedAbilityComponent
 import com.wingedsheep.engine.state.components.identity.emblemsWithOwnedActivatedAbilities
 import com.wingedsheep.engine.state.components.identity.FaceDownComponent
-import com.wingedsheep.engine.state.components.identity.TextChanges
-import com.wingedsheep.engine.state.components.identity.TextReplacementComponent
 import com.wingedsheep.engine.state.components.stack.ChosenTarget
 import com.wingedsheep.sdk.core.CounterType
 import com.wingedsheep.sdk.core.Zone
@@ -141,7 +139,7 @@ class ActivatedAbilityEnumerator(
             val nonManaAbilities = ownNonManaAbilities + levelUpAbilities + allAbilities.filter { !it.isManaAbility && it.activateFromZone == Zone.BATTLEFIELD }
 
             // Apply text-changing effects to ability costs and targets
-            val textReplacement = TextChanges.merge(context.globalTextChanges, container.get<TextReplacementComponent>())
+            val textReplacement = context.textChangesFor(entityId)
 
             for (ability in nonManaAbilities) {
                 if (if (ability.isPlaneswalkerAbility) loyaltyPrevented else nonLoyaltyPrevented) continue
@@ -1382,7 +1380,7 @@ class ActivatedAbilityEnumerator(
             }
             if (anyPlayerAbilities.isEmpty()) continue
 
-            val textReplacement = TextChanges.merge(context.globalTextChanges, container.get<TextReplacementComponent>())
+            val textReplacement = context.textChangesFor(entityId)
 
             for (ability in anyPlayerAbilities) {
                 if (ability.effect is ModalEffect) {

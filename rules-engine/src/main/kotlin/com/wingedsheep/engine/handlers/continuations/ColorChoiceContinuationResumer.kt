@@ -209,6 +209,7 @@ class ColorChoiceContinuationResumer(
             listOf(continuation.effect),
             contextWithColor
         )
+        if (effectResult.outcome is Outcome.Rejected) return effectResult.toExecutionResult()
 
         // The activation boundary reports production and owns the tap pipeline after all parts.
         if (state.continuationStack.any { it is ScopedManaProductionContinuation &&
@@ -235,7 +236,8 @@ class ColorChoiceContinuationResumer(
 
         // Damping Sphere: a land tapped for two or more mana produces {C} instead. `state` is the
         // pool as it stood before the chosen mana was added, which is the delta this reads.
-        val dampening = manaPipeline.applyLandManaDampening(state, effectResult.state, sourceCard, tapperId)
+        val dampening = manaPipeline.applyLandManaDampening(state, effectResult.state, sourceCard, tapperId, sourceId = sourceId)
+        dampening.error?.let { return ExecutionResult.error(state, it) }
         if (dampening.dampened) {
             val replacement = ManaAddedEvent(
                 playerId = tapperId,
@@ -261,7 +263,7 @@ class ColorChoiceContinuationResumer(
             // before the chosen mana was added).
             if (dampening.dampened) emptySet() else manaColorsAdded(state, dampening.state, tapperId),
         )
-        if (finished.outcome is Outcome.Paused) return finished
+        if (finished.outcome !is Outcome.Done) return finished
         return checkForMore(finished.newState, finished.events.toList())
     }
 

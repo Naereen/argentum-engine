@@ -72,6 +72,56 @@ beforeEach(() => {
 })
 
 describe('browser live action origins', () => {
+  it('submits several attackers against a selected encounter creature', () => {
+    const defender = entityId('encounter-creature')
+    const opponent = entityId('opponent')
+    const secondAttacker = entityId('second-attacker')
+    const player = (id: typeof ME) => ({
+      playerId: id, name: id, life: 15, poisonCounters: 0, handSize: 0,
+      librarySize: 2, graveyardSize: 0, exileSize: 0, landsPlayedThisTurn: 0, hasLost: false,
+    })
+    useGameStore.setState({ gameState: { ...position, players: [player(ME), player(opponent)] } })
+    const combat: CombatState = {
+      interactionEpoch: 'original', mode: 'declareAttackers', actingSeat: ME, stickyDefenderId: null,
+      selectedAttackers: [], attackerTargets: {}, validAttackTargets: [defender], attackTargetsByAttacker: {},
+      blockerAssignments: {}, validCreatures: [MANA, secondAttacker], mandatoryAttackers: [],
+      loneAttackers: [], attackingCreatures: [], mustBeBlockedAttackers: [], blockerMaxBlockCounts: {}, bands: [],
+    }
+    useGameStore.getState().startCombat(combat)
+    useGameStore.getState().attackWithAll()
+    useGameStore.getState().assignDefenderToSelectedAttackers(defender)
+    expect(useGameStore.getState().combatState?.attackerTargets).toEqual({
+      [MANA]: defender, [secondAttacker]: defender,
+    })
+    send.mockClear()
+    useGameStore.getState().confirmCombat('original')
+    expect(send).toHaveBeenCalledWith({
+      type: 'submitAction', interactionEpoch: 'original',
+      action: { type: 'DeclareAttackers', playerId: ME, attackers: { [MANA]: defender, [secondAttacker]: defender } },
+    })
+  })
+
+  it('only assigns attackers for which the selected defender is legal', () => {
+    const creature = entityId('encounter-creature')
+    const otherAttacker = entityId('other-attacker')
+    const otherDefender = entityId('other-defender')
+    const combat: CombatState = {
+      interactionEpoch: 'original', mode: 'declareAttackers', actingSeat: ME, stickyDefenderId: null,
+      selectedAttackers: [MANA, otherAttacker], attackerTargets: {},
+      validAttackTargets: [creature, otherDefender],
+      attackTargetsByAttacker: { [MANA]: [creature], [otherAttacker]: [otherDefender] },
+      blockerAssignments: {}, validCreatures: [MANA, otherAttacker], mandatoryAttackers: [],
+      loneAttackers: [], attackingCreatures: [], mustBeBlockedAttackers: [], blockerMaxBlockCounts: {}, bands: [],
+    }
+    useGameStore.getState().startCombat(combat)
+    useGameStore.getState().assignDefenderToSelectedAttackers(creature)
+    expect(useGameStore.getState().combatState?.attackerTargets).toEqual({ [MANA]: creature })
+    useGameStore.getState().assignDefenderToSelectedAttackers(otherDefender)
+    expect(useGameStore.getState().combatState?.attackerTargets).toEqual({
+      [MANA]: creature, [otherAttacker]: otherDefender,
+    })
+  })
+
   it('retains an action origin through payment, targeting, and same-timeline delta delivery', () => {
     const actionInfo = useGameStore.getState().legalActions[0]!
     expect(actionInfo.interactionEpoch).toBe('original')

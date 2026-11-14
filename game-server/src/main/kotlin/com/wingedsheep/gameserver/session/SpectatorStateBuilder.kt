@@ -20,6 +20,7 @@ import com.wingedsheep.engine.view.ClientGameState
 import com.wingedsheep.engine.view.ClientStateTransformer
 import com.wingedsheep.engine.view.DecisionMasker
 import com.wingedsheep.engine.view.Visibility
+import com.wingedsheep.gameserver.persistence.dto.PersistentSeatNames
 import com.wingedsheep.gameserver.protocol.ServerMessage
 import com.wingedsheep.sdk.core.Format
 import com.wingedsheep.sdk.core.Phase
@@ -42,6 +43,13 @@ class SpectatorStateBuilder(
     private val visibility =
         Visibility(cardRegistry, conditionEvaluator = PredicateEvaluator(cardRegistry = null).conditions)
     private val masker = DecisionMasker(visibility)
+    private var otariaNames: SeatIdentities? = null
+
+    internal fun namesForPersistence(): PersistentSeatNames? = otariaNames?.toPersistent()
+
+    internal fun restoreNames(names: PersistentSeatNames?) {
+        otariaNames = names?.let(SeatIdentities::fromPersistent)
+    }
 
     /**
      * Build a spectator view of an N-player game. [seats] is every seated player in turn order;
@@ -60,6 +68,12 @@ class SpectatorStateBuilder(
         val p1 = seats[0]
         val p2 = seats[1]
 
+        if (otariaNames == null && generateSequence(state) { it.mainGame }.any { it.otaria != null }) {
+            otariaNames = SeatIdentities()
+        }
+        val names = otariaNames
+        names?.forgetUntrackable(state, p1.playerId, visibility, isSpectator = true)
+
         // Build full ClientGameState with every player's hand masked for GameBoard reuse
         val spectatorClientState = buildClientGameState(state, seats.map { it.playerId })
 
@@ -70,7 +84,7 @@ class SpectatorStateBuilder(
             createDecisionStatus(decision, state, p1.playerId, decidingPlayer.playerName)
         }
 
-        return ServerMessage.SpectatorStateUpdate(
+        val update = ServerMessage.SpectatorStateUpdate(
             gameSessionId = sessionId,
             gameState = spectatorClientState,
             players = seatRoster,
@@ -87,6 +101,11 @@ class SpectatorStateBuilder(
             combat = buildCombatState(state),
             decisionStatus = decisionStatus
         )
+        if (names == null) return update
+        val serializer = ServerMessage.SpectatorStateUpdate.serializer()
+        val sent = names.idsIn(update, serializer)
+        names.noteSeen(state, p1.playerId, visibility, sent, isSpectator = true)
+        return if (names.renamesAny(sent)) names.toSeat(update, serializer) else update
     }
 
     private fun createDecisionStatus(

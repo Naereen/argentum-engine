@@ -554,6 +554,7 @@ abstract class ProtocolTestBase : FunSpec() {
                 turnNumber = delta.turnNumber ?: previous.turnNumber,
                 isGameOver = delta.isGameOver ?: previous.isGameOver,
                 winnerId = if (delta.winnerId != null) delta.winnerId else previous.winnerId,
+                otaria = if (delta.otariaCleared == true) null else delta.otaria ?: previous.otaria,
                 combat = combat,
                 gameLog = gameLog,
             )

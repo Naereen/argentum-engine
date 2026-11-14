@@ -129,12 +129,9 @@ class ModalAndCloneContinuationResumer(
         response: DecisionResponse,
         checkForMore: CheckForMore,
     ): ExecutionResult {
-        if (response !is CardsSelectedResponse) return ExecutionResult.error(state, "Expected copy selection")
-        val selected = response.selectedCards.firstOrNull()
-        val choice = com.wingedsheep.engine.handlers.effects.copy.EntryCopyChoice(
-            continuation.replacement, selected?.let { state.getEntity(it)?.copiableCardComponent() }, selected)
-        val context = continuation.context.copy(entryCopies = continuation.context.entryCopies +
-            (continuation.entityId to choice))
+        val context = com.wingedsheep.engine.handlers.effects.copy.EffectCopyEntry.recordAnswer(
+            state, continuation.context, continuation.entityId, continuation.replacement, response,
+        ) ?: return ExecutionResult.error(state, "Expected copy selection")
         val result = services.effectExecutorRegistry.execute(state, continuation.effect, context)
         if (result.outcome !is Outcome.Done) return result.toExecutionResult()
         return checkForMore(result.stateWithOutputsHandedOn(), result.events)

@@ -36,6 +36,15 @@ enum class UndoCheckpointAction {
 val GameEvent.revealsInformation: Boolean get() = when (this) {
     is CardsDrawnEvent, is CardRevealedFromDrawEvent,
     is CardsRevealedEvent, is LookedAtCardsEvent,
+    is OtariaSetupEvent, is OtariaTurnActionChosenEvent, is OtariaEncounterManaAddedEvent,
+    is OtariaReinforcementRolledEvent, is OtariaEncounterSupportHandCreatedEvent,
+    is OtariaEncounterStartedEvent,
+    is OtariaStartingLandsPlacedEvent,
+    is OtariaPlayerMovedEvent, is OtariaPreparedEvent,
+    is OtariaExplorationStartedEvent,
+    is OtariaExplorationEmptyEvent,
+    is OtariaExplorationPileShuffledEvent, is OtariaCardAddedToReserveEvent,
+    is OtariaDiscoveryTreasureResolvedEvent, is OtariaDiscoveryFinishedEvent,
     is HandLookedAtEvent, is HandRevealedEvent,
     is CoinFlipEvent, is DieRolledEvent, is DiceRolledEvent, is CardFlippedOntoBattlefieldEvent, is LibraryReorderedEvent -> true
     else -> false

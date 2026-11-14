@@ -28,6 +28,7 @@ import com.wingedsheep.engine.handlers.effects.token.TokenExecutors
 import com.wingedsheep.engine.handlers.effects.zones.ZonesExecutors
 import com.wingedsheep.engine.mechanics.layers.StaticAbilityHandler
 import com.wingedsheep.engine.mechanics.stack.SpellCounterer
+import com.wingedsheep.engine.otaria.OtariaLibraryKnowledge
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.sdk.scripting.effects.Effect
 import kotlin.reflect.KClass
@@ -64,6 +65,7 @@ class EffectExecutorRegistry(
     activateAbilityHandler: () -> com.wingedsheep.engine.handlers.actions.ability.ActivateAbilityHandler,
 ) {
     private val predicateEvaluator = zones.predicateEvaluator
+    private val otariaLibraryKnowledge by lazy { OtariaLibraryKnowledge(cardRegistry, predicateEvaluator) }
     private val executors = mutableMapOf<KClass<out Effect>, EffectExecutor<*>>()
     private val amountEvaluator: DynamicAmountEvaluator = predicateEvaluator.amounts
 
@@ -167,7 +169,9 @@ class EffectExecutorRegistry(
         // An entrant this put onto the battlefield owes its controller an entry-copy order
         // (CR 616.1): ask, then replay this instruction with the answer.
         com.wingedsheep.engine.handlers.effects.copy.GrantedEntryCopy.askIfUnasked(
-            state, executed.state) { com.wingedsheep.engine.core.EffectReplay(effect, context) }?.let { return EffectResult.from(it) }
+            state, executed.state) { com.wingedsheep.engine.core.EffectReplay(effect, context) }?.let {
+            return rememberVisibleOtariaTops(EffectResult.from(it))
+        }
         val result = if (effect is com.wingedsheep.sdk.scripting.effects.SelectFromCollectionEffect ||
             effect is com.wingedsheep.sdk.scripting.effects.FilterCollectionEffect) {
             executed.copy(updatedCollections = EffectDiscardDestinations.propagateUnknown(
@@ -186,9 +190,17 @@ class EffectExecutorRegistry(
             if (done.outcome is Outcome.Done) done.copy(state = com.wingedsheep.engine.replacement.ActiveReplacements.purgeSpent(done.state))
             else done
         }
-        return if (context.deferGraveyardOrdering) completed
+        val ordered = if (context.deferGraveyardOrdering) completed
             else com.wingedsheep.engine.mechanics.GraveyardOrdering.finish(completed, context.sourceId)
+        val encounters = com.wingedsheep.engine.otaria.OtariaEncounterLifecycle.departures(
+            ordered.state, ordered.events, cardRegistry, context.controllerId,
+        )
+        return rememberVisibleOtariaTops(ordered.copy(state = encounters.state, events = encounters.events))
     }
+
+    private fun rememberVisibleOtariaTops(result: EffectResult): EffectResult =
+        if (result.state.otaria == null || result.outcome is Outcome.Rejected) result
+        else result.copy(state = otariaLibraryKnowledge.rememberVisibleTops(result.state))
 
     /**
      * A prevention effect that prevented damage during [result] may owe a result of its own

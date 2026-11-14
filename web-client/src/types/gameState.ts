@@ -2,6 +2,7 @@ import { AbilityFlag, Color, CounterType, DayNight, Keyword, Phase, Step, ZoneTy
 import { EntityId, ZoneId } from './entities'
 import { ClientEvent } from './events'
 import type { AttackMode } from './messages'
+import type { ClientOtariaState } from './otaria'
 
 /**
  * Client-facing game state DTO.
@@ -86,6 +87,9 @@ export interface ClientGameState {
    * game.
    */
   readonly subgame?: ClientSubgame | null
+
+  /** Viewer-specific Otaria board, or null outside the variant. */
+  readonly otaria?: ClientOtariaState | null
 
   /**
    * If non-null, the affected player whose choices the viewing player is currently driving
@@ -992,6 +996,7 @@ export type ClientCombatTarget =
   | { readonly type: 'Player'; readonly playerId: EntityId }
   | { readonly type: 'Planeswalker'; readonly permanentId: EntityId }
   | { readonly type: 'Battle'; readonly permanentId: EntityId }
+  | { readonly type: 'Creature'; readonly permanentId: EntityId }
 
 /**
  * Blocker information for combat display.
@@ -1100,7 +1105,14 @@ export function getOpponent(state: ClientGameState): ClientPlayer | undefined {
  * Check if it's the viewing player's turn.
  */
 export function isMyTurn(state: ClientGameState): boolean {
-  return state.activePlayerId === state.viewingPlayerId
+  return actingPlayerFor(state, state.activePlayerId) === state.viewingPlayerId
+}
+
+export function actingPlayerFor(
+  state: Pick<ClientGameState, 'otaria'>,
+  seat: EntityId | null,
+): EntityId | null {
+  return seat == null ? null : presentationSeatOf(seat, state.otaria?.encounters)
 }
 
 /**
@@ -1113,7 +1125,7 @@ export function isMyTurn(state: ClientGameState): boolean {
  * The server is still authoritative — this only decides what the UI offers.
  */
 export function hasPriority(state: ClientGameState): boolean {
-  if (state.priorityPlayerId === state.viewingPlayerId) return true
+  if (actingPlayerFor(state, state.priorityPlayerId) === state.viewingPlayerId) return true
   return sharesPriorityTeam(state, state.priorityPlayerId, state.viewingPlayerId)
 }
 
@@ -1158,3 +1170,4 @@ export interface ClientWaitingPlayer {
   readonly life: number
   readonly hasLost?: boolean
 }
+import { presentationSeatOf } from '@/utils/combatTargets'

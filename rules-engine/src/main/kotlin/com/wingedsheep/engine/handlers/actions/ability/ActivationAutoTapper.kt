@@ -6,11 +6,13 @@ import com.wingedsheep.engine.mechanics.mana.ManaAbilitySideEffectExecutor
 import com.wingedsheep.engine.mechanics.mana.ManaPool
 import com.wingedsheep.engine.mechanics.mana.ManaSolver
 import com.wingedsheep.engine.mechanics.mana.SpellPaymentContext
+import com.wingedsheep.engine.otaria.OtariaEncounterMana
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.player.ManaPoolComponent
 import com.wingedsheep.sdk.core.Color
 import com.wingedsheep.sdk.core.ManaCost
 import com.wingedsheep.sdk.model.EntityId
+import com.wingedsheep.sdk.scripting.effects.ManaRestriction
 
 /**
  * Activates mana abilities for an activated ability's mana cost (CR 601.2g via CR 602.2b) — the
@@ -120,6 +122,9 @@ internal class ActivationAutoTapper(
 
         val sourceTags = solution.sources.associate { it.entityId to
             com.wingedsheep.engine.handlers.effects.mana.ManaProvenanceTracker.sourceTag(state, it.entityId) }
+        val encounterOwner = if (OtariaEncounterMana.isEncounter(state, playerId)) {
+            abilityContext?.assignedPermanent ?: return null
+        } else null
 
         // Add produced mana to floating pool so costHandler.payAbilityCost can consume it.
         // When the source's ability is restricted (e.g. Steelswarm Operator's
@@ -140,6 +145,27 @@ internal class ActivationAutoTapper(
                 source.colorRestrictions[color] ?: source.restriction
             } else source.restriction
             currentPool = when {
+                encounterOwner != null -> {
+                    val tag = sourceTags.getValue(source.entityId)
+                    val colored = production.coloredAmounts.entries.fold(currentPool) { pool, (unitColor, amount) ->
+                        pool.addRestricted(
+                            unitColor,
+                            amount,
+                            source.colorRestrictions[unitColor] ?: source.restriction ?: ManaRestriction.AnySpend,
+                            source.colorRiders[unitColor].orEmpty(),
+                            assignedPermanent = encounterOwner,
+                            source = tag,
+                        )
+                    }
+                    if (production.colorless > 0) colored.addRestricted(
+                        null,
+                        production.colorless,
+                        source.restriction ?: ManaRestriction.AnySpend,
+                        source.colorlessRiders,
+                        assignedPermanent = encounterOwner,
+                        source = tag,
+                    ) else colored
+                }
                 color != null && restriction != null ->
                     production.coloredAmounts.entries.fold(currentPool) { pool, (unitColor, amount) ->
                         pool.addRestricted(unitColor, amount, restriction).let { tagged ->

@@ -15,6 +15,7 @@ import com.wingedsheep.engine.core.ReopenManaPaymentDecisionContinuation
 import com.wingedsheep.engine.core.SelectManaSourcesDecision
 import com.wingedsheep.engine.core.GameEvent
 import com.wingedsheep.engine.handlers.effects.ZoneTransitionService
+import com.wingedsheep.engine.otaria.OtariaEncounterMana
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.ZoneKey
@@ -110,7 +111,11 @@ object ManaPaymentWindow {
         spellContext: SpellPaymentContext? = null,
     ): SelectManaSourcesDecision {
         val solver = manaSolver
-        val options = solver.findAvailableManaSources(state, playerId, spellContext)
+        // Resolution-time source selection does not yet retain an encounter creature's assignment.
+        // Do not offer sources that ActionProcessor must reject rather than letting them share mana.
+        val available = if (OtariaEncounterMana.isEncounter(state, playerId)) emptyList()
+            else solver.findAvailableManaSources(state, playerId, spellContext)
+        val options = available
             .filter { it.tapPermanentsSubCost == null && it.entityId !in excludeSources &&
                 (spellContext == null || it.restriction?.isSatisfiedBy(spellContext) != false) }
             .map { source ->
@@ -124,7 +129,7 @@ object ManaPaymentWindow {
                 )
             }
         val remaining = remainingAfterFloating(state, playerId, cost, spellContext)
-        val suggestion = if (remaining.isEmpty()) emptyList()
+        val suggestion = if (remaining.isEmpty() || OtariaEncounterMana.isEncounter(state, playerId)) emptyList()
             else solver.solve(state, playerId, remaining, excludeSources = excludeSources, spellContext = spellContext)?.sources?.map { it.entityId }.orEmpty()
 
         return SelectManaSourcesDecision(

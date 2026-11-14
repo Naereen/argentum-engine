@@ -5,6 +5,13 @@ import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.effects.AfterResolveDestination
 import kotlinx.serialization.Serializable
 
+@Serializable
+enum class LibraryPositionAnchor {
+    TOP,
+    BOTTOM,
+    BOTH,
+}
+
 /**
  * Tracks which players have been revealed this card's identity.
  * Used for "look at opponent's hand" effects where the viewing player
@@ -12,7 +19,10 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class RevealedToComponent(
-    val playerIds: Set<EntityId>
+    val playerIds: Set<EntityId>,
+    /** In Otaria, the library ends from which each observer learned this position. */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val libraryPositionAnchors: Map<EntityId, LibraryPositionAnchor> = emptyMap(),
 ) : Component {
     fun withPlayer(playerId: EntityId): RevealedToComponent =
         copy(playerIds = playerIds + playerId)

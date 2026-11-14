@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { applyStateDelta } from './deltaApplicator'
 import type { ClientDeckCard, ClientGameState, StateDelta } from '@/types'
 import { entityId } from '@/types'
+import { otariaBoard } from '@/test/otariaFixtures'
 
 /**
  * `applyStateDelta` rebuilds the whole state object rather than patching it, so any field the
@@ -78,5 +79,16 @@ describe('applyStateDelta', () => {
     expect(applyStateDelta(baseState(), { ...emptyDelta, voidActive: true }).voidActive).toBe(true)
     expect(applyStateDelta(baseState({ voidActive: true }), emptyDelta).voidActive).toBe(true)
     expect(applyStateDelta(baseState({ voidActive: true }), { ...emptyDelta, voidActive: false }).voidActive).toBe(false)
+  })
+
+  it('adds, replaces, preserves, and clears an Otaria board in live deltas', () => {
+    const board = otariaBoard()
+    const changed = { ...board, treasureCount: 10 }
+    const started = applyStateDelta(baseState(), { ...emptyDelta, otaria: board })
+    expect(started.otaria).toEqual(board)
+    expect(applyStateDelta(started, emptyDelta).otaria).toEqual(board)
+    const updated = applyStateDelta(started, { ...emptyDelta, otaria: changed })
+    expect(updated.otaria).toEqual(changed)
+    expect(applyStateDelta(updated, { ...emptyDelta, otariaCleared: true }).otaria).toBeNull()
   })
 })

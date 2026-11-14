@@ -52,6 +52,12 @@ multi-paragraph entry down the same way when you touch it.
   rules one), and to the table. `GameRules.inferred(commanderPackShape, deckFormat)` is the single
   back-compat derivation for lobbies created before the axis existed. Oathbreaker and Pauper
   Commander become values here rather than new draft shapes.
+- `Phase.OTARIA_PREPARATION`, `OTARIA_MOVEMENT`, `OTARIA_EXPLORATION` and their matching `Step`
+  values identify Explorer of Otaria's additional phases; the variant's turn policy chooses their
+  successors without changing the normal Magic turn sequence. Creature and boss exploration enters
+  a separately managed encounter, then initiative branches to combat, a free movement, or the end
+  step. The encounter takes its own turn after its explorer, with input routed to the player seated
+  on the explorer's left.
 
 ## 1. Top-level card DSL
 

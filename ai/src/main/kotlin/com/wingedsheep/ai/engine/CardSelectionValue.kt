@@ -2,6 +2,7 @@ package com.wingedsheep.ai.engine
 
 import com.wingedsheep.ai.engine.knowledge.IntentCatalog
 import com.wingedsheep.ai.engine.knowledge.IntentTag
+import com.wingedsheep.engine.core.turnOrderIndex
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.player.LandDropsComponent
@@ -266,7 +267,7 @@ internal class CardSelectionValue private constructor(
 
             val drops = state.getEntity(playerId)?.get<LandDropsComponent>()?.remaining ?: 0
             val landDropNow = state.activePlayerId == playerId && drops > 0 &&
-                state.step.ordinal <= Step.POSTCOMBAT_MAIN.ordinal
+                state.step.turnOrderIndex <= Step.POSTCOMBAT_MAIN.turnOrderIndex
 
             val library = state.getZone(playerId, Zone.LIBRARY)
                 .mapNotNull { state.getEntity(it)?.get<CardComponent>() }

@@ -32,10 +32,6 @@ class TurnFaceUpEnumerator(
     private val predicateEvaluator: PredicateEvaluator
 ) : ActionEnumerator {
 
-    // Lets restricted mana tagged "spend only to turn permanents face up" count toward
-    // affordability of the turn-face-up special action (Overgrown Zealot, Creeping Peeper).
-    private val faceUpContext = SpellPaymentContext(isTurnFaceUpAction = true)
-
     override fun enumerate(context: EnumerationContext): List<LegalAction> {
         val result = mutableListOf<LegalAction>()
         val state = context.state
@@ -52,6 +48,10 @@ class TurnFaceUpEnumerator(
 
             // Must have turn-up data (to get the cost)
             val morphData = container.get<MorphDataComponent>() ?: continue
+            val faceUpContext = SpellPaymentContext(
+                isTurnFaceUpAction = true,
+                assignedPermanent = com.wingedsheep.engine.otaria.OtariaEncounterMana.memberRef(state, entityId),
+            )
 
             morphData.procedures.forEachIndexed { procedureIndex, procedure ->
                 val cost = procedure.cost
@@ -76,7 +76,10 @@ class TurnFaceUpEnumerator(
                     effectiveCost != null -> {
                         if (effectiveCost.hasX) {
                             // X turn-up cost (e.g., {X}{X}{R}) — always show as available with X selection
-                            val availableSources = context.manaSolver.getAvailableManaCount(state, playerId, precomputedSources = context.availableManaSources)
+                            val availableSources = context.manaSolver.getAvailableManaCount(
+                                state, playerId, precomputedSources = context.availableManaSources,
+                                spellContext = faceUpContext,
+                            )
                             val fixedCost = effectiveCost.cmc // X contributes 0 to CMC
                             val xSymbolCount = effectiveCost.xCount.coerceAtLeast(1)
                             val maxX = ((availableSources - fixedCost) / xSymbolCount).coerceAtLeast(0)

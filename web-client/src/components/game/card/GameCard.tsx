@@ -229,6 +229,10 @@ function GameCardImpl({
   const voidActive = useGameStore(
     (state) => (state.spectatingState?.gameState ?? state.gameState)?.voidActive ?? false
   )
+  const isEncounterCard = useGameStore((state) =>
+    battlefield && ((state.spectatingState?.gameState ?? state.gameState)?.otaria?.encounters
+      ?.some((encounter) => encounter.actorId === card.controllerId) ?? false),
+  )
   // Store *actions* are never subscribed to here: they never change, yet each subscription still
   // runs on every store write (hover writes included, at up to 60 Hz). Handlers call them through
   // `useGameStore.getState()` instead.
@@ -3032,6 +3036,19 @@ function GameCardImpl({
         {nonLegendaryChip}
         {grantedLegendaryChip}
         {cardElement}
+        {isEncounterCard && (
+          <span
+            aria-label="Encounter permanent"
+            title="Encounter permanent — managed by this seat, not controlled by that player"
+            style={{
+              position: 'absolute', top: 2, left: 2, zIndex: 7, pointerEvents: 'none',
+              padding: '2px 4px', borderRadius: 4, background: 'rgba(86, 47, 21, 0.94)',
+              color: '#fff3d4', fontSize: Math.max(8, Math.round(width * 0.1)), fontWeight: 700,
+            }}
+          >
+            Encounter
+          </span>
+        )}
         {/* Allocation controls stay outside the clipped, rotating card. Narrow cards get a
             compact count above two full-size buttons, which can extend beyond the art. */}
         <CounterAllocationControls cardId={card.id} cardName={card.name} cardWidth={width} />

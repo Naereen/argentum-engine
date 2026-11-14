@@ -39,6 +39,21 @@ export const ANNOUNCEMENTS: readonly Announcement[] = [
     tryIf: 'colourless Eldrazi, land-drop payoffs and building around a two-part engine',
   },
   {
+    id: 'feature-otaria-full-ai',
+    date: '2026-11-12',
+    kind: 'feature',
+    title: 'Watch an autonomous Otaria playtest',
+    body: 'The local Otaria playtest now offers Full AI (fast): watch three to five AI explorers play every seat, with short action delays and no human input. Select it at /otaria for a quick overview of the experimental mode; unsupported events can still stop a run.',
+  },
+  {
+    id: 'mode-explorer-of-otaria',
+    date: '2026-11-11',
+    kind: 'mode',
+    title: 'Explorer of: Otaria',
+    body: 'Explore Otaria on a hex map: move between terrain and named locations, gather cards into your reserve, prepare your library and face rival explorers or creature encounters. Start a local playtest at /otaria against two to four AI opponents, with ready-made starting decks and no API key needed. This experimental mode is still in development; some exploration events and supply cards are not yet supported.',
+    tryIf: 'exploration, growing your deck as you play and multiplayer adventures in Otaria',
+  },
+  {
     id: 'set-ogw',
     date: '2026-11-11',
     kind: 'set',

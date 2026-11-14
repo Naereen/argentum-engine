@@ -12,6 +12,7 @@ import com.wingedsheep.engine.handlers.DynamicAmountEvaluator
 import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.handlers.continuations.CheckForMore
 import com.wingedsheep.engine.mechanics.mana.ManaColorSetResolver
+import com.wingedsheep.engine.otaria.OtariaEncounterMana
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.battlefield.AttachedToComponent
@@ -60,7 +61,12 @@ class TappedForManaBonusResolver(
                 if (!bonus.anyColor) continue
                 val amount = dynamicAmountEvaluator.evaluate(state, bonus.amount, contextFor(state, entityId, landController))
                 if (amount <= 0) continue
-                result.add(AnyColorTapBonus(auraId = entityId, controllerId = landController, amount = amount))
+                result.add(AnyColorTapBonus(
+                    auraId = entityId, controllerId = landController, amount = amount,
+                    assignmentSource = if (OtariaEncounterMana.isEncounter(state, landController)) {
+                        state.objectRef(landId)
+                    } else null,
+                ))
             }
         }
         return result
@@ -91,6 +97,7 @@ class TappedForManaBonusResolver(
         val singleColor = available.singleOrNull()
         if (singleColor != null) {
             val added = addBonus(state, item, singleColor, available)
+            if (added.outcome !is Outcome.Done) return added.toExecutionResult()
             return drive(added.state, remaining, accumulatedEvents + added.events)
         }
 
@@ -133,8 +140,9 @@ class TappedForManaBonusResolver(
             predicateEvaluator = dynamicAmountEvaluator.predicates
         )
         val added = addBonus(state, item, response.color, available)
+        if (added.outcome !is Outcome.Done) return added.toExecutionResult()
         val driveResult = drive(added.state, continuation.remaining, added.events.toList())
-        if (driveResult.outcome is Outcome.Paused) return driveResult
+        if (driveResult.outcome !is Outcome.Done) return driveResult
         return checkForMore(driveResult.state, driveResult.events)
     }
 
@@ -143,7 +151,10 @@ class TappedForManaBonusResolver(
      * aura's bonus is snow mana and pays `{S}` (Glittering Frost).
      */
     private fun addBonus(state: GameState, item: AnyColorTapBonus, color: Color, available: Set<Color>): com.wingedsheep.engine.core.EffectResult {
-        val added = manaExecutor.addManaToPool(state, bonusEffect(item.amount), contextFor(state, item.auraId, item.controllerId), color, available)
+        val added = manaExecutor.addManaToPool(
+            state, bonusEffect(item.amount), contextFor(state, item.auraId, item.controllerId),
+            color, available, assignmentSource = item.assignmentSource,
+        )
         return added.copy(state = ManaProvenanceTracker.markSnowProduction(state, added.state, item.auraId, item.controllerId))
     }
 

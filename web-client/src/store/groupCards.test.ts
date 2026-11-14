@@ -125,6 +125,16 @@ describe('groupCards — token quantity aggregation (display layer)', () => {
     expect(groups.find((g) => g.card.name === 'Zombie')!.count).toBe(1)
   })
 
+  it('never groups identical permanents controlled by different encounter actors or players', () => {
+    const groups = groupCards([
+      token({ id: 'human', controllerId: entityId('manager') }),
+      token({ id: 'actor-a1', controllerId: entityId('actor-a') }),
+      token({ id: 'actor-a2', controllerId: entityId('actor-a') }),
+      token({ id: 'actor-b', controllerId: entityId('actor-b') }),
+    ])
+    expect(groups.map((group) => group.count)).toEqual([1, 2, 1])
+  })
+
   it('handles an empty battlefield', () => {
     expect(groupCards([])).toEqual([])
   })

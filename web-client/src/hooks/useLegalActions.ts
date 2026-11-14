@@ -102,6 +102,8 @@ export function isActionOnCard(action: LegalActionInfo, cardId: EntityId): boole
       return a.mountId === cardId
     case 'UnlockRoomDoor':
       return a.roomId === cardId
+    case 'ClaimOtariaMirariVictory':
+      return a.mirariId === cardId
     default:
       return false
   }
@@ -201,6 +203,8 @@ function getActionCardId(action: GameAction): EntityId | null {
       return action.mountId
     case 'UnlockRoomDoor':
       return action.roomId
+    case 'ClaimOtariaMirariVictory':
+      return action.mirariId
     default:
       return null
   }

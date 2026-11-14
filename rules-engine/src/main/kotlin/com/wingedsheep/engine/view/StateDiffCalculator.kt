@@ -69,6 +69,7 @@ object StateDiffCalculator {
         // Only a subgame starting or ending (CR 729) takes the game back to neither day nor night.
         val dayNightCleared = previous.dayNight != null && current.dayNight == null
         val subgameChanged = current.subgame != previous.subgame
+        val otariaChanged = current.otaria != previous.otaria
         val voidActiveDelta = if (current.voidActive != previous.voidActive) current.voidActive else null
 
         // --- Combat diff ---
@@ -108,6 +109,8 @@ object StateDiffCalculator {
             voidActive = voidActiveDelta,
             subgame = if (subgameChanged) current.subgame else null,
             subgameCleared = if (subgameChanged && current.subgame == null) true else null,
+            otaria = if (otariaChanged) current.otaria else null,
+            otariaCleared = if (otariaChanged && current.otaria == null) true else null,
             combat = combatDelta,
             combatCleared = if (combatCleared) true else null,
             newLogEntries = newLogEntries,

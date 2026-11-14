@@ -12,6 +12,8 @@ internal fun AnswerContinuation.objectReferences(): ObjectReferenceEnvironment? 
     is EffectCopyAuraEntryContinuation -> context.objectReferences
     is EnteringAttackDefenderContinuation -> context.objectReferences
     is EffectCopyEntryContinuation -> context.objectReferences
+    is OtariaEncounterEntryCopyContinuation -> context.objectReferences
+    is OtariaEncounterEntryChoiceContinuation -> context.objectReferences
     is GrantedEntryCopyOrderContinuation -> when (val replay = replay) {
         is EffectReplay -> replay.context.objectReferences
         is AnswerReplay -> replay.suspension.answer.objectReferences()
@@ -149,6 +151,8 @@ internal fun AnswerContinuation.withObjectReferences(refs: ObjectReferenceEnviro
     is EffectCopyAuraEntryContinuation -> copy(context = context.copy(objectReferences = refs))
     is EnteringAttackDefenderContinuation -> copy(context = context.copy(objectReferences = refs))
     is EffectCopyEntryContinuation -> copy(context = context.copy(objectReferences = refs))
+    is OtariaEncounterEntryCopyContinuation -> copy(context = context.copy(objectReferences = refs))
+    is OtariaEncounterEntryChoiceContinuation -> copy(context = context.copy(objectReferences = refs))
     is GrantedEntryCopyOrderContinuation -> copy(replay = when (val replay = replay) {
         is EffectReplay -> replay.copy(context = replay.context.copy(objectReferences = refs))
         is AnswerReplay -> replay.copy(suspension = replay.suspension.copy(answer = replay.suspension.answer.withObjectReferences(refs)))

@@ -1,0 +1,1 @@
+- Otaria AI explorers independently roll a starting color category (including Other) and a published 20-card Jumpstart 2022 or Foundations Jumpstart booster, rather than receiving fixed exploration-supply decks.

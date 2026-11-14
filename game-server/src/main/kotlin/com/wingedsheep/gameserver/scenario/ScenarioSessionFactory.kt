@@ -40,6 +40,8 @@ class ScenarioSessionFactory(
      * Create and persist a session for [build]. [player1Token]/[player2Token] pin specific
      * tokens (dev workflow uses stable "p1"/"p2"); when null a random token is generated
      * (production). [includeDevUrls] adds localhost open-URLs to the human-readable message.
+     * [allAi] fills every seat in AI mode for spectator-only runs. [aiThinkingDelayMs] overrides
+     * pacing only for this session; null preserves the configured delay.
      */
     fun createSession(
         build: ScenarioBuildResult,
@@ -47,11 +49,20 @@ class ScenarioSessionFactory(
         player1Token: String? = null,
         player2Token: String? = null,
         includeDevUrls: Boolean = false,
+        allAi: Boolean = false,
+        aiThinkingDelayMs: Long? = null,
     ): ScenarioResponse {
         val mode = request.effectiveMode
+        require(!allAi || mode == ScenarioMode.AI) { "All-AI sessions require AI mode" }
+        require(aiThinkingDelayMs == null || aiThinkingDelayMs >= 0) { "AI delay must not be negative" }
         val seats = request.seats()
         val seatNames = seats.map { it.first }
         val seatIds = build.playerIds
+        require(seatIds.size == seats.size) { "Scenario seat names must match the initialized players" }
+        if (mode == ScenarioMode.AI) {
+            require(aiGameManager.aiEnabledToggle) { "AI is not enabled. Set game.ai.enabled=true." }
+            require((request.aiPlayer ?: 2) in 1..2) { "AI seat must be 1 or 2" }
+        }
         val p1Name = seatNames[0]
         val p2Name = seatNames.getOrElse(1) { "Player2" }
         val player1Id = build.player1Id
@@ -74,6 +85,7 @@ class ScenarioSessionFactory(
             // creature type, so the one surface built for eyeballing a card is the one that shows
             // the wrong picture. Same registry the lobby and tournament handlers pass.
             tokenArtRegistry = tokenArtRegistry,
+            maxPlayers = seatIds.size,
         )
         gameSession.injectStateForDevScenario(build.state)
         gameSession.isScenario = true
@@ -126,30 +138,35 @@ class ScenarioSessionFactory(
             ScenarioMode.AI -> {
                 val aiSeat = request.aiPlayer ?: 2
                 val humanSeat = if (aiSeat == 1) 2 else 1
-                val humanToken = (if (humanSeat == 1) player1Token else player2Token) ?: newToken()
-                val humanId = if (humanSeat == 1) player1Id else player2Id
+                val humanToken = if (allAi) null else (if (humanSeat == 1) player1Token else player2Token) ?: newToken()
+                val humanId = if (allAi) null else if (humanSeat == 1) player1Id else player2Id
                 val humanName = if (humanSeat == 1) p1Name else p2Name
-                preRegister(humanToken, humanId, humanName)
+                if (humanId != null && humanToken != null) preRegister(humanToken, humanId, humanName)
 
-                val (aiSeatId, aiSeatName) = if (aiSeat == 1) player1Id to p1Name else player2Id to p2Name
-                aiGameManager.wireAiForDevScenario(
-                    gameSession = gameSession,
-                    aiPlayerId = aiSeatId,
-                    playerName = aiSeatName,
-                    onActionReady = { id, action, interactionEpoch ->
-                        gamePlayHandler.handleAiAction(gameSession, id, action, interactionEpoch)
-                    },
-                    onMulliganKeep = { id -> gamePlayHandler.handleAiMulliganKeep(gameSession, id) },
-                    onMulliganTake = { id -> gamePlayHandler.handleAiMulliganTake(gameSession, id) },
-                    onBottomCards = { id, cardIds -> gamePlayHandler.handleAiBottomCards(gameSession, id, cardIds) }
-                )
+                seatIds.forEachIndexed { index, aiSeatId ->
+                    if (aiSeatId == humanId) return@forEachIndexed
+                    aiGameManager.wireAiForDevScenario(
+                        gameSession = gameSession,
+                        aiPlayerId = aiSeatId,
+                        playerName = seatNames[index],
+                        onActionReady = { id, action, interactionEpoch ->
+                            gamePlayHandler.handleAiAction(gameSession, id, action, interactionEpoch)
+                        },
+                        onMulliganKeep = { id -> gamePlayHandler.handleAiMulliganKeep(gameSession, id) },
+                        onMulliganTake = { id -> gamePlayHandler.handleAiMulliganTake(gameSession, id) },
+                        onBottomCards = { id, cardIds -> gamePlayHandler.handleAiBottomCards(gameSession, id, cardIds) },
+                    )
+                    if (aiThinkingDelayMs != null) aiGameManager.setThinkingDelay(aiSeatId, aiThinkingDelayMs)
+                }
                 // Kick off the AI if it holds priority in the injected state.
                 gamePlayHandler.broadcastStateUpdate(gameSession, emptyList())
-                logger.info("Created vs-AI scenario session ${gameSession.sessionId} (AI is player $aiSeat)")
+                logger.info("Created AI scenario session ${gameSession.sessionId} (${seatIds.size - if (allAi) 0 else 1} AI seats)")
 
-                val p1Token = if (aiSeat == 1) "(AI)" else humanToken
-                val p2Token = if (aiSeat == 2) "(AI)" else humanToken
-                val openMsg = if (includeDevUrls)
+                val p1Token = if (allAi || aiSeat == 1) "(AI)" else requireNotNull(humanToken)
+                val p2Token = if (allAi || aiSeat == 2) "(AI)" else requireNotNull(humanToken)
+                val openMsg = if (allAi)
+                    "All-AI scenario created — spectate with /?spectate=${gameSession.sessionId}."
+                else if (includeDevUrls)
                     "Scenario created vs AI. Open http://localhost:5173/?token=$humanToken (you are Player $humanSeat)"
                 else
                     "Scenario created vs AI — you are Player $humanSeat."
@@ -159,6 +176,9 @@ class ScenarioSessionFactory(
                     player2 = PlayerInfo(p2Name, p2Token, player2Id.value),
                     message = openMsg,
                     mode = mode,
+                    players = if (seatIds.size > 2) seatIds.mapIndexed { index, id ->
+                        PlayerInfo(seatNames[index], if (id == humanId) requireNotNull(humanToken) else "(AI)", id.value)
+                    } else null,
                 )
             }
 

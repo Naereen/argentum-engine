@@ -99,7 +99,10 @@ class Settler(
         if (mulligansInProgress(current.state)) return current
 
         val raw = runReplacementRiders(endTheTurnIfRequested(current))
-        val result = com.wingedsheep.engine.mechanics.GraveyardOrdering.finish(raw)
+        val departed = turnManager.applyOtariaDepartures(raw.state, raw.events)
+        val result = com.wingedsheep.engine.mechanics.GraveyardOrdering.finish(
+            raw.copy(state = departed.state, events = departed.events),
+        )
         if (result.outcome is Outcome.Rejected) return result
         // An action that entered permanents outside an effect instruction (a resolving permanent
         // spell, a land play) is one event: a "the next time …" grant it spent is done. A paused
@@ -261,6 +264,12 @@ class Settler(
                 if (sba.pendingDecision != null) return ExecutionResult.propagatePause(state, events)
                 if (state.gameOver) return ExecutionResult.success(state.withoutPendingTriggers(), events)
 
+                val encounters = turnManager.finishOtariaEncounters(state)
+                state = encounters.state
+                events += encounters.events
+                if (encounters.events.isNotEmpty()) {
+                    state = state.enqueue(triggerDetector.detectTriggers(state, encounters.events))
+                }
                 val poll = stateTriggerPoller.poll(state)
                 state = poll.newState.enqueue(poll.pendingTriggers)
 

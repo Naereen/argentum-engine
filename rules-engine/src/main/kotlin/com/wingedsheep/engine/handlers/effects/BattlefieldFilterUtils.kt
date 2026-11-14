@@ -35,7 +35,9 @@ object BattlefieldFilterUtils {
         val projected = state.projectedState
         return state.getBattlefield().filter { entityId ->
             if (excludeSelfId != null && entityId == excludeSelfId) return@filter false
-            predicateEvaluator.matches(state, projected, entityId, filter, context)
+            com.wingedsheep.engine.otaria.OtariaRange.betweenControllers(
+                state, context.controllerId, projected.getController(entityId),
+            ) && predicateEvaluator.matches(state, projected, entityId, filter, context)
         }
     }
 

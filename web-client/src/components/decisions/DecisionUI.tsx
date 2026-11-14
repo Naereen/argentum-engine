@@ -13,6 +13,7 @@ import { YesNoDecisionUI } from './YesNoDecisionUI'
 import { BatchYesNoDecisionUI } from './BatchYesNoDecisionUI'
 import { ChooseNumberDecisionUI } from './ChooseNumberDecisionUI'
 import { ChooseOptionDecisionUI } from './ChooseOptionDecisionUI'
+import { OtariaMovementDecisionUI, otariaMovementChoices } from './OtariaMovementDecisionUI'
 import { DungeonChoiceDecisionUI, dungeonChoiceKind } from './DungeonChoiceDecisionUI'
 import { ChooseReplacementDecisionUI } from './ChooseReplacementDecisionUI'
 import { BudgetModalDecisionUI } from './BudgetModalDecisionUI'
@@ -181,6 +182,10 @@ export function DecisionUI() {
 
   // Handle ChooseOptionDecision (e.g., "Choose a creature type")
   if (pendingDecision.type === 'ChooseOptionDecision') {
+    const movementChoices = otariaMovementChoices(pendingDecision, gameState)
+    if (movementChoices && gameState?.otaria) {
+      return <OtariaMovementDecisionUI key={pendingDecision.id} decision={pendingDecision} gameState={gameState} board={gameState.otaria} choices={movementChoices} />
+    }
     // Venturing into the dungeon (CR 701.49): pick a dungeon card, or a room on the map.
     if (dungeonChoiceKind(pendingDecision) !== null) {
       return <DungeonChoiceDecisionUI key={pendingDecision.id} decision={pendingDecision} />

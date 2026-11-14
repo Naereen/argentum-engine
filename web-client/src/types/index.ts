@@ -73,6 +73,17 @@ export type {
   ClientWaitingGame,
   ClientWaitingPlayer,
 } from './gameState'
+export type {
+  ClientOtariaEncounter,
+  ClientOtariaPile,
+  ClientOtariaPlayer,
+  ClientOtariaReserveCard,
+  ClientOtariaState,
+  ClientOtariaTile,
+  ClientOtariaTurn,
+  OtariaLocation,
+  OtariaPosition,
+} from './otaria'
 export {
   totalMana,
   isManaPoolEmpty,
@@ -86,6 +97,7 @@ export {
   getOpponent,
   isMyTurn,
   hasPriority,
+  actingPlayerFor,
 } from './gameState'
 
 // Events
@@ -133,6 +145,7 @@ export {
 // Actions
 export type {
   GameAction,
+  ClaimOtariaMirariVictoryAction,
   PassPriorityAction,
   CastSpellAction,
   ActivateAbilityAction,

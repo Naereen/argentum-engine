@@ -180,15 +180,36 @@ class StateProjector {
             }
         }
 
+        val globalText = TextChanges.index(state)
+        val textBase = if (state.otaria != null && !globalText.isEmpty) {
+            projectedValues.mapValues { (_, values) ->
+                Triple(values.keywords.toSet(), values.types.toSet(), values.subtypes.toSet())
+            }
+        } else null
+
+        fun refreshTextAfterControlChange() {
+            val base = textBase ?: return
+            for ((id, original) in base) {
+                val values = projectedValues.getValue(id)
+                values.keywords.clear()
+                values.keywords.addAll(original.first)
+                values.types.clear()
+                values.types.addAll(original.second)
+                values.subtypes.clear()
+                values.subtypes.addAll(original.third)
+            }
+            applyTextReplacements(state, projectedValues, globalText)
+        }
+
         // Apply Layer 3 text-changing effects (TextReplacementComponent)
-        applyTextReplacements(state, projectedValues)
+        applyTextReplacements(state, projectedValues, globalText)
 
         // Collect all active continuous effects
-        val effects = collectContinuousEffects(state, projectedValues) +
+        val effects = collectContinuousEffects(state, projectedValues, globalText) +
             com.wingedsheep.engine.mechanics.BestowCasts.effects(state)
 
         // Sort effects by layer and dependency
-        val sortedEffects = effectSorter.sortByLayerAndDependency(effects, state)
+        var sortedEffects = effectSorter.sortByLayerAndDependency(effects, state)
 
         // CR 613.6 group locking. A single multi-layer static ability lowers to several effects
         // that share a groupId (within one source permanent). Such an effect must affect the *same
@@ -227,8 +248,29 @@ class StateProjector {
         // Seasinger has to hand the borrowed creature back, and its own effect lives in this layer.
         val controlEffects = sortedEffects.filter { it.layer == Layer.CONTROL }
         for (rawEffect in controlEffects) {
-            val effect = applyControllerGate(rawEffect, projectedValues)
+            val filter = if (textBase != null && rawEffect.textUnmodifiedFilter != null) {
+                val replacement = textForProjection(state, rawEffect.sourceId, projectedValues, globalText)
+                replacement?.let { rawEffect.textUnmodifiedFilter.applyTextReplacement(it) }
+                    ?: rawEffect.textUnmodifiedFilter
+            } else rawEffect.affectsFilter
+            val affected = if (state.otaria != null && filter != null) {
+                filterResolver.resolveAffectedEntities(state, rawEffect.sourceId, filter, projectedValues, rawEffect.controllerId)
+            } else rawEffect.affectedEntities
+            val effect = applyControllerGate(rawEffect.copy(affectsFilter = filter, affectedEntities = affected), projectedValues)
             effectApplicator.applyEffect(effect.copy(affectedEntities = lockAffected(effect, effect.affectedEntities)), state, projectedValues)
+            if (textBase != null) refreshTextAfterControlChange()
+        }
+
+        if (textBase != null && controlEffects.isNotEmpty()) {
+            val refreshed = collectContinuousEffects(state, projectedValues, globalText) +
+                com.wingedsheep.engine.mechanics.BestowCasts.effects(state)
+            sortedEffects = effectSorter.sortByLayerAndDependency(refreshed, state)
+            for (effect in sortedEffects) {
+                val groupId = effect.groupId ?: continue
+                val key = effect.sourceId to groupId
+                val existing = groupFirstLayer[key]
+                if (existing == null || effect.layer.ordinal < existing.ordinal) groupFirstLayer[key] = effect.layer
+            }
         }
 
         // Re-resolve controller-dependent filters for layers 3-6 now that control is established.
@@ -238,11 +280,13 @@ class StateProjector {
         val nonControlNonPTEffects = sortedEffects.filter { it.layer != Layer.CONTROL && it.layer != Layer.POWER_TOUGHNESS }
             .map { effect -> applyControllerGate(effect, projectedValues) }
             .map { effect ->
-                if (effect.affectsFilter != null && filterResolver.isControllerDependentFilter(effect.affectsFilter)) {
+                val resolved = if (effect.affectsFilter != null &&
+                    (state.otaria != null || filterResolver.isControllerDependentFilter(effect.affectsFilter))) {
                     effect.copy(affectedEntities = filterResolver.resolveAffectedEntities(state, effect.sourceId, effect.affectsFilter, projectedValues, effect.controllerId))
                 } else {
                     effect
                 }
+                if (state.otaria != null) applyControllerGate(resolved, projectedValues) else resolved
             }
 
         // === Layers 3-4 (Text + Type) ===
@@ -318,7 +362,10 @@ class StateProjector {
                 } else {
                     effect.affectedEntities
                 }
-                effect.copy(affectedEntities = lockAffected(effect, resolved))
+                val gated = if (state.otaria != null) {
+                    applyControllerGate(effect.copy(affectedEntities = resolved), projectedValues)
+                } else effect.copy(affectedEntities = resolved)
+                gated.copy(affectedEntities = lockAffected(gated, gated.affectedEntities))
             }
 
         // Collect sources that generate RemoveAllAbilities effects. These sources (e.g., Humility)
@@ -427,7 +474,7 @@ class StateProjector {
         }
 
         // Resolve CDAs (Layer 7a) - evaluate dynamic power/toughness
-        resolveCDAs(state, projectedValues, dynamicStatEntities)
+        resolveCDAs(state, projectedValues, dynamicStatEntities, globalText)
 
         // Re-resolve affected entities for Layer 7 effects that depend on subtypes, controller, or creature type.
         // Also suppress effects from sources that lost all abilities in Layer 6 (Rule 613: Humility
@@ -464,7 +511,8 @@ class StateProjector {
             }
 
             val resolved = if (effect.affectsFilter != null &&
-                (filterResolver.isSubtypeDependentFilter(effect.affectsFilter) ||
+                (state.otaria != null ||
+                    filterResolver.isSubtypeDependentFilter(effect.affectsFilter) ||
                     filterResolver.isControllerDependentFilter(effect.affectsFilter) ||
                     filterResolver.isKeywordDependentFilter(effect.affectsFilter) ||
                     filterResolver.isCreatureDependentFilter(effect.affectsFilter))) {
@@ -800,12 +848,12 @@ class StateProjector {
 
     private fun applyTextReplacements(
         state: GameState,
-        projectedValues: MutableMap<EntityId, MutableProjectedValues>
+        projectedValues: MutableMap<EntityId, MutableProjectedValues>,
+        globalText: TextChanges.GlobalIndex,
     ) {
-        val globalText = TextChanges.global(state)
         for (entityId in state.getBattlefield()) {
             val container = state.getEntity(entityId) ?: continue
-            val textReplacement = TextChanges.merge(globalText, container.get<TextReplacementComponent>()) ?: continue
+            val textReplacement = textForProjection(state, entityId, projectedValues, globalText) ?: continue
             val values = projectedValues[entityId] ?: continue
 
             val transformedSubtypes = values.subtypes.map { textReplacement.applyToCreatureType(it) }.toMutableSet()
@@ -856,6 +904,18 @@ class StateProjector {
         }
     }
 
+    private fun textForProjection(
+        state: GameState,
+        entityId: EntityId,
+        projectedValues: Map<EntityId, MutableProjectedValues>,
+        globalText: TextChanges.GlobalIndex,
+    ): TextReplacementComponent? {
+        val rules = globalText.forController(state, projectedValues[entityId]?.controllerId) { source ->
+            projectedValues[source]?.controllerId
+        }
+        return TextChanges.merge(rules, state.getEntity(entityId)?.get<TextReplacementComponent>())
+    }
+
     private fun extractTypes(card: CardComponent): MutableSet<String> {
         val types = linkedSetOf<String>()
         card.typeLine.supertypes.forEach { types.add(it.name) }
@@ -901,17 +961,17 @@ class StateProjector {
 
     private fun collectContinuousEffects(
         state: GameState,
-        projectedValues: Map<EntityId, MutableProjectedValues>
+        projectedValues: Map<EntityId, MutableProjectedValues>,
+        globalText: TextChanges.GlobalIndex,
     ): List<ContinuousEffect> {
         val effects = mutableListOf<ContinuousEffect>()
-        val globalText = TextChanges.global(state)
 
         // 1. Collect effects from static abilities on permanents
         for (entityId in state.getBattlefield()) {
             val container = state.getEntity(entityId) ?: continue
             val continuousEffectComponent = container.get<ContinuousEffectSourceComponent>()
             if (continuousEffectComponent != null) {
-                val textReplacement = TextChanges.merge(globalText, container.get<TextReplacementComponent>())
+                val textReplacement = textForProjection(state, entityId, projectedValues, globalText)
                 val sourceTimestamp = container.get<com.wingedsheep.engine.state.components.battlefield.TimestampComponent>()?.timestamp
                     ?: state.timestamp
                 for (effect in continuousEffectComponent.effects) {
@@ -927,7 +987,8 @@ class StateProjector {
                         affectedEntities = filterResolver.resolveAffectedEntities(state, entityId, effectiveFilter, projectedValues),
                         sourceCondition = effect.sourceCondition,
                         affectsFilter = effectiveFilter,
-                        groupId = effect.groupId
+                        groupId = effect.groupId,
+                        textUnmodifiedFilter = effect.affectsFilter,
                     )
                     effects.add(collected)
                     val mod = effect.modification
@@ -1304,12 +1365,12 @@ class StateProjector {
     private fun resolveCDAs(
         state: GameState,
         projectedValues: MutableMap<EntityId, MutableProjectedValues>,
-        dynamicStatEntities: List<Pair<EntityId, CardComponent>>
+        dynamicStatEntities: List<Pair<EntityId, CardComponent>>,
+        globalText: TextChanges.GlobalIndex,
     ) {
         if (dynamicStatEntities.isEmpty()) return
 
         val intermediateProjected = buildIntermediateProjectedState(state, projectedValues)
-        val globalText = TextChanges.global(state)
         for ((entityId, cardComponent) in dynamicStatEntities) {
             val values = projectedValues[entityId] ?: continue
             val controllerId = values.controllerId ?: continue
@@ -1318,7 +1379,7 @@ class StateProjector {
                 controllerId = controllerId,
             )
             val baseStats = cardComponent.baseStats ?: continue
-            val textReplacement = TextChanges.merge(globalText, state.getEntity(entityId)?.get<TextReplacementComponent>())
+            val textReplacement = textForProjection(state, entityId, projectedValues, globalText)
 
             fun resolveDynamicAmount(source: DynamicAmount): Int {
                 val effective = if (textReplacement != null) {

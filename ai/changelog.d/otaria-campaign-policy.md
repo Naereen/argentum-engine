@@ -1,0 +1,1 @@
+- Otaria bots replenish depleted libraries, explore terrain and build an army before risking starred boss encounters, route Mirari to matching locations, and avoid stronger nearby armies while retaining the existing Magic AI for gameplay and encounters.

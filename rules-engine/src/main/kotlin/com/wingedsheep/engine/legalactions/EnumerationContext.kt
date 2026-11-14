@@ -18,6 +18,9 @@ import com.wingedsheep.engine.mechanics.mana.ManaStaticsIndex
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.forcedPlayFor
+import com.wingedsheep.engine.state.components.identity.TextChanges
+import com.wingedsheep.engine.state.components.identity.TextReplacement
+import com.wingedsheep.engine.state.components.identity.TextReplacementComponent
 import com.wingedsheep.engine.state.components.player.CantActivateLoyaltyAbilitiesComponent
 import com.wingedsheep.engine.state.components.player.bindingCastBans
 import com.wingedsheep.engine.state.components.player.CantCastFromNonHandZonesComponent
@@ -76,10 +79,18 @@ class EnumerationContext(
     // Projected state
     val projected: ProjectedState by lazy { state.projectedState }
 
-    // Global Layer 3 color-word changes (Swirl the Mists), computed once per pass; merge with a
-    // permanent's own rules via TextChanges.merge.
-    val globalTextChanges: List<com.wingedsheep.engine.state.components.identity.TextReplacement> by lazy {
-        com.wingedsheep.engine.state.components.identity.TextChanges.global(state)
+    private val globalTextIndex by lazy { TextChanges.index(state) }
+    private val globalTextByController = mutableMapOf<EntityId?, List<TextReplacement>>()
+
+    /** Text of a battlefield ability, with global rules cached by projected controller. */
+    fun textChangesFor(entityId: EntityId): TextReplacementComponent? {
+        val own = state.getEntity(entityId)?.get<TextReplacementComponent>()
+        if (state.otaria == null || globalTextIndex.isEmpty) return TextChanges.merge(globalTextIndex.all, own)
+        val controller = projected.getController(entityId)
+        val global = globalTextByController.getOrPut(controller) {
+            globalTextIndex.forController(state, controller) { id -> projected.getController(id) }
+        }
+        return TextChanges.merge(global, own)
     }
 
     // Battlefield permanents controlled by player (via projected state)

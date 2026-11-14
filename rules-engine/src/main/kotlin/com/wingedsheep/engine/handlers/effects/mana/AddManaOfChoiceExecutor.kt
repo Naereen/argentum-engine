@@ -10,8 +10,10 @@ import com.wingedsheep.engine.handlers.DynamicAmountEvaluator
 import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.handlers.effects.EffectExecutor
 import com.wingedsheep.engine.mechanics.mana.ManaColorSetResolver
+import com.wingedsheep.engine.otaria.OtariaEncounterMana
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
+import com.wingedsheep.engine.state.ObjectRef
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.player.ManaPoolComponent
 import com.wingedsheep.sdk.core.Color
@@ -131,6 +133,7 @@ class AddManaOfChoiceExecutor(
         context: EffectContext,
         color: Color,
         availableColors: Set<Color>,
+        assignmentSource: ObjectRef? = null,
     ): EffectResult {
         if (color !in availableColors) return EffectResult.success(state)
         val recipientId = if (effect.recipient == EffectTarget.Controller) context.controllerId
@@ -141,16 +144,25 @@ class AddManaOfChoiceExecutor(
         val amount = amountEvaluator.evaluate(state, effect.amount, context.copy(chosenColor = color))
         if (amount <= 0) return EffectResult.success(state)
 
+        val encounterOwner = if (OtariaEncounterMana.isEncounter(state, recipientId)) {
+            if (assignmentSource == null && context.sourceReferenceLost) {
+                return EffectResult.error(state, "The Otaria mana source has left")
+            }
+            OtariaEncounterMana.sourceOwner(
+                state, recipientId, assignmentSource?.entityId ?: context.sourceId,
+                assignmentSource ?: context.objectReferences.origin,
+            ) ?: return EffectResult.error(state, "Otaria mana needs an assigned encounter creature")
+        } else null
         // When riders are attached but no restriction is specified, store the mana as
         // restricted entries under [ManaRestriction.AnySpend] so riders are preserved
         // through the pool while the mana itself remains spendable on anything.
         val effectiveRestriction: ManaRestriction? = ChosenTypeManaRestriction.bind(effect.restriction, state, context.sourceId)
-            ?: if (effect.riders.isNotEmpty()) ManaRestriction.AnySpend else null
+            ?: if (effect.riders.isNotEmpty() || encounterOwner != null) ManaRestriction.AnySpend else null
 
         var newState = state.updateEntity(recipientId) { container ->
             val pool = container.get<ManaPoolComponent>() ?: ManaPoolComponent()
             val updated = if (effectiveRestriction != null) {
-                pool.addRestricted(color, amount, effectiveRestriction, effect.riders)
+                pool.addRestricted(color, amount, effectiveRestriction, effect.riders, assignedPermanent = encounterOwner)
             } else {
                 pool.add(color, amount)
             }

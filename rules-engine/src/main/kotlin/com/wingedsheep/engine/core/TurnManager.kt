@@ -13,6 +13,9 @@ import com.wingedsheep.engine.replacement.ActiveReplacements
 import com.wingedsheep.engine.handlers.DecisionHandler
 import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.handlers.effects.ZoneTransitionService
+import com.wingedsheep.engine.otaria.OtariaTurnPolicy
+import com.wingedsheep.engine.otaria.OtariaPhaseActions
+import com.wingedsheep.engine.otaria.OtariaEncounterMana
 import com.wingedsheep.engine.mechanics.combat.CombatManager
 import com.wingedsheep.engine.mechanics.combat.rules.TappedBlockBypass
 import com.wingedsheep.engine.mechanics.StateBasedActionChecker
@@ -79,7 +82,10 @@ import com.wingedsheep.sdk.scripting.Duration
  * its phase, so the extra-phase queue is drained there. The ending phase is absent — a phase added
  * during it would come after the turn's last phase.
  */
-private val PHASE_ENDING_STEPS = setOf(Step.DRAW, Step.PRECOMBAT_MAIN, Step.END_COMBAT, Step.POSTCOMBAT_MAIN)
+private val PHASE_ENDING_STEPS = setOf(
+    Step.DRAW, Step.PRECOMBAT_MAIN, Step.END_COMBAT, Step.POSTCOMBAT_MAIN,
+    Step.OTARIA_PREPARATION, Step.OTARIA_MOVEMENT, Step.OTARIA_EXPLORATION,
+)
 
 /**
  * Manages turn-based game flow: phases, steps, and turn transitions.
@@ -110,6 +116,13 @@ class TurnManager(
     val cleanupPhaseManager = CleanupPhaseManager(cardRegistry, decisionHandler, conditionEvaluator = zones.predicateEvaluator.conditions)
     val drawPhaseManager = DrawPhaseManager(cardRegistry, decisionHandler, effectExecutor, replacementProcessor, predicateEvaluator = zones.predicateEvaluator)
     val beginningPhaseManager = BeginningPhaseManager(cardRegistry, decisionHandler, cleanupPhaseManager, zones.predicateEvaluator)
+    internal val otariaPhaseActions = OtariaPhaseActions(cardRegistry, zones.predicateEvaluator, effectExecutor, zones)
+
+    internal fun finishOtariaEncounters(state: GameState): ExecutionResult =
+        com.wingedsheep.engine.otaria.OtariaEncounterLifecycle.finishEmpty(state, zones)
+
+    internal fun applyOtariaDepartures(state: GameState, events: List<GameEvent>): ExecutionResult =
+        com.wingedsheep.engine.otaria.OtariaEncounterLifecycle.departures(state, events, cardRegistry)
 
     // ── Delegate methods for external callers ──
 
@@ -220,7 +233,9 @@ class TurnManager(
 
         // Reset cards-drawn-this-turn count for ALL players (not just active player)
         // because "each turn" means every turn transition resets the count
-        for (pid in state.turnOrder) {
+        val turnTrackedActors = state.turnOrder +
+            state.priorityParticipants.filter { it !in state.turnOrder }
+        for (pid in turnTrackedActors) {
             newState = newState.updateEntity(pid) { container ->
                 container.with(CardsDrawnThisTurnComponent(count = 0))
                     .with(CardsPutIntoExileThisTurnComponent(count = 0))
@@ -251,7 +266,7 @@ class TurnManager(
         // what each of them did into their last-turn record. Everyone else keeps the record of their
         // own last turn across this boundary; the this-turn put count then restarts for all.
         val outgoingSide = state.activePlayerId?.let(state::sharedTurnTeam).orEmpty()
-        for (pid in state.turnOrder) {
+        for (pid in turnTrackedActors) {
             newState = newState.updateEntity(pid) { container ->
                 val withRecord = if (pid in outgoingSide) container.with(
                     com.wingedsheep.engine.state.components.player.LastTurnActivityComponent(
@@ -326,9 +341,32 @@ class TurnManager(
     private fun nextRoundNumber(state: GameState, next: EntityId): Int {
         val previous = state.activePlayerId ?: return state.roundNumber + 1
         if (previous == next) return state.roundNumber
-        val prevSeat = state.turnOrder.indexOf(previous)
-        val nextSeat = state.turnOrder.indexOf(next)
+        val encounters = state.otaria?.encounters.orEmpty()
+        val previousSeat = encounters[previous]?.explorerId ?: previous
+        val nextSeatId = encounters[next]?.explorerId ?: next
+        val prevSeat = state.turnOrder.indexOf(previousSeat)
+        val nextSeat = state.turnOrder.indexOf(nextSeatId)
+        if (prevSeat >= 0 && nextSeat == prevSeat && next in encounters) return state.roundNumber
         return if (prevSeat < 0 || nextSeat <= prevSeat) state.roundNumber + 1 else state.roundNumber
+    }
+
+    private fun nextTurnTeam(state: GameState, after: EntityId): EntityId {
+        val encounters = state.otaria?.encounters.orEmpty()
+        if (encounters.isEmpty()) return state.getNextTeam(after)
+        val eligible = state.priorityParticipants.toSet()
+        val order = state.turnOrder.flatMap { seat ->
+            listOf(seat) + encounters.entries.asSequence()
+                .filter { it.value.explorerId == seat && state.getEntity(it.key) != null }
+                .map { it.key }
+                .sortedBy { it.value }
+                .toList()
+        }
+        val index = order.indexOf(after)
+        if (index < 0) return state.getNextTeam(after)
+        return (1..order.size).asSequence()
+            .map { order[(index + it) % order.size] }
+            .firstOrNull { it in eligible }
+            ?: after
     }
 
     /**
@@ -678,7 +716,9 @@ class TurnManager(
         // is itself an inserted one, the natural turn resumes after the chain's anchor; an inserted
         // combat or beginning phase never falls through into the main phase that would normally
         // follow it, and a trailing main phase exists only when an AddMainPhaseEffect queued one.
-        if (currentStep in PHASE_ENDING_STEPS) {
+        val endsBeginningEarly = currentStep == Step.UPKEEP &&
+            OtariaTurnPolicy.nextStep(state, currentStep).phase != Phase.BEGINNING
+        if (currentStep in PHASE_ENDING_STEPS || endsBeginningEarly) {
             drainAdditionalPhase(state, activePlayer)?.let { return it }
             state.getEntity(activePlayer)?.get<InsertedPhasesResumeComponent>()?.let {
                 return resumeAfterInsertedPhases(state, activePlayer, it.anchor)
@@ -765,7 +805,7 @@ class TurnManager(
             }
         }
 
-        val nextStep = currentStep.next()
+        val nextStep = OtariaTurnPolicy.nextStep(state, currentStep)
 
         // CR 500.11 / 614.10 — to skip a step or phase is to proceed past it as though it didn't
         // exist. That has to happen *here*, before the StepChangedEvent below is built: that event
@@ -882,7 +922,7 @@ class TurnManager(
                 // The combat phase has now ended: remove every creature from combat (clear
                 // attacking/blocking and related components). Deferred from the end of combat step
                 // so end-of-combat abilities resolve while their attacking targets are still legal.
-                if (!combatAlreadyClosed) {
+                if (!combatAlreadyClosed && currentStep != Step.OTARIA_EXPLORATION) {
                     val endCombatResult = closeCombatPhase(
                         newState, combatPhaseRan = !skipsTurnPart(newState, Step.BEGIN_COMBAT, activePlayer)
                     )
@@ -1009,6 +1049,13 @@ class TurnManager(
                 newState = newState.withPriority(activePlayer)
             }
 
+            Step.OTARIA_PREPARATION, Step.OTARIA_MOVEMENT, Step.OTARIA_EXPLORATION -> {
+                val action = otariaPhaseActions.begin(newState.withPriority(activePlayer), activePlayer)
+                if (action.outcome !is Outcome.Done) return action.copy(events = events + action.events)
+                newState = action.state
+                events.addAll(action.events)
+            }
+
             Step.END -> {
                 // "Until the next end step" effects and copies wear off on entry to the end step,
                 // alongside the paired "return it at the beginning of the next end step" triggers.
@@ -1100,7 +1147,7 @@ class TurnManager(
         val currentPlayer = state.activePlayerId
             ?: return ExecutionResult.error(state, "No active player")
         val ready = state.copy(priorityPlayerId = null, priorityPassedBy = emptySet())
-        return selectNextTurn(ready, ready.getNextTeam(currentPlayer))
+        return selectNextTurn(ready, nextTurnTeam(ready, currentPlayer))
     }
 
     /**
@@ -1138,7 +1185,7 @@ class TurnManager(
                     }
                 }
                 bypassedOrdinarySeats = true
-                candidate = current.getNextTeam(candidate)
+                candidate = nextTurnTeam(current, candidate)
                 continue
             }
             // Synthetic bypasses insert an extra turn ahead of the ordinary seat walk; departed
@@ -1186,7 +1233,7 @@ class TurnManager(
                 current = spendPendingExtraTurn(current, team, began = false)
                 events.add(TurnSkippedEvent(candidate, extraSkip.context.sourceId))
                 previous = candidate
-                candidate = current.getNextTeam(candidate)
+                candidate = nextTurnTeam(current, candidate)
                 continue
             }
             if (!skips) {
@@ -1196,7 +1243,7 @@ class TurnManager(
             current = consumePendingTurnSkip(current, team)
             events.add(TurnSkippedEvent(candidate))
             previous = candidate
-            candidate = current.getNextTeam(candidate)
+            candidate = nextTurnTeam(current, candidate)
         }
     }
 
@@ -1273,7 +1320,7 @@ class TurnManager(
             return finishTurnSelection(state, frame.nextPlayerId, frame.followUps)
         val chosen = frame.options[response.optionIndex]
         val skipped = spendPendingExtraTurn(state, state.sharedTurnTeam(frame.nextPlayerId), began = false)
-        val result = selectNextTurn(skipped, skipped.getNextTeam(frame.nextPlayerId), frame.followUps + chosen,
+        val result = selectNextTurn(skipped, nextTurnTeam(skipped, frame.nextPlayerId), frame.followUps + chosen,
             previousPlayerId = frame.nextPlayerId)
         return result.copy(events = listOf(TurnSkippedEvent(frame.nextPlayerId, chosen.context.sourceId)) + result.events)
     }
@@ -1283,7 +1330,7 @@ class TurnManager(
         val nextTeam = state.sharedTurnTeam(nextPlayer)
         if (nextTeam.any { state.getEntity(it)?.has<SkipNextTurnComponent>() == true }) {
             val skipped = consumePendingTurnSkip(state, nextTeam)
-            val result = selectNextTurn(skipped, skipped.getNextTeam(nextPlayer), followUps,
+            val result = selectNextTurn(skipped, nextTurnTeam(skipped, nextPlayer), followUps,
                 previousPlayerId = nextPlayer)
             return result.copy(events = listOf(TurnSkippedEvent(nextPlayer)) + result.events)
         }
@@ -1352,6 +1399,36 @@ class TurnManager(
             current = result.state
             events.addAll(result.events)
             if (current.gameOver) return ExecutionResult.success(current, events)
+        }
+        val otaria = current.otaria
+        val selectedTurn = otaria?.turn
+        if (otaria != null && playerId in otaria.players &&
+            (selectedTurn == null || selectedTurn.turnNumber != current.turnNumber || selectedTurn.playerId != playerId)
+        ) {
+            return current.suspendForDecision(
+                question = { id ->
+                    ChooseOptionDecision(
+                        id = id,
+                        playerId = playerId,
+                        prompt = "Choose your action for this turn",
+                        context = DecisionContext(sourceName = "Explorer of Otaria"),
+                        options = listOf("Move", "Explore", "Prepare", "Combat"),
+                        optionMetadata = listOf(
+                            OptionMetadata(description = "Move one or two spaces after your main phase."),
+                            OptionMetadata(description = "Explore your terrain or a starred location."),
+                            OptionMetadata(description = "Add reserve cards to your library before drawing."),
+                            OptionMetadata(description = "Draw, then take a combat phase."),
+                        ),
+                    )
+                },
+                answer = OtariaTurnChoiceContinuation(playerId),
+                events = events,
+            )
+        }
+        val encounterMana = OtariaEncounterMana.chooseNext(current, playerId)
+        if (encounterMana != null) {
+            val result = encounterMana
+            return result.copy(events = events + result.events)
         }
         val skippers = untapStepSkippers(current, playerId)
         val pendingSkips = pendingUntapSkipsToConsume(current, playerId, skippers)
@@ -1456,9 +1533,13 @@ class TurnManager(
         val departed = order.filter { state.getEntity(it)?.has<PlayerLostComponent>() == true }
         if (departed.isEmpty()) return state
 
-        val fromTeam = state.teamOf(from).toHashSet()
-        val toTeam = state.teamOf(to).toHashSet()
-        val startIdx = order.indexOf(from)
+        val encounters = state.otaria?.encounters.orEmpty()
+        val fromSeat = encounters[from]?.explorerId ?: from
+        val toSeat = encounters[to]?.explorerId ?: to
+        if (fromSeat == toSeat) return state
+        val fromTeam = state.teamOf(fromSeat).toHashSet()
+        val toTeam = state.teamOf(toSeat).toHashSet()
+        val startIdx = order.indexOf(fromSeat)
         if (startIdx < 0) return state
         val passedOver = mutableListOf<EntityId>()
         // Walk the seats after the finished team until the next team is reached.
@@ -1775,9 +1856,12 @@ class TurnManager(
 
     private fun hasCombatFirstStrikeOrDoubleStrike(state: GameState): Boolean {
         val projected = state.projectedState
+        val retaliating = com.wingedsheep.engine.otaria.OtariaEncounterCombat
+            .retaliatingCreatures(state, projected, zones.predicateEvaluator, cardRegistry).toSet()
         return state.getBattlefield().any { entityId ->
             val container = state.getEntity(entityId) ?: return@any false
-            val isInCombat = container.has<AttackingComponent>() || container.has<BlockingComponent>()
+            val isInCombat = container.has<AttackingComponent>() || container.has<BlockingComponent>() ||
+                entityId in retaliating
             isInCombat && (projected.hasKeyword(entityId, Keyword.FIRST_STRIKE) || projected.hasKeyword(entityId, Keyword.DOUBLE_STRIKE))
         }
     }

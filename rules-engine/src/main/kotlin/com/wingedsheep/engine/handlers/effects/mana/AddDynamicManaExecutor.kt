@@ -5,10 +5,14 @@ import com.wingedsheep.engine.core.*
 import com.wingedsheep.engine.handlers.DecisionHandler
 import com.wingedsheep.engine.handlers.DynamicAmountEvaluator
 import com.wingedsheep.engine.handlers.EffectContext
+import com.wingedsheep.engine.handlers.ObjectReferenceEnvironment
 import com.wingedsheep.engine.handlers.effects.EffectExecutor
+import com.wingedsheep.engine.otaria.OtariaEncounterMana
 import com.wingedsheep.engine.state.GameState
+import com.wingedsheep.engine.state.ObjectRef
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.player.ManaPoolComponent
+import com.wingedsheep.engine.state.components.player.ManaSourceTag
 import com.wingedsheep.sdk.core.Color
 import com.wingedsheep.sdk.scripting.effects.AddDynamicManaEffect
 import com.wingedsheep.sdk.scripting.effects.ManaExpiry
@@ -49,11 +53,27 @@ class AddDynamicManaExecutor(
         val restriction = ChosenTypeManaRestriction.bind(effect.restriction, state, context.sourceId)
         val unit = context.manaUnitMultiplier
         val colors = effect.allowedColors.toList().sorted()
+        if (colors.isEmpty()) return EffectResult.success(state)
+        val encounterOwner = if (OtariaEncounterMana.isEncounter(state, context.controllerId)) {
+            if (context.sourceReferenceLost) return EffectResult.error(state, "The Otaria mana source has left")
+            OtariaEncounterMana.sourceOwner(
+                state, context.controllerId, context.sourceId, context.objectReferences.origin,
+            ) ?: return EffectResult.error(state, "Otaria mana needs an assigned encounter creature")
+        } else null
+        val sourceTag = if (encounterOwner != null) {
+            context.sourceId?.let { ManaProvenanceTracker.sourceTag(state, it) }
+        } else null
+        val references = if (encounterOwner != null && context.objectReferences.origin == null) {
+            context.objectReferences.copy(origin = context.sourceId?.let(state::objectRef))
+        } else context.objectReferences
 
         // Single color — just add it all
         if (colors.size <= 1) {
-            val color = colors.firstOrNull() ?: return EffectResult.success(state)
-            val newState = addMana(state, context.controllerId, mapOf(color to (if (effect.differentColors) 1 else amount) * unit), restriction, effect.expiry)
+            val color = colors.single()
+            val newState = addMana(
+                state, context.controllerId, mapOf(color to (if (effect.differentColors) 1 else amount) * unit),
+                restriction, effect.expiry, encounterOwner, sourceTag,
+            )
             return EffectResult.success(newState)
         }
 
@@ -77,6 +97,7 @@ class AddDynamicManaExecutor(
                 decisionHandler = decisionHandler,
                 unitMultiplier = unit,
                 differentColors = effect.differentColors,
+                objectReferences = references,
             )
         }
 
@@ -87,7 +108,7 @@ class AddDynamicManaExecutor(
         val continuation = AddDynamicManaContinuation(
             playerId = context.controllerId,
             sourceId = context.sourceId,
-            objectReferences = context.objectReferences,
+            objectReferences = references,
             sourceName = sourceName,
             totalAmount = amount,
             firstColor = firstColor,
@@ -135,6 +156,7 @@ class AddDynamicManaExecutor(
             decisionHandler: DecisionHandler = DecisionHandler(),
             unitMultiplier: Int = 1,
             differentColors: Boolean = false,
+            objectReferences: ObjectReferenceEnvironment = ObjectReferenceEnvironment(),
         ): EffectResult {
             val continuation = AddManaPipsContinuation(
                 playerId = playerId,
@@ -146,6 +168,7 @@ class AddDynamicManaExecutor(
                 expiry = expiry,
                 unitMultiplier = unitMultiplier,
                 differentColors = differentColors,
+                objectReferences = objectReferences,
             )
 
             val decisionResult = decisionHandler.createColorDecision(
@@ -179,17 +202,23 @@ class AddDynamicManaExecutor(
             playerId: com.wingedsheep.sdk.model.EntityId,
             amounts: Map<Color, Int>,
             restriction: ManaRestriction? = null,
-            expiry: ManaExpiry = ManaExpiry.END_OF_TURN
+            expiry: ManaExpiry = ManaExpiry.END_OF_TURN,
+            assignedPermanent: ObjectRef? = null,
+            source: ManaSourceTag? = null,
         ): GameState {
             return state.updateEntity(playerId) { container ->
                 var manaPool = container.get<ManaPoolComponent>() ?: ManaPoolComponent()
                 for ((color, amount) in amounts) {
                     if (amount > 0) {
-                        manaPool = when {
-                            restriction != null -> manaPool.addRestricted(color, amount, restriction, expiry = expiry)
-                            expiry != ManaExpiry.END_OF_TURN ->
-                                manaPool.addRestricted(color, amount, ManaRestriction.AnySpend, expiry = expiry)
-                            else -> manaPool.add(color, amount)
+                        manaPool = if (restriction != null || expiry != ManaExpiry.END_OF_TURN || assignedPermanent != null) {
+                            val added = manaPool.addRestricted(
+                                color, amount, restriction ?: ManaRestriction.AnySpend,
+                                expiry = expiry, assignedPermanent = assignedPermanent,
+                            )
+                            if (assignedPermanent != null && source != null) added.withRestrictedProvenance(source, amount)
+                            else added
+                        } else {
+                            manaPool.add(color, amount)
                         }
                     }
                 }

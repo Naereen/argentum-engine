@@ -1112,7 +1112,9 @@ export type GameStore = {
   spectatorNames: readonly string[]
   /** The last forced question this client answered for the player, shown as a brief notice. */
   autoAnswerNotice: import('./handlers/autoAnswer').AutoAnswerNotice | null
+  initiativeResultNotice: { key: number; explorerName: string; explorerIsYou: boolean; outcome: 'explorerWon' | 'encounterWon'; rolls: string | null } | null
   dismissAutoAnswerNotice: () => void
+  dismissInitiativeResultNotice: () => void
   /**
    * Automatic ordering just put several of the player's triggers on the stack in an order they
    * could have chosen — a tip shown once, the first time it happens.

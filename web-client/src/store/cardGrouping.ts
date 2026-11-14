@@ -40,7 +40,7 @@ export interface GroupedCard {
  * group, but the moment one of them is buffed, tapped, attacks, etc. it splits back out.
  */
 export function computeCardGroupKey(card: ClientCard): string {
-  const parts: string[] = [card.name]
+  const parts: string[] = [card.name, `controller:${card.controllerId}`]
 
   // Cards with counters are different
   const counterEntries = Object.entries(card.counters).filter(([, count]) => count && count > 0)

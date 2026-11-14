@@ -93,6 +93,13 @@ internal class EffectApplicator(
         }
 
         for (entityId in effect.affectedEntities) {
+            if (!com.wingedsheep.engine.otaria.OtariaRange.containsInProjection(
+                    state,
+                    projectedValues[effect.sourceId]?.controllerId ?: effect.controllerId,
+                    entityId,
+                    projectedValues[entityId]?.controllerId,
+                )
+            ) continue
             val values = projectedValues.getOrPut(entityId) { MutableProjectedValues() }
 
             when (val mod = effect.modification) {

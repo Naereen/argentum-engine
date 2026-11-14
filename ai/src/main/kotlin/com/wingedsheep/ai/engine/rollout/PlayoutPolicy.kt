@@ -10,6 +10,7 @@ import com.wingedsheep.ai.engine.budget.SearchAllowances
 import com.wingedsheep.ai.engine.knowledge.IntentCatalog
 import com.wingedsheep.ai.engine.knowledge.IntentTag
 import com.wingedsheep.engine.core.CastSpell
+import com.wingedsheep.engine.core.ClaimOtariaMirariVictory
 import com.wingedsheep.engine.core.DeclareAttackers
 import com.wingedsheep.engine.core.GameAction
 import com.wingedsheep.engine.core.PassPriority
@@ -43,7 +44,8 @@ import kotlin.math.exp
  *    find that out; this decides 40% of them from the state alone, and a playout crosses ~20–30.
  * 2. Combat declarations → [CombatSeed] / `chooseBlockers(useSimulation = false)`, the heuristic
  *    halves of `CombatAdvisor` with the simulation halves cut off.
- * 3. Land drop → always, if legal. There is no board on which skipping a land drop is the play, and
+ * 3. An immediate Otaria victory → always; otherwise a land drop → always, if legal. There is no
+ *    board on which skipping a land drop is the play, and
  *    making it a softmax entry would only add noise.
  * 4. Otherwise → softmax over a zero-simulation priority score, with passing as one of the options.
  * 5. Targets → [TargetSelection]'s heuristic rank only.
@@ -103,6 +105,8 @@ class PlayoutPolicy(
                 state, action, playerId, useSimulation = false, budget = noSearch
             ) to rng
         }
+
+        legalActions.firstOrNull { it.action is ClaimOtariaMirariVictory }?.let { return it.action to rng }
 
         val candidates = (if (forced) legalActions else MeaningfulActionFilter.filterMeaningful(legalActions))
             .filter { it.affordable && !it.isManaAbility }

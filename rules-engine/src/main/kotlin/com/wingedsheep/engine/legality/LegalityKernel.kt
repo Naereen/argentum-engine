@@ -1,5 +1,6 @@
 package com.wingedsheep.engine.legality
 
+import com.wingedsheep.engine.core.turnOrderIndex
 import com.wingedsheep.engine.handlers.ConditionEvaluator
 import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.handlers.actions.spell.CastZoneResolver
@@ -77,7 +78,7 @@ class LegalityKernel(
         is ActivationRestriction.OnlyDuringYourTurn ->
             if (!state.isActiveTurnFor(playerId)) "This ability can only be activated during your turn" else null
         is ActivationRestriction.BeforeStep ->
-            if (state.step.ordinal >= restriction.step.ordinal)
+            if (state.step.turnOrderIndex >= restriction.step.turnOrderIndex)
                 "This ability can only be activated before ${restriction.step.displayName}"
             else null
         is ActivationRestriction.DuringPhase ->

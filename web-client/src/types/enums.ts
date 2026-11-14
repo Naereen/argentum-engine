@@ -7,6 +7,9 @@ export enum Phase {
   COMBAT = 'COMBAT',
   POSTCOMBAT_MAIN = 'POSTCOMBAT_MAIN',
   ENDING = 'ENDING',
+  OTARIA_PREPARATION = 'OTARIA_PREPARATION',
+  OTARIA_MOVEMENT = 'OTARIA_MOVEMENT',
+  OTARIA_EXPLORATION = 'OTARIA_EXPLORATION',
 }
 
 export const PhaseDisplayNames: Record<Phase, string> = {
@@ -15,6 +18,9 @@ export const PhaseDisplayNames: Record<Phase, string> = {
   [Phase.COMBAT]: 'Combat Phase',
   [Phase.POSTCOMBAT_MAIN]: 'Postcombat Main Phase',
   [Phase.ENDING]: 'Ending Phase',
+  [Phase.OTARIA_PREPARATION]: 'Preparation Phase',
+  [Phase.OTARIA_MOVEMENT]: 'Movement Phase',
+  [Phase.OTARIA_EXPLORATION]: 'Exploration Phase',
 }
 
 /**
@@ -39,6 +45,9 @@ export enum Step {
   // Ending Phase
   END = 'END',
   CLEANUP = 'CLEANUP',
+  OTARIA_PREPARATION = 'OTARIA_PREPARATION',
+  OTARIA_MOVEMENT = 'OTARIA_MOVEMENT',
+  OTARIA_EXPLORATION = 'OTARIA_EXPLORATION',
 }
 
 export const StepDisplayNames: Record<Step, string> = {
@@ -55,6 +64,9 @@ export const StepDisplayNames: Record<Step, string> = {
   [Step.POSTCOMBAT_MAIN]: 'Postcombat Main Phase',
   [Step.END]: 'End Step',
   [Step.CLEANUP]: 'Cleanup Step',
+  [Step.OTARIA_PREPARATION]: 'Preparation Phase',
+  [Step.OTARIA_MOVEMENT]: 'Movement Phase',
+  [Step.OTARIA_EXPLORATION]: 'Exploration Phase',
 }
 
 /**
@@ -89,6 +101,9 @@ export const StepShortNames: Record<Step, string> = {
   [Step.POSTCOMBAT_MAIN]: 'Main 2',
   [Step.END]: 'End Step',
   [Step.CLEANUP]: 'Cleanup',
+  [Step.OTARIA_PREPARATION]: 'Preparation',
+  [Step.OTARIA_MOVEMENT]: 'Movement',
+  [Step.OTARIA_EXPLORATION]: 'Exploration',
 }
 
 /**
@@ -938,6 +953,7 @@ export enum GameOverReason {
   DISCONNECTION = 'DISCONNECTION',
   CARD_EFFECT = 'CARD_EFFECT',
   DRAW = 'DRAW',
+  OTARIA_MIRARI = 'OTARIA_MIRARI',
 }
 
 /**

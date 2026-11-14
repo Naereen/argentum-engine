@@ -11,9 +11,7 @@ import com.wingedsheep.sdk.model.Printing
  * Set Code: TOR
  * Release Date: 2002-02-04
  *
- * Scaffolded as the canonical home for cards reprinted in later sets (e.g. Eighth
- * Edition). Only the cards relocated here so far are implemented; the set is
- * otherwise incomplete.
+ * Canonical home for Torment's cards and later reprints. The set remains incomplete.
  */
 object TormentSet : MtgSet {
 

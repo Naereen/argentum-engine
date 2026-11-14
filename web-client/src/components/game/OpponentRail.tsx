@@ -19,7 +19,7 @@ import { useResponsiveContext } from './board/shared'
 import { SpeedGauge } from './overlay'
 import { HelpTip } from '../help/HelpTip'
 import { isLoneTargetRequirement } from '@/utils/targeting.ts'
-import { defendingPlayerOf } from '@/utils/combatTargets'
+import { defendingPlayerOf, tableSideOf } from '@/utils/combatTargets'
 import { AttackRelationBadge, useAttackRelation } from './AttackRelationTag'
 import { EmoteBubble } from '../tableTalk/EmoteBubble'
 import { SeatPortrait, useHasSeatPortrait } from './SeatPortrait'
@@ -865,7 +865,10 @@ function RailChip({
     if (!gameState || opponent.hasLost) return false
     const ids = targetingState?.validTargets ?? decisionSelectionState?.validOptions
     if (!ids || ids.length === 0) return false
-    return ids.some((id) => gameState.cards[id]?.controllerId === playerId)
+    return ids.some((id) => {
+      const card = gameState.cards[id]
+      return card != null && tableSideOf(card, gameState.otaria?.encounters) === playerId
+    })
   }, [gameState, targetingState?.validTargets, decisionSelectionState?.validOptions, playerId, opponent.hasLost])
 
   /* ── Combat: this chip is a defender drop/click target while declaring ── */
@@ -881,7 +884,7 @@ function RailChip({
     if (!declaringAttackers || !combatState || !gameState) return 0
     return Object.entries(combatState.attackerTargets).filter(([, targetId]) => {
       if (targetId === playerId) return true
-      return defendingPlayerOf(targetId, gameState.cards) === playerId
+      return defendingPlayerOf(targetId, gameState.cards, gameState.otaria?.encounters) === playerId
     }).length
   }, [declaringAttackers, combatState, gameState, playerId])
 
@@ -892,7 +895,8 @@ function RailChip({
     if (!declaringAttackers || !combatState || !gameState) return []
     return combatState.validAttackTargets
       .map((id) => gameState.cards[id])
-      .filter((c): c is ClientCard => !!c && defendingPlayerOf(c.id, gameState.cards) === playerId)
+      .filter((c): c is ClientCard => !!c &&
+        defendingPlayerOf(c.id, gameState.cards, gameState.otaria?.encounters) === playerId)
   }, [declaringAttackers, combatState, gameState, playerId])
   // Attack restriction: while declaring attackers, this living seat can't be attacked at
   // all — neither the player (attack left/right, teammate) nor any of their
@@ -1400,7 +1404,7 @@ function RailChip({
 
       {/* Planeswalker flyout — assign attacks to this player's planeswalkers
           without sliding their board in. */}
-      {hovered && isDefenderTarget && hasSelectedAttackers && attackablePlaneswalkers.length > 0 && (
+      {hovered && !spectatorMode && hasSelectedAttackers && attackablePlaneswalkers.length > 0 && (
         <div
           style={{
             position: 'absolute',

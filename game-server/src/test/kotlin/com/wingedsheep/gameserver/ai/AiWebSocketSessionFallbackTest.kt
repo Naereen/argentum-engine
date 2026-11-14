@@ -4,12 +4,18 @@ import com.wingedsheep.ai.ActionResponse
 import com.wingedsheep.ai.AiPlayerController
 import com.wingedsheep.engine.core.GameAction
 import com.wingedsheep.engine.core.PassPriority
+import com.wingedsheep.engine.core.ChooseColorDecision
+import com.wingedsheep.engine.core.ColorChosenResponse
+import com.wingedsheep.engine.core.DecisionContext
+import com.wingedsheep.engine.core.SubmitDecision
+import com.wingedsheep.engine.core.SelectCardsDecision
 import com.wingedsheep.engine.view.ClientGameState
 import com.wingedsheep.engine.view.LegalActionInfo
 import com.wingedsheep.engine.view.StateDelta
 import com.wingedsheep.gameserver.protocol.ServerMessage
 import com.wingedsheep.sdk.core.Phase
 import com.wingedsheep.sdk.core.Step
+import com.wingedsheep.sdk.core.Color
 import com.wingedsheep.sdk.model.EntityId
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
@@ -109,6 +115,64 @@ class AiWebSocketSessionFallbackTest : FunSpec({
 
             submitted shouldBe listOf(pass to "fallback-origin")
             verify(exactly = 0) { controller.chooseAction(any(), any(), any(), any()) }
+        } finally {
+            socket.close()
+        }
+    }
+
+    test("an authorized encounter decision is answered under its actor even with no legal actions") {
+        val actor = EntityId.of("encounter")
+        val decision = ChooseColorDecision("mana", actor, "Choose encounter mana", DecisionContext())
+        val response = ColorChosenResponse("mana", Color.GREEN)
+        val controller = mockk<AiPlayerController>()
+        every { controller.chooseAction(state, emptyList(), decision, emptyList()) } returns
+            ActionResponse.SubmitDecision(actor, response)
+        val submitted = mutableListOf<Pair<GameAction, String?>>()
+        val socket = AiWebSocketSession(
+            aiPlayerId = player,
+            controller = controller,
+            thinkingDelayMs = 0,
+            onActionReady = { _, action, epoch -> submitted.add(action to epoch) },
+            onMulliganKeep = {},
+            onMulliganTake = {},
+            onBottomCards = { _, _ -> },
+        )
+        try {
+            socket.handleServerMessage(ServerMessage.StateUpdate(
+                state = state, events = emptyList(), legalActions = emptyList(),
+                pendingDecision = decision, interactionEpoch = "encounter-entry",
+            ))
+            submitted shouldBe listOf(SubmitDecision(actor, response) to "encounter-entry")
+            verify(exactly = 1) { controller.chooseAction(state, emptyList(), decision, emptyList()) }
+        } finally {
+            socket.close()
+        }
+    }
+
+    test("actions-only fallback also answers an encounter decision using its actor") {
+        val actor = EntityId.of("encounter")
+        val decision = SelectCardsDecision(
+            "cards", actor, "Choose encounter cards", DecisionContext(),
+            options = emptyList(), minSelections = 0, maxSelections = 0,
+        )
+        val submitted = mutableListOf<GameAction>()
+        val socket = AiWebSocketSession(
+            aiPlayerId = player,
+            controller = mockk(),
+            thinkingDelayMs = 0,
+            onActionReady = { _, action, _ -> submitted.add(action) },
+            onMulliganKeep = {},
+            onMulliganTake = {},
+            onBottomCards = { _, _ -> },
+            allowActionsOnlyFallback = true,
+        )
+        try {
+            socket.handleServerMessage(ServerMessage.StateDeltaUpdate(
+                delta = StateDelta(players = emptyList()), events = emptyList(), legalActions = emptyList(),
+                pendingDecision = decision, interactionEpoch = "encounter-fallback",
+            ))
+            submitted.size shouldBe 1
+            (submitted.single() as SubmitDecision).playerId shouldBe actor
         } finally {
             socket.close()
         }

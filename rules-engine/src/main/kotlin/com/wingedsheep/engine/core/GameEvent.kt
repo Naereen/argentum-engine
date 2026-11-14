@@ -2042,8 +2042,8 @@ data class DiscardRequiredEvent(
 
 /**
  * Why a library was shuffled. Only [SPELL_OR_ABILITY] satisfies "a spell or ability causes a
- * player to shuffle their library" (Psychogenic Probe) — the other two are game rules shuffling
- * as part of setting up, not effects, so no ability may key off them.
+ * player to shuffle their library" (Psychogenic Probe) — the other causes are game rules,
+ * not effects, so no ability limited to spells and abilities may key off them.
  */
 enum class ShuffleCause {
     /** An effect of a resolving spell, an ability, or a replacement effect (CR 701.24). */
@@ -2053,7 +2053,10 @@ enum class ShuffleCause {
     GAME_SETUP,
 
     /** Shuffling a hand back to take a mulligan (CR 103.5). */
-    MULLIGAN
+    MULLIGAN,
+
+    /** The Explorer of Otaria preparation action. */
+    OTARIA_PREPARATION,
 }
 
 /**
@@ -2064,9 +2067,8 @@ enum class ShuffleCause {
  * still shuffled and still emits (CR 701.24e), as is a search-then-shuffle where the found cards
  * are held out of the randomization (CR 701.24b).
  *
- * [cause] defaults to [ShuffleCause.SPELL_OR_ABILITY] because every shuffle that happens once the
- * game is under way is caused by one; the two game-rules shuffles ([ShuffleCause.GAME_SETUP],
- * [ShuffleCause.MULLIGAN]) name themselves at their emission sites.
+ * [cause] defaults to [ShuffleCause.SPELL_OR_ABILITY]; game-rule shuffles name their cause at
+ * their emission sites.
  */
 @Serializable
 @SerialName("LibraryShuffledEvent")

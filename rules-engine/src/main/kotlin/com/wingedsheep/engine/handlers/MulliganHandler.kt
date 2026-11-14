@@ -493,6 +493,12 @@ class MulliganHandler(
                 it.without<com.wingedsheep.engine.state.components.player.NontokenPermanentsPutOntoBattlefieldThisTurnComponent>()
             }
         })
+        if (current.otaria != null) {
+            val player = current.activePlayerId
+                ?: return ExecutionResult.error(current, "No active player")
+            val started = turnManager.finishTurnStart(current, player, emptyList())
+            return started.copy(events = events + started.events)
+        }
         val stepEvents = mutableListOf<GameEvent>()
         if (untapStep) {
             val untap = turnManager.beginningPhaseManager.performUntapStep(current)

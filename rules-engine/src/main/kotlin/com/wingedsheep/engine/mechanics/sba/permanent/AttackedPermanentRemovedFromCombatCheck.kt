@@ -35,7 +35,8 @@ class AttackedPermanentRemovedFromCombatCheck : StateBasedActionCheck {
             val controllerChanged = projected.getController(entityId) != snapshot.controllerId
             val protectorChanged = Battles.protectorOf(state, entityId) != snapshot.protectorId
             // CR 506.4e: a permanent attacked as both stays in combat while it is still either one.
-            val stillAttackable = projected.isPlaneswalker(entityId) || projected.isBattle(entityId)
+            val stillAttackable = projected.isPlaneswalker(entityId) || projected.isBattle(entityId) ||
+                com.wingedsheep.engine.otaria.OtariaEncounterCombat.actorOfCreature(state, projected, entityId) != null
             if (controllerChanged || protectorChanged || !stillAttackable) removed += entityId
         }
         if (removed.isEmpty()) return ExecutionResult.success(state)

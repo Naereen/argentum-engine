@@ -1,5 +1,6 @@
 package com.wingedsheep.ai.engine
 
+import com.wingedsheep.engine.core.turnOrderIndex
 import com.wingedsheep.engine.event.DelayedTriggeredAbility
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.ZoneKey
@@ -63,7 +64,7 @@ internal object LeavesThisTurn {
         if (delayed.stepScope != DelayedTriggerStepScope.STEP) return false
         if (delayed.fireOnPlayerId != null && delayed.fireOnPlayerId != state.activePlayerId) return false
         if ((delayed.notBeforeTurn ?: 0) > state.turnNumber) return false
-        return step.ordinal > state.step.ordinal
+        return step.turnOrderIndex > state.step.turnOrderIndex
     }
 
     private fun departing(effect: Effect): List<EntityId> = when (effect) {

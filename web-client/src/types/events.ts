@@ -10,6 +10,7 @@ import type { FlipLanding, FlipTable } from './messages'
  * driving animations and displaying game log.
  */
 export type ClientEvent =
+  | OtariaNoticeEvent
   | CreatureEnlistedEvent
   | AttackCancelledEvent
   | LifeChangedEvent
@@ -64,6 +65,14 @@ export type ClientEvent =
   | PermanentsSacrificedEvent
   | TargetReselectedEvent
   | DecisionMadeEvent
+
+export interface OtariaNoticeEvent {
+  readonly type: 'otariaNotice'
+  readonly description: string
+  readonly initiativeOutcome?: 'explorerWon' | 'encounterWon' | null
+  readonly explorerId?: EntityId | null
+  readonly initiativeRolls?: string | null
+}
 
 // ============================================================================
 // Life/Damage Events

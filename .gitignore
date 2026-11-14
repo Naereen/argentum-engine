@@ -1,4 +1,5 @@
 # Created by https://www.toptal.com/developers/gitignore/api/gradle,kotlin,intellij+all,osx
+/simulation-results/
 # Edit at https://www.toptal.com/developers/gitignore?templates=gradle,kotlin,intellij+all,osx
 
 ### Intellij+all ###
@@ -76,6 +77,7 @@ fabric.properties
 
 # Editor-based Rest Client
 .idea/httpRequests
+.vscode/
 
 # Android studio 3.1+ serialized cache file
 .idea/caches/build_file_checksums.ser
@@ -217,3 +219,7 @@ scripts/__pycache__/
 __pycache__/
 *.py[cod]
 e2e-scenarios/.ui-check/
+
+# Local files (GNU Nano)
+*~
+**/bin/

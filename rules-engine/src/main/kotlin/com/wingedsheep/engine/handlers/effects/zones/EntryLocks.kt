@@ -38,7 +38,7 @@ object EntryLocks {
     fun cantEnter(
         state: GameState,
         entityId: EntityId,
-        fromZone: Zone,
+        fromZone: Zone?,
         cardRegistry: CardRegistry,
         predicateEvaluator: PredicateEvaluator,
         faceDown: Boolean = false
@@ -68,7 +68,8 @@ object EntryLocks {
                     }
                     else -> continue
                 }
-                if (lock.fromZones?.contains(fromZone) == false) continue
+                val fromZones = lock.fromZones
+                if (fromZones != null && (fromZone == null || fromZone !in fromZones)) continue
                 val controller = state.projectedState.getController(sourceId) ?: continue
                 if (predicateEvaluator.matches(
                         probe, state.projectedState, entityId, lock.filter,

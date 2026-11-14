@@ -4,7 +4,7 @@ import type { RefObject } from 'react'
 import { useGameStore } from '@/store/gameStore'
 import type { ClientPlayer } from '@/types'
 import { hand } from '@/types'
-import { useHasLegalActions, useRevealedLibraryTopCard, useIdentityColor, useIsSharedLifeTeamGame, useZoneCards } from '@/store/selectors'
+import { selectGameState, useHasLegalActions, useRevealedLibraryTopCard, useIdentityColor, useIsSharedLifeTeamGame, useZoneCards } from '@/store/selectors'
 import { useResponsiveContext } from './shared'
 import { Battlefield } from './Battlefield'
 import { CardRow, HAND_FAN_EDGE_MARGIN } from './HandZone'
@@ -721,7 +721,8 @@ export function BoardNamePlate({
   // Mirrors the rail chip: while declaring, a living seat that can't be attacked at all — neither
   // the player nor anything they defend — dims with a 🚫, so the legal boards read at a glance.
   // Your own plate (team-game bottom row) never reads as restricted — it's the attacking seat.
-  const cards = useGameStore((state) => state.gameState?.cards)
+  const gameState = useGameStore(selectGameState)
+  const cards = gameState?.cards
   const ownPlayerId = useGameStore((state) => state.playerId)
   const actingSeat = combatState?.actingSeat ?? ownPlayerId
   const isAttackRestricted =
@@ -730,7 +731,7 @@ export function BoardNamePlate({
     playerId !== actingSeat &&
     !isDefenderTarget &&
     !(combatState?.validAttackTargets ?? []).some(
-      (id) => id !== playerId && defendingPlayerOf(id, cards) === playerId,
+      (id) => id !== playerId && defendingPlayerOf(id, cards, gameState?.otaria?.encounters) === playerId,
     )
   const attackRelation = useAttackRelation(playerId)
 

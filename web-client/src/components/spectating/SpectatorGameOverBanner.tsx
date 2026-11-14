@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import overlay from '../game/overlay/GameOverlays.module.css'
+import { OTARIA_MIRARI_GAME_OVER_TEXT } from '../game/overlay/gameOverReason'
 import { AnteResultPanel } from '../ante/AnteResultPanel'
 import { GameOverReason } from '@/types'
 import type { EntityId } from '@/types'
@@ -21,6 +22,7 @@ interface Seat {
 export function spectatorGameOverReason(gameOver: SpectatorGameOver, seats: readonly Seat[]): string {
   if (gameOver.message) return gameOver.message
   if (gameOver.winnerIds.length === 0) return 'Nobody won — the game is a draw.'
+  if (gameOver.reason === GameOverReason.OTARIA_MIRARI) return OTARIA_MIRARI_GAME_OVER_TEXT
   const losers = seats.filter((s) => !gameOver.winnerIds.includes(s.playerId))
   if (losers.length !== 1) {
     // A pod or a team game is won by outlasting several seats; naming how the last one fell

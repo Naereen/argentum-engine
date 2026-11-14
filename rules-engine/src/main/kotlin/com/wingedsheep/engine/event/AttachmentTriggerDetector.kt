@@ -300,7 +300,10 @@ class AttachmentTriggerDetector(
                 matcher.matchesActivationKind(trigger, event)
             }
             is EventPattern.TurnFaceUpEvent -> {
-                event is TurnFaceUpEvent && event.entityId == attachedEntityId
+                event is TurnFaceUpEvent && event.entityId == attachedEntityId &&
+                    com.wingedsheep.engine.otaria.OtariaRange.observesFaceUp(
+                        state, auraId, auraControllerId, event.controllerId,
+                    )
             }
             // "Whenever enchanted creature becomes the target of an Aura spell" (Brinebound Gift).
             // Identity with the host settles the binding, then the full SELF matcher runs every

@@ -33,6 +33,7 @@ import com.wingedsheep.sdk.core.Color
 import com.wingedsheep.sdk.core.ManaCost
 import com.wingedsheep.sdk.core.ManaSymbol
 import com.wingedsheep.sdk.dsl.Effects
+import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.costs.CostAtom
 import com.wingedsheep.sdk.scripting.costs.PayCost
 import com.wingedsheep.sdk.scripting.effects.TurnFaceUpEffect
@@ -59,9 +60,10 @@ class TurnFaceUpHandler(
 ) : ActionHandler<TurnFaceUp> {
     override val actionType: KClass<TurnFaceUp> = TurnFaceUp::class
 
-    // Lets restricted mana tagged "spend only to turn permanents face up" (Overgrown Zealot,
-    // Creeping Peeper) be recognized when paying a turn-face-up cost from the pool.
-    private val faceUpContext = SpellPaymentContext(isTurnFaceUpAction = true)
+    private fun faceUpContext(state: GameState, sourceId: EntityId) = SpellPaymentContext(
+        isTurnFaceUpAction = true,
+        assignedPermanent = com.wingedsheep.engine.otaria.OtariaEncounterMana.memberRef(state, sourceId),
+    )
 
     /**
      * The turn-up cost as a *concrete* amount of mana, with the chosen X folded in.
@@ -81,6 +83,7 @@ class TurnFaceUpHandler(
     }
 
     override fun validate(state: GameState, action: TurnFaceUp): String? {
+        val faceUpContext = faceUpContext(state, action.sourceId)
         if (!state.hasPriority(action.playerId)) {
             return "You don't have priority"
         }
@@ -191,6 +194,7 @@ class TurnFaceUpHandler(
     }
 
     override fun execute(state: GameState, action: TurnFaceUp): ExecutionResult {
+        val faceUpContext = faceUpContext(state, action.sourceId)
         var currentState = state
         val events = mutableListOf<GameEvent>()
 

@@ -83,6 +83,16 @@ internal class AttackPhaseManager(
         // same set; the handler has to agree with it because actions are client-supplied.
         val attackingTeam = state.teamOf(attackingPlayer)
         val opponents = state.getOpponents(attackingPlayer)
+        val otariaTargets = if (state.otaria != null) {
+            CombatDefenders.attackTargets(state, projected, attackingPlayer).toSet()
+        } else null
+        val joinedManagers = attackers.mapNotNull { (attackerId, defenderId) ->
+            val actor = com.wingedsheep.engine.otaria.OtariaEncounterCombat.actorOfCreature(state, projected, defenderId)
+                ?: return@mapNotNull null
+            val participant = projected.getController(attackerId) ?: return@mapNotNull null
+            val manager = state.otaria?.encounters?.get(actor)?.managerId ?: return@mapNotNull null
+            participant to manager
+        }.toSet()
 
         // Validate band declarations (CR 702.22c).
         val bandValidation = validateBands(state, attackers, bands, projected)
@@ -94,6 +104,13 @@ internal class AttackPhaseManager(
             if (validation != null) {
                 return ExecutionResult.error(state, validation)
             }
+            if (otariaTargets != null && defenderId !in otariaTargets) {
+                return ExecutionResult.error(state, "Invalid Otaria attack target")
+            }
+            val attackerController = projected.getController(attackerId)
+            if (attackerController != null && (attackerController to defenderId) in joinedManagers) {
+                return ExecutionResult.error(state, "An encounter participant cannot attack its manager")
+            }
             // Validate the defender: an opponent player, a planeswalker controlled by an opponent,
             // or a battle protected by an opponent. A battle is keyed off its *protector*, never
             // its controller (CR 310.9b), which is what lets a player attack a Siege they control.
@@ -102,10 +119,12 @@ internal class AttackPhaseManager(
                     Battles.canBeAttackedBy(state, defenderId, attackingPlayer, opponents.toSet())
                 val isAttackablePlaneswalker = projected.isPlaneswalker(defenderId) &&
                     projected.getController(defenderId) !in attackingTeam
-                if (!isAttackableBattle && !isAttackablePlaneswalker) {
+                val isAttackableEncounter = com.wingedsheep.engine.otaria.OtariaEncounterCombat
+                    .actorOfCreature(state, projected, defenderId) in CombatDefenders.legalDefendingPlayers(state, attackingPlayer)
+                if (!isAttackableBattle && !isAttackablePlaneswalker && !isAttackableEncounter) {
                     return ExecutionResult.error(
                         state,
-                        "Invalid attack target: must be an opponent, their planeswalker, or a battle they protect"
+                        "Invalid attack target: must be an opponent, their planeswalker, a battle they protect, or an encounter creature"
                     )
                 }
                 if (defenderId !in state.getBattlefield()) {
@@ -483,10 +502,27 @@ internal class AttackPhaseManager(
             }
         }
 
+        val joinedEvents = mutableListOf<GameEvent>()
+        newState.otaria?.let { initialMode ->
+            var mode = initialMode
+            for ((attackerId, defenderId) in attackers) {
+                val participant = projected.getController(attackerId) ?: continue
+                if (participant !in mode.players) continue
+                val actor = com.wingedsheep.engine.otaria.OtariaEncounterCombat
+                    .actorOfCreature(state, projected, defenderId) ?: continue
+                val encounter = mode.encounters[actor] ?: continue
+                if (participant in encounter.participants) continue
+                mode = mode.copy(encounters = mode.encounters + (
+                    actor to encounter.copy(participants = encounter.participants + participant)
+                ))
+                joinedEvents.add(OtariaEncounterJoinedEvent(actor, participant))
+            }
+            newState = newState.copy(otaria = mode)
+        }
         val attackerNames = attackers.keys.map { state.getEntity(it)?.get<CardComponent>()?.name ?: "Creature" }
         return ExecutionResult.success(
             newState,
-            taxEvents + exertEvents + listOf(
+            taxEvents + exertEvents + joinedEvents + listOf(
                 AttackersDeclaredEvent(
                     attackers.keys.toList(),
                     attackerNames,

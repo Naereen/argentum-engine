@@ -29,6 +29,9 @@ class ContinuationHandler(
         // Core engine resumers
         registerModule(EffectAndTriggerContinuationResumer(services, effectRunner))
         registerModule(MiscContinuationResumer(services, effectRunner))
+        val otariaResumer = OtariaContinuationResumer(services)
+        registerModule(otariaResumer)
+        registerAutoResumerModule(otariaResumer)
 
         // Core engine auto-resumers
         registerAutoResumerModule(CoreAutoResumerModule(services, effectRunner))

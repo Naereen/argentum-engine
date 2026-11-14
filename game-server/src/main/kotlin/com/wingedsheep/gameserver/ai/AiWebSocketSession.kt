@@ -289,7 +289,7 @@ class AiWebSocketSession(
         // If we have legal actions or a pending decision addressed to us, it's our turn.
         // Don't rely on state.priorityPlayerId — it may be stale when using a cached state
         // from a previous StateUpdate combined with a newer StateDeltaUpdate's legal actions.
-        val isOurDecision = pendingDecision?.playerId == aiPlayerId
+        val isOurDecision = pendingDecision != null
         val hasLegalActions = legalActions.isNotEmpty()
 
         if (!hasLegalActions && !isOurDecision) {
@@ -354,7 +354,7 @@ class AiWebSocketSession(
     ) {
         if (legalActions.isEmpty() && pendingDecision == null) return
 
-        val isOurDecision = pendingDecision?.playerId == aiPlayerId
+        val isOurDecision = pendingDecision != null
         if (!isOurDecision && legalActions.isEmpty()) return
 
         delay(thinkingDelayMs)
@@ -364,7 +364,7 @@ class AiWebSocketSession(
                 is com.wingedsheep.engine.core.SelectManaSourcesDecision -> {
                     logger.info("AI fallback: auto-paying mana sources")
                     ActionResponse.SubmitDecision(
-                        aiPlayerId,
+                        pendingDecision.playerId,
                         com.wingedsheep.engine.core.ManaSourcesSelectedResponse(
                             decisionId = pendingDecision.id, autoPay = true
                         )
@@ -373,7 +373,7 @@ class AiWebSocketSession(
                 is com.wingedsheep.engine.core.AssignDamageDecision -> {
                     logger.info("AI fallback: using default damage assignment")
                     ActionResponse.SubmitDecision(
-                        aiPlayerId,
+                        pendingDecision.playerId,
                         com.wingedsheep.engine.core.DamageAssignmentResponse(
                             decisionId = pendingDecision.id,
                             assignments = pendingDecision.defaultAssignments
@@ -383,7 +383,7 @@ class AiWebSocketSession(
                 is com.wingedsheep.engine.core.CombatResolutionDecision -> {
                     logger.info("AI fallback: confirming default combat damage board")
                     ActionResponse.SubmitDecision(
-                        aiPlayerId,
+                        pendingDecision.playerId,
                         com.wingedsheep.engine.core.CombatResolutionResponse(
                             decisionId = pendingDecision.id,
                             edges = pendingDecision.edges.map {
@@ -399,7 +399,7 @@ class AiWebSocketSession(
                     logger.warn("AI fallback: no cached state for SelectCardsDecision '{}', picking first {} option(s)",
                         pendingDecision.prompt, pendingDecision.minSelections)
                     ActionResponse.SubmitDecision(
-                        aiPlayerId,
+                        pendingDecision.playerId,
                         com.wingedsheep.engine.core.CardsSelectedResponse(
                             decisionId = pendingDecision.id,
                             selectedCards = pendingDecision.options.take(pendingDecision.minSelections)
@@ -573,6 +573,7 @@ class AiWebSocketSession(
             isGameOver = delta.isGameOver ?: previous.isGameOver,
             winnerId = if (delta.winnerId != null) delta.winnerId else previous.winnerId,
             dayNight = delta.dayNight ?: previous.dayNight,
+            otaria = if (delta.otariaCleared == true) null else delta.otaria ?: previous.otaria,
             combat = combat,
             gameLog = gameLog,
         )

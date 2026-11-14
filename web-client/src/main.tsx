@@ -34,6 +34,9 @@ const LlmTournamentPage = lazy(() =>
 const AiSandboxPage = lazy(() =>
   import('./components/aiSandbox/AiSandboxPage').then(({ AiSandboxPage }) => ({ default: AiSandboxPage }))
 )
+const OtariaPlaytestPage = lazy(() =>
+  import('./components/otaria/OtariaPlaytestPage').then(({ OtariaPlaytestPage }) => ({ default: OtariaPlaytestPage }))
+)
 const LibraryPage = lazy(() =>
   import('./pages/LibraryPage').then(({ LibraryPage }) => ({ default: LibraryPage }))
 )
@@ -114,6 +117,7 @@ createRoot(rootElement).render(
           <Route path="/cubes/edit/:cubeId" element={<CubeBuilderPage />} />
           <Route path="/cubes/shared/:code" element={<SharedCubePage />} />
           <Route path="/scenario" element={<ScenarioBuilderPage />} />
+          <Route path="/otaria" element={<OtariaPlaytestPage />} />
           <Route path="/sets" element={<SetGuidePage />} />
           <Route path="/set-completion" element={<SetCompletionPage />} />
           <Route path="/login/verify" element={<LoginVerifyPage />} />

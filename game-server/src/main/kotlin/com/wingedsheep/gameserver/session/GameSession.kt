@@ -36,6 +36,7 @@ import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.model.CardEntry
 import com.wingedsheep.sdk.model.Deck
 import com.wingedsheep.sdk.model.EntityId
+import com.wingedsheep.sdk.scripting.effects.CombatDeclaration
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
 import org.slf4j.LoggerFactory
@@ -702,12 +703,12 @@ class GameSession(
         }.sortedBy { it.seatIndex }
     }
 
-    fun buildSpectatorState(): ServerMessage.SpectatorStateUpdate? {
+    fun buildSpectatorState(): ServerMessage.SpectatorStateUpdate? = synchronized(stateLock) {
         val state = gameState ?: return null
         val seated = getPlayers()
         if (seated.size < 2) return null
         val seats = seated.map { SpectatorSeat(it.playerId, it.playerName) }
-        return spectatorStateBuilder.buildState(state, seats, seatInfos(), sessionId)
+        spectatorStateBuilder.buildState(state, seats, seatInfos(), sessionId)
     }
 
     /**
@@ -1247,6 +1248,12 @@ class GameSession(
         var renaming: SeatIdentities? = null
         if (names != null) {
             val sent = engineClientState.cards.keys + engineClientState.zones.flatMap { it.cardIds } +
+                engineClientState.otaria?.players.orEmpty().flatMap { player ->
+                    player.privateData?.reserve.orEmpty().map { it.id }
+                } +
+                engineLegalActions.mapNotNull {
+                    (it.action as? com.wingedsheep.engine.core.ClaimOtariaMirariVictory)?.mirariId
+                } +
                 names.idsIn(engineClientEvents, clientEventsSerializer) +
                 (enginePendingDecision?.let { names.idsIn(it, PendingDecision.serializer()) } ?: emptySet())
             names.noteSeen(state, playerId, visibility, sent)
@@ -1663,21 +1670,12 @@ class GameSession(
             return ActionResult.Failure("Player does not have priority")
         }
 
-        // During combat declaration steps, submit an empty declaration instead of PassPriority.
-        // The engine requires declarations before allowing priority to pass.
-        // Turn ownership is team-wide in a shared team turn (CR 805.10a) — the same gate the
-        // engine's PassPriorityHandler / DeclareBlockersHandler use — so the active player's
-        // teammate isn't handed a DeclareBlockers (or a bare pass) the engine will refuse.
-        val action: GameAction = when {
-            state.step == Step.DECLARE_ATTACKERS && state.isActiveTurnFor(playerId) &&
-                state.getEntity(playerId)?.get<AttackersDeclaredThisCombatComponent>() == null ->
-                DeclareAttackers(playerId, emptyMap())
-
-            state.step == Step.DECLARE_BLOCKERS && !state.isActiveTurnFor(playerId) &&
-                state.getEntity(playerId)?.get<BlockersDeclaredThisCombatComponent>() == null ->
-                DeclareBlockers(playerId, emptyMap())
-
-            else -> PassPriority(playerId)
+        // Only a seat that owes a combat declaration substitutes an empty one for a pass.
+        // In multiplayer, an unattacked player has no blockers to declare.
+        val action: GameAction = when (CombatDeclarationControl.owedDeclaration(state, playerId)) {
+            CombatDeclaration.ATTACKERS -> DeclareAttackers(playerId, emptyMap())
+            CombatDeclaration.BLOCKERS -> DeclareBlockers(playerId, emptyMap())
+            null -> PassPriority(playerId)
         }
         val (result, undoPolicy) = actionProcessor.process(state, action)
 
@@ -1740,6 +1738,8 @@ class GameSession(
     fun getGameOverReason(): GameOverReason? {
         val state = gameState ?: return null
         if (!state.gameOver) return null
+
+        if (state.otaria?.mirariVictoryClaimed == true) return GameOverReason.OTARIA_MIRARI
 
         // No winner is a draw. A stalled or abandoned game, or every remaining player losing at once,
         // is DRAW; a draw the engine reached while someone was still in — "the game is a draw"
@@ -2247,6 +2247,10 @@ class GameSession(
         seatIdentities.mapValues { it.value.toPersistent() }
     }
 
+    internal fun getSpectatorNamesForPersistence(): PersistentSeatNames? = synchronized(stateLock) {
+        spectatorStateBuilder.namesForPersistence()
+    }
+
     /**
      * Get the last processed message IDs for persistence.
      */
@@ -2267,6 +2271,7 @@ class GameSession(
         lastIds: Map<EntityId, String>,
         sideboardLists: Map<EntityId, List<String>> = emptyMap(),
         seatNames: Map<EntityId, PersistentSeatNames> = emptyMap(),
+        spectatorNames: PersistentSeatNames? = null,
     ) {
         synchronized(stateLock) {
             gameState = state?.initializeObjectIdentities()
@@ -2280,6 +2285,7 @@ class GameSession(
             lastProcessedMessageId.putAll(lastIds)
             seatIdentities.clear()
             seatNames.forEach { (seat, names) -> seatIdentities[seat] = SeatIdentities.fromPersistent(names) }
+            spectatorStateBuilder.restoreNames(spectatorNames)
             lastSentState.clear()
         }
     }

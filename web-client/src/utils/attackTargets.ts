@@ -1,4 +1,5 @@
-import type { EntityId } from '@/types'
+import type { ClientCard, ClientOtariaState, ClientPlayer, EntityId } from '@/types'
+import { defendingPlayerOf } from '@/utils/combatTargets'
 
 /**
  * What one attacker may legally attack, as the server sent it: its entry in the sparse
@@ -24,4 +25,30 @@ export function canAttackTarget(
   targetId: EntityId,
 ): boolean {
   return attackTargetsFor(combat, attackerId).includes(targetId)
+}
+
+/** Present the server's targets for attackers still needing a defender, including permanents. */
+export function unassignedAttackTargets(
+  combat: Parameters<typeof attackTargetsFor>[0] & {
+    readonly selectedAttackers: readonly EntityId[]
+    readonly attackerTargets: Readonly<Record<EntityId, EntityId>>
+  },
+  gameState: {
+    readonly players: readonly Pick<ClientPlayer, 'playerId' | 'name'>[]
+    readonly cards: Readonly<Record<EntityId, Pick<ClientCard, 'name' | 'controllerId' | 'protectorId'> | undefined>>
+    readonly otaria?: Pick<ClientOtariaState, 'encounters'> | null
+  },
+): { id: EntityId; name: string; seatId: EntityId }[] {
+  const unassigned = combat.selectedAttackers.filter((id) => !combat.attackerTargets[id])
+  return combat.validAttackTargets
+    .filter((id) => unassigned.some((attacker) => canAttackTarget(combat, attacker, id)))
+    .map((id) => {
+      const player = gameState.players.find((p) => p.playerId === id)
+      if (player) return { id, name: player.name, seatId: id }
+      const card = gameState.cards[id]
+      const seatId = defendingPlayerOf(id, gameState.cards, gameState.otaria?.encounters)
+      const seat = gameState.players.find((p) => p.playerId === seatId)
+      const name = card?.name || `Permanent ${id}`
+      return { id, name: seat ? `${name} (${seat.name})` : name, seatId }
+    })
 }

@@ -6,6 +6,7 @@ import com.wingedsheep.engine.core.ManaPoolChangedEvent
 import com.wingedsheep.engine.handlers.DynamicAmountEvaluator
 import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.handlers.effects.EffectExecutor
+import com.wingedsheep.engine.otaria.OtariaEncounterMana
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.player.ManaPoolComponent
 import com.wingedsheep.sdk.scripting.effects.AddColorlessManaEffect
@@ -33,21 +34,29 @@ class AddColorlessManaExecutor(
             return EffectResult.success(state)
         }
 
+        val encounterOwner = if (OtariaEncounterMana.isEncounter(state, context.controllerId)) {
+            if (context.sourceReferenceLost) return EffectResult.error(state, "The Otaria mana source has left")
+            OtariaEncounterMana.sourceOwner(
+                state, context.controllerId, context.sourceId, context.objectReferences.origin,
+            ) ?: return EffectResult.error(state, "Otaria mana needs an assigned encounter creature")
+        } else null
+        val restriction = ChosenTypeManaRestriction.bind(effect.restriction, state, context.sourceId)
+        val tagged = encounterOwner != null || restriction != null ||
+            effect.riders.isNotEmpty() || effect.expiry != ManaExpiry.END_OF_TURN
         var newState = state.updateEntity(context.controllerId) { container ->
             val manaPool = container.get<ManaPoolComponent>() ?: ManaPoolComponent()
-            // Duration and riders travel on individual entries. AnySpend keeps tagged mana
-            // spendable on any cost without retaining unrelated mana (mirrors AddManaExecutor).
-            val updatedPool = when {
-                effect.restriction != null ->
-                    manaPool.addRestricted(null, amount, ChosenTypeManaRestriction.bind(effect.restriction, state, context.sourceId)!!, effect.riders, expiry = effect.expiry)
-                effect.riders.isNotEmpty() || effect.expiry != ManaExpiry.END_OF_TURN ->
-                    manaPool.addRestricted(null, amount, ManaRestriction.AnySpend, effect.riders, expiry = effect.expiry)
-                else -> manaPool.addColorless(amount)
+            val updatedPool = if (tagged) {
+                manaPool.addRestricted(
+                    null, amount, restriction ?: ManaRestriction.AnySpend, effect.riders,
+                    expiry = effect.expiry, assignedPermanent = encounterOwner,
+                )
+            } else {
+                manaPool.addColorless(amount)
             }
             container.with(updatedPool)
         }
 
-        newState = if (effect.restriction == null && effect.riders.isEmpty() && effect.expiry == ManaExpiry.END_OF_TURN) {
+        newState = if (!tagged) {
             ManaProvenanceTracker.tagAddedMana(newState, context.controllerId, context.sourceId, amount, null, context)
         } else {
             ManaProvenanceTracker.tagAddedRestrictedMana(newState, context.controllerId, context.sourceId, amount, context)

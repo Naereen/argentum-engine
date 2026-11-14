@@ -228,7 +228,9 @@ object EffectWalker {
         else -> false
     }
 
-    private val STEPS_BEFORE_OUR_LAST_MAIN = Step.entries.takeWhile { it != Step.END }.toSet() - Step.UNTAP
+    private val STEPS_BEFORE_OUR_LAST_MAIN =
+        Step.entries.takeWhile { it != Step.END }.toSet() - Step.UNTAP +
+            setOf(Step.OTARIA_PREPARATION, Step.OTARIA_EXPLORATION)
 
     /**
      * Every effect slot on [script] that the walk knows how to read: the spell effect, each

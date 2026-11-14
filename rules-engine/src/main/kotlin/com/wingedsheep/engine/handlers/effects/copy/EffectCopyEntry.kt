@@ -36,6 +36,18 @@ object EffectCopyEntry {
         entrants: Map<EntityId, EntityId>,
         registry: CardRegistry,
         evaluator: PredicateEvaluator,
+    ): EffectResult? = prepare(
+        state, context, entrants, registry, evaluator,
+    ) { asking, id, replacement -> EffectCopyEntryContinuation(effect, asking, id, replacement) }
+
+    /** Prepare copy choices without requiring the caller to fabricate an SDK effect to replay. */
+    fun prepare(
+        state: GameState,
+        context: EffectContext,
+        entrants: Map<EntityId, EntityId>,
+        registry: CardRegistry,
+        evaluator: PredicateEvaluator,
+        answer: (EffectContext, EntityId, EntersAsCopy) -> AnswerContinuation,
     ): EffectResult? {
         val playerOrder = state.apnapOrder.withIndex().associate { it.value to it.index }
         for ((id, controller) in entrants.entries.sortedBy { playerOrder[it.value] ?: Int.MAX_VALUE }) {
@@ -64,9 +76,26 @@ object EffectCopyEntry {
                 maxSelections = 1, useTargetingUI = replacement.copyFromZone == Zone.BATTLEFIELD,
             ) }
             return EffectResult.from(state.suspendForDecision(question,
-                EffectCopyEntryContinuation(effect, context, id, replacement)))
+                answer(context, id, replacement)))
         }
         return null
+    }
+
+    /** Record a pre-entry copy selection without changing the entrant before it enters. */
+    fun recordAnswer(
+        state: GameState,
+        context: EffectContext,
+        entityId: EntityId,
+        replacement: EntersAsCopy,
+        response: DecisionResponse,
+    ): EffectContext? {
+        if (response !is CardsSelectedResponse) return null
+        val selected = response.selectedCards.singleOrNull()
+        if (selected == null && (response.selectedCards.isNotEmpty() || !replacement.optional)) return null
+        val copied = selected?.let { state.getEntity(it)?.copiableCardComponent() }
+        if (selected != null && copied == null) return null
+        val choice = EntryCopyChoice(replacement, copied, selected)
+        return context.copy(entryCopies = context.entryCopies + (entityId to choice))
     }
 
     /**

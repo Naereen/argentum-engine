@@ -125,7 +125,13 @@ class ExploreEffectExecutor(
             val revealedComponent = state.turnOrder.fold(RevealedToComponent(emptySet())) { acc, pid ->
                 acc.withPlayer(pid)
             }
-            val stateWithRevealed = state.updateEntity(topCardId) { it.with(revealedComponent) }
+            var stateWithRevealed = state.updateEntity(topCardId) { it.with(revealedComponent) }
+            if (state.otaria != null) {
+                stateWithRevealed = com.wingedsheep.engine.handlers.effects.library.LibraryRevealUtils.markRevealed(
+                    stateWithRevealed, listOf(topCardId), state.turnOrder,
+                    com.wingedsheep.engine.state.components.identity.LibraryPositionAnchor.TOP,
+                )
+            }
 
             val (stateAfterCounter, counterEvents) = addPlusOneCounter(stateWithRevealed, exploringCreatureId, context)
 

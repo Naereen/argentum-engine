@@ -1,7 +1,10 @@
 package com.wingedsheep.engine.handlers.effects.library
 
+import com.wingedsheep.engine.handlers.effects.LibraryPlacement
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.ZoneKey
+import com.wingedsheep.engine.state.components.identity.CardComponent
+import com.wingedsheep.engine.state.components.identity.LibraryPositionAnchor
 import com.wingedsheep.engine.state.components.identity.RevealedToComponent
 import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.model.EntityId
@@ -14,6 +17,12 @@ import com.wingedsheep.sdk.model.EntityId
  * shuffled library is once again opaque to everyone.
  */
 object LibraryRevealUtils {
+
+    fun placementAnchor(placement: LibraryPlacement): LibraryPositionAnchor? = when (placement) {
+        LibraryPlacement.Top, is LibraryPlacement.NthFromTop -> LibraryPositionAnchor.TOP
+        LibraryPlacement.Bottom -> LibraryPositionAnchor.BOTTOM
+        LibraryPlacement.Shuffled -> null
+    }
 
     /**
      * Zones whose contents every player can see, so a card moved from one into a library at a
@@ -69,17 +78,24 @@ object LibraryRevealUtils {
         state: GameState,
         cardIds: Collection<EntityId>,
         playerIds: Set<EntityId>,
+        anchor: LibraryPositionAnchor? = null,
     ): GameState {
         if (cardIds.isEmpty()) return state
         val observers = playerIds + playerIds.map(state::actorFor)
+        val anchors = if (state.otaria != null && anchor != null) {
+            observers.associateWith { anchor }
+        } else {
+            emptyMap()
+        }
         var newState = state
         for (cardId in cardIds) {
             val container = newState.getEntity(cardId) ?: continue
-            val current = container.get<RevealedToComponent>()?.playerIds ?: emptySet()
-            if (current == observers) continue
+            val current = container.get<RevealedToComponent>()
+            val replacement = RevealedToComponent(observers, anchors)
+            if (current == replacement || (current == null && observers.isEmpty())) continue
             newState = newState.updateEntity(cardId) { c ->
                 if (observers.isEmpty()) c.without<RevealedToComponent>()
-                else c.with(RevealedToComponent(observers))
+                else c.with(replacement)
             }
         }
         return newState
@@ -89,7 +105,8 @@ object LibraryRevealUtils {
     fun markRevealed(
         state: GameState,
         cardIds: Collection<EntityId>,
-        playerIds: Collection<EntityId>
+        playerIds: Collection<EntityId>,
+        anchor: LibraryPositionAnchor? = null,
     ): GameState {
         if (cardIds.isEmpty() || playerIds.isEmpty()) return state
         // Knowledge is acquired now, while the control window is active, even if that window
@@ -97,15 +114,19 @@ object LibraryRevealUtils {
         val observers = playerIds.toSet() + playerIds.map(state::actorFor)
         var newState = state
         for (cardId in cardIds) {
-            newState = newState.updateEntity(cardId) { container ->
-                val existing = container.get<RevealedToComponent>()
-                val merged = if (existing == null) {
-                    RevealedToComponent(observers)
-                } else {
-                    existing.copy(playerIds = existing.playerIds + observers)
+            val container = newState.getEntity(cardId)
+            val existing = container?.get<RevealedToComponent>()
+            val ownerId = container?.get<CardComponent>()?.ownerId
+            val inLibrary = ownerId != null && cardId in newState.getZone(ZoneKey(ownerId, Zone.LIBRARY))
+            val anchors = if (newState.otaria != null && inLibrary && anchor != null) {
+                val previous = existing?.libraryPositionAnchors.orEmpty()
+                previous + observers.associateWith { observer ->
+                    val known = previous[observer]
+                    if (known == null || known == anchor) anchor else LibraryPositionAnchor.BOTH
                 }
-                container.with(merged)
-            }
+            } else existing?.libraryPositionAnchors.orEmpty()
+            val merged = RevealedToComponent(existing?.playerIds.orEmpty() + observers, anchors)
+            if (existing != merged) newState = newState.updateEntity(cardId) { it.with(merged) }
         }
         return newState
     }

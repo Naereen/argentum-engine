@@ -53,6 +53,7 @@ class SpectatingHandler(
 
         val spectatorState = gameSession.buildSpectatorState()
         if (spectatorState != null) {
+            if (gameSession.getSpectatorNamesForPersistence() != null) ctx.gameRepository.save(gameSession)
             ctx.sender.send(session, spectatorState)
         }
 
@@ -116,6 +117,7 @@ class SpectatingHandler(
 
         val spectatorState = gameSession.buildSpectatorState()
         if (spectatorState != null) {
+            if (gameSession.getSpectatorNamesForPersistence() != null) ctx.gameRepository.save(gameSession)
             ctx.sender.send(session, spectatorState)
         }
 

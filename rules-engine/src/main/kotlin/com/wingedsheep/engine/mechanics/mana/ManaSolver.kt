@@ -16,6 +16,7 @@ import com.wingedsheep.engine.handlers.PredicateContext
 import com.wingedsheep.engine.handlers.PredicateEvaluator
 import com.wingedsheep.engine.legalactions.utils.donorCardsActivatedAbilities
 import com.wingedsheep.engine.legalactions.utils.donorGrantReaches
+import com.wingedsheep.engine.otaria.OtariaEncounterMana
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.activeManaSpendingScope
@@ -58,7 +59,6 @@ import com.wingedsheep.sdk.scripting.ActivatedAbility
 import com.wingedsheep.sdk.scripting.AdditionalManaOnSourceTap
 import com.wingedsheep.sdk.scripting.TappedForManaType
 import com.wingedsheep.sdk.scripting.AdditionalManaOnTap
-import com.wingedsheep.sdk.scripting.DampLandManaProduction
 import com.wingedsheep.sdk.scripting.GrantActivatedAbility
 import com.wingedsheep.sdk.scripting.TimingRule
 import com.wingedsheep.sdk.scripting.MultiplyManaOnSourceTap
@@ -68,7 +68,6 @@ import com.wingedsheep.sdk.scripting.references.Player
 import com.wingedsheep.sdk.scripting.targets.EffectTarget
 import com.wingedsheep.engine.state.components.identity.FaceDownComponent
 import com.wingedsheep.sdk.scripting.values.DynamicAmount
-import com.wingedsheep.engine.state.components.identity.faceUpCardDefinition
 
 /**
  * Represents the mana production capability of a source.
@@ -485,6 +484,11 @@ class ManaSolver private constructor(
          */
         xManaRestriction: Set<Color> = emptySet()
     ): ManaSolution? {
+        // Only the activation payer currently floats auto-produced mana into a creature's
+        // individual reserve. Other payment paths must use already attributed floating mana.
+        if (OtariaEncounterMana.isEncounter(state, playerId) &&
+            (spellContext?.isAbilityActivation != true || spellContext.assignedPermanent == null)
+        ) return null
         if (cost.snowCount > 0) {
             return solveWithSnow(state, playerId, cost, xValue, excludeSources, spellContext, precomputedSources, xManaRestriction)
         }
@@ -494,6 +498,23 @@ class ManaSolver private constructor(
             // pass may give those pips to lands the generic part then needed. Retry with it first.
             ?: if (attempt.sawGenericBarredSource) solveOnce(state, playerId, cost, xValue, excludeSources,
                 spellContext, precomputedSources, xManaRestriction, attempt, preferGenericBarred = true) else null
+    }
+
+    private fun otariaSourceCanAutoPay(
+        state: GameState,
+        playerId: EntityId,
+        source: ManaSource,
+        context: SpellPaymentContext?,
+    ): Boolean {
+        if (!OtariaEncounterMana.isEncounter(state, playerId)) return true
+        if (context?.isAbilityActivation != true || context.assignedPermanent == null ||
+            OtariaEncounterMana.sourceOwner(state, playerId, source.entityId) != context.assignedPermanent
+        ) return false
+        // The activation fast path cannot yet attribute or choose separately produced bonuses,
+        // and paying life on an encounter's behalf needs the creature-damage rules.
+        return source.bonusManaPerTap == 0 && source.bonusManaColorlessPerTap == 0 &&
+            source.compositeBonusMana.isEmpty() && !source.hasPainCost &&
+            source.colorPainCost.values.all { it == 0 } && source.colorlessPainCost == 0
     }
 
     /** What one [solveOnce] pass saw, for [solve]'s retry decision. */
@@ -534,6 +555,7 @@ class ManaSolver private constructor(
         }
         val availableSources = rawSources
             .filter { it.entityId !in excludeSources && state.manaAbilitySourceAllowed(playerId, it.entityId, predicateEvaluator) }
+            .filter { otariaSourceCanAutoPay(state, playerId, it, spellContext) }
             // Auto-pay must not silently sacrifice permanents (e.g. Treasure tokens).
             // The bonus-mana accounting in canPay() still counts these via
             // sacrificeSelfManaBySource(), but the solver itself never picks them.
@@ -1346,6 +1368,7 @@ class ManaSolver private constructor(
         val candidates = sources.filter { source ->
             source.isSnow && source.entityId !in excludeSources &&
                 state.manaAbilitySourceAllowed(playerId, source.entityId, predicateEvaluator) &&
+                otariaSourceCanAutoPay(state, playerId, source, spellContext) &&
                 !source.requiresSacrifice && source.tapPermanentsSubCost == null &&
                 source.colorActivationManaCost.values.all { it == 0 } &&
                 (source.restriction == null || spellContext != null && source.restriction.isSatisfiedBy(spellContext)) &&
@@ -1620,6 +1643,10 @@ class ManaSolver private constructor(
 
         return battlefieldCards.mapNotNull { entityId ->
             if (!state.manaAbilitySourceAllowed(playerId, entityId, predicateEvaluator)) return@mapNotNull null
+            if (spellContext != null && OtariaEncounterMana.isEncounter(state, playerId) &&
+                (spellContext.assignedPermanent == null ||
+                    OtariaEncounterMana.sourceOwner(state, playerId, entityId) != spellContext.assignedPermanent)
+            ) return@mapNotNull null
             val container = state.getEntity(entityId) ?: return@mapNotNull null
 
             // Must be untapped
@@ -2275,7 +2302,8 @@ class ManaSolver private constructor(
             // `bonusManaPerTap` (Virtue of Strength's rulings say so explicitly).
             .map { source -> augmentWithSourceTapManaMultiplier(state, source, manaStatics) }
             .let { sources ->
-                if (hasDampLandManaProduction(state)) applyLandManaDampening(sources) else sources
+                val dampeners = LandManaDampening.sources(state, cardRegistry)
+                if (dampeners.isEmpty()) sources else applyLandManaDampening(state, sources, dampeners)
             }
             // CR 205.4g / 107.4h: a snow permanent's mana pays {S} and counts as "{S} spent".
             .map { source -> if (projected.isSnow(source.entityId)) source.copy(isSnow = true) else source }
@@ -2842,35 +2870,18 @@ class ManaSolver private constructor(
     }
 
     /**
-     * Check if any permanent on the battlefield has DampLandManaProduction.
-     *
-     * Deliberately *not* folded into [ManaStaticsIndex]: this runs once per
-     * [findAvailableManaSources] call rather than once per candidate source, so it is O(battlefield)
-     * already and was never part of the quadratic problem. It also walks a different entity set
-     * (`turnOrder` × `getBattlefield(playerId)`, face-down included), and moving it would have meant
-     * reconciling that difference for no measurable gain.
-     */
-    private fun hasDampLandManaProduction(state: GameState): Boolean {
-        for (playerId in state.turnOrder) {
-            for (entityId in state.getBattlefield(playerId)) {
-                val cardDef = state.getEntity(entityId)?.faceUpCardDefinition(cardRegistry) ?: continue
-                if (cardDef.script.staticAbilities.any { it is DampLandManaProduction }) {
-                    return true
-                }
-            }
-        }
-        return false
-    }
-
-    /**
      * Apply Damping Sphere mana dampening to land sources.
      * Lands that would produce 2+ total mana are converted to produce 1 colorless instead.
      */
-    private fun applyLandManaDampening(sources: List<ManaSource>): List<ManaSource> {
+    private fun applyLandManaDampening(
+        state: GameState,
+        sources: List<ManaSource>,
+        dampeners: List<EntityId>,
+    ): List<ManaSource> {
         return sources.map { source ->
             // Only dampen lands; non-land mana sources (mana dorks, mana rocks) are unaffected
             val totalMana = source.manaAmount + source.bonusManaPerTap + source.compositeBonusMana.values.sum()
-            if (source.isLand && totalMana >= 2) {
+            if (source.isLand && totalMana >= 2 && LandManaDampening.affects(state, dampeners, source.entityId)) {
                 source.copy(
                     exactIndependentTap = false,
                     producesColors = emptySet(),
@@ -3045,6 +3056,8 @@ class ManaSolver private constructor(
         /** Internal recursion tally for coloured pips relaxed by [offBattlefieldColorFixers]. */
         colorFixersCommitted: Int = 0
     ): Boolean {
+        val encounter = OtariaEncounterMana.isEncounter(state, playerId)
+        if (encounter && phyrexianLifePipsCommitted > 0) return false
         // A Phyrexian pip may be paid with 2 life instead of its color. Try each distinct pip
         // choice before the mana-only solver below; recursive calls see a strictly smaller cost.
         // Paying down to exactly 0 is legal, though state-based actions will make the player lose.
@@ -3053,7 +3066,7 @@ class ManaSolver private constructor(
         // or a non-mana ability's cost, and every such prohibition covers both alike.
         val life = if (state.isLifePaymentBlocked(playerId, LifePaymentPurpose.ACTIVATE_ABILITY)) 0 else (state.lifeTotal(playerId) - reservedLife).coerceAtLeast(0)
         if (phyrexianLifePipsCommitted > 0 && phyrexianLifePipsCommitted * 2 > life) return false
-        if (allowPhyrexianLife && (phyrexianLifePipsCommitted + 1) * 2 <= life) {
+        if (!encounter && allowPhyrexianLife && (phyrexianLifePipsCommitted + 1) * 2 <= life) {
             val triedColors = mutableSetOf<Color>()
             for (pip in cost.phyrexianSymbols) {
                 val lifeColor = pip.phyrexianLifeColor ?: continue
@@ -3097,6 +3110,7 @@ class ManaSolver private constructor(
             val floating = pool.allocateFloating(cost, spellContext,
                 xValue * cost.xCount.coerceAtLeast(1), xManaRestriction)
             if (floating?.pool?.dischargedObligations?.containsAll(pending) == true) return true
+            if (encounter) return false
             if (spellContext?.isAbilityActivation != true && scopedPlanner != null) {
                 return scopedPlanner.invoke().plan(state, playerId, cost, spellContext,
                     xValue * cost.xCount.coerceAtLeast(1), xManaRestriction, excludeSources,
@@ -3134,6 +3148,8 @@ class ManaSolver private constructor(
 
         // Check if we can tap sources for the remaining cost (including remaining X)
         if (solve(state, playerId, remainingCost, xRemainingToPay, excludeSources, spellContext, precomputedSources, xManaRestriction) != null) return true
+        // Aggregate bonus/source shortcuts do not retain which encounter creature owns the mana.
+        if (encounter) return false
 
         // A mana ability that functions from the hand or graveyard and turns {N} into N mana of any
         // color (Jack-o'-Lantern) adds no mana, so the bonus tally below skips it — what it adds is
@@ -3222,13 +3238,25 @@ class ManaSolver private constructor(
         val poolComponent = state.getEntity(playerId)?.get<ManaPoolComponent>()
         val floatingMana = if (poolComponent != null) {
             val eligibleRestricted = poolComponent.restrictedMana.count {
-                it.restriction.isEligibleForPayment(spellContext)
+                it.isEligibleForPayment(spellContext)
             }
             poolComponent.white + poolComponent.blue + poolComponent.black +
                 poolComponent.red + poolComponent.green + poolComponent.colorless +
                 eligibleRestricted
         } else {
             0
+        }
+
+        if (OtariaEncounterMana.isEncounter(state, playerId)) {
+            if (spellContext?.isAbilityActivation != true || spellContext.assignedPermanent == null) {
+                return floatingMana
+            }
+            val sources = findAvailableManaSources(state, playerId, spellContext)
+            return floatingMana + sources
+                .filter { state.manaAbilitySourceAllowed(playerId, it.entityId, predicateEvaluator) }
+                .filter { !it.requiresSacrifice && it.tapPermanentsSubCost == null }
+                .filter { otariaSourceCanAutoPay(state, playerId, it, spellContext) }
+                .sumOf { it.manaAmount }
         }
 
         // Add untapped mana sources (including bonus mana from auras and multi-mana sources).

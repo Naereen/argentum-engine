@@ -1,6 +1,7 @@
 package com.wingedsheep.engine.legalactions
 
 import com.wingedsheep.engine.registry.CardRegistry
+import com.wingedsheep.engine.otaria.OtariaRules
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.combat.AttackingComponent
 import com.wingedsheep.engine.state.components.identity.CardComponent
@@ -287,6 +288,12 @@ object MeaningfulActionFilter {
 
         val meaningfulActions = legalActions.filter(::isMeaningful)
 
+        // A claim ends the game immediately, even with our own spell or an opponent's spell on
+        // the stack. Do not silently pass a window in which the player could choose to claim it.
+        if (meaningfulActions.any { it.actionType == "ClaimOtariaMirariVictory" }) {
+            return AutoPassVerdict(false, "STOP: Explorer of Otaria Mirari victory can be claimed")
+        }
+
         // ── Rule 4: the stack response ──
         if (state.stack.isNotEmpty()) {
             return stackVerdict(state, playerId, meaningfulActions, stopsMode, cardRegistry, ownStackStops)
@@ -375,6 +382,7 @@ object MeaningfulActionFilter {
         if (state.priorityPlayerId != playerId) return false
         if (state.pendingDecision != null) return false
         if (state.stack.isNotEmpty()) return false
+        if (state.otaria != null && OtariaRules.mirariVictoryCandidates(state, playerId).isNotEmpty()) return false
 
         val isMyTurn = state.isActiveTurnFor(playerId)
         if (isLastWindowBeforeDeckingDraw(state, playerId)) return false
@@ -523,6 +531,9 @@ object MeaningfulActionFilter {
             meaningfulActions, "My first strike damage step",
         )
 
+        Step.OTARIA_PREPARATION, Step.OTARIA_MOVEMENT, Step.OTARIA_EXPLORATION ->
+            respondOrPass(meaningfulActions, "My Otaria phase")
+
         Step.UPKEEP, Step.DRAW -> AutoPassVerdict(true, "AUTO-PASS: My upkeep/draw step")
         Step.BEGIN_COMBAT -> AutoPassVerdict(true, "AUTO-PASS: My begin combat")
         Step.COMBAT_DAMAGE, Step.END_COMBAT ->
@@ -569,6 +580,9 @@ object MeaningfulActionFilter {
 
         Step.FIRST_STRIKE_COMBAT_DAMAGE ->
             respondOrPass(meaningfulActions, "Opponent's first strike damage step")
+
+        Step.OTARIA_PREPARATION, Step.OTARIA_MOVEMENT, Step.OTARIA_EXPLORATION ->
+            respondOrPass(meaningfulActions, "Opponent's Otaria phase")
 
         Step.COMBAT_DAMAGE -> AutoPassVerdict(true, "AUTO-PASS: Opponent's combat damage")
 

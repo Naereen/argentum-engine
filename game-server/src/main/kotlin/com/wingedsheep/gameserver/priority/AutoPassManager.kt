@@ -107,6 +107,7 @@ class AutoPassManager(
         if (state.stack.isNotEmpty()) {
             return "Resolve"
         }
+        if (state.otaria != null) return "Pass"
 
         val currentStep = state.step
         // Team-aware (see [MeaningfulActionFilter]): a Two-Headed Giant teammate shares the turn.
@@ -239,6 +240,7 @@ class AutoPassManager(
             Step.END_COMBAT -> !hasMeaningfulActions // Stop if we have responses (e.g. Desert's end-of-combat ping)
             Step.END -> !hasMeaningfulActions // Stop if we have responses
             Step.CLEANUP, Step.UNTAP -> true
+            Step.OTARIA_PREPARATION, Step.OTARIA_MOVEMENT, Step.OTARIA_EXPLORATION -> !hasMeaningfulActions
         }
     }
 
@@ -283,6 +285,9 @@ class AutoPassManager(
         Step.POSTCOMBAT_MAIN -> "Main 2"
         Step.END -> "End Step"
         Step.CLEANUP -> "Cleanup"
+        Step.OTARIA_PREPARATION -> "Preparation"
+        Step.OTARIA_MOVEMENT -> "Movement"
+        Step.OTARIA_EXPLORATION -> "Exploration"
     }
 
     /**

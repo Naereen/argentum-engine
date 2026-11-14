@@ -243,8 +243,9 @@ internal class ActivatedManaAbilityResolver(
 
         // Check for Damping Sphere-style mana dampening on lands
         val dampening = manaPipeline.applyLandManaDampening(
-            stateBeforeActivation, currentState, cardComponent, action.playerId
+            stateBeforeEffect, currentState, cardComponent, action.playerId, sourceId = action.sourceId,
         )
+        dampening.error?.let { return ExecutionResult.error(stateBeforeActivation, it) }
         currentState = ManaProvenanceTracker.markSnowProduction(stateBeforeEffect, dampening.state, action.sourceId, action.playerId)
 
         // Emit ManaAddedEvent — if dampened, always emit 1 colorless
@@ -259,8 +260,8 @@ internal class ActivatedManaAbilityResolver(
             // A composite reports its first mana-producing member.
             is CompositeEffect -> fe.effects
                 .firstOrNull { it.isReportedManaEffect() }
-                ?.let { manaAddedEvent(it, stateBeforeActivation, currentState, action, activation, context) }
-            else -> manaAddedEvent(fe, stateBeforeActivation, currentState, action, activation, context)
+                ?.let { manaAddedEvent(it, stateBeforeEffect, currentState, action, activation, context) }
+            else -> manaAddedEvent(fe, stateBeforeEffect, currentState, action, activation, context)
         }
 
         // "Whenever a mana ability of this creature resolves" (Tyvar the Bellicose) — every mana
@@ -298,10 +299,15 @@ internal class ActivatedManaAbilityResolver(
         // All of these key on the source being *tapped* for mana, so a mana ability without {T}
         // in its cost (Ashnod's Altar, a Gold token) gets none of them — Kinnan's ruling — the
         // same gate the scoped-production path applies.
-        if (!costsTap) return ExecutionResult.success(currentState, eventsWithMana + effectResult.events)
+        val effectEvents = if (finalEffect is AddManaOfChoiceEffect && manaEvent != null) {
+            effectResult.events.filterNot {
+                it is ManaAddedEvent && it.sourceId == action.sourceId && it.playerId == action.playerId
+            }
+        } else effectResult.events
+        if (!costsTap) return ExecutionResult.success(currentState, eventsWithMana + effectEvents)
         return manaPipeline.finishTapBonuses(
             currentState, action.sourceId, cardComponent, action.playerId,
-            manaEvent, eventsWithMana + effectResult.events, producedColors
+            manaEvent, eventsWithMana + effectEvents, producedColors
         )
     }
 
@@ -309,7 +315,9 @@ internal class ActivatedManaAbilityResolver(
     private fun Effect.isReportedManaEffect(): Boolean =
         this is AddManaEffect ||
             this is AddColorlessManaEffect ||
-            this is AddManaOfChoiceEffect
+            this is AddManaOfChoiceEffect ||
+            this is AddDynamicManaEffect ||
+            this is AddOneManaOfEachColorAmongEffect
 
     /**
      * The [ManaAddedEvent] reporting what a (non-composite) mana [effect] produced, or null for an
@@ -337,7 +345,7 @@ internal class ActivatedManaAbilityResolver(
                 colorless = amount
             )
         }
-        is AddManaOfChoiceEffect -> manaAddedEventFromPoolDelta(
+        is AddManaOfChoiceEffect, is AddDynamicManaEffect, is AddOneManaOfEachColorAmongEffect -> manaAddedEventFromPoolDelta(
             oldState, newState, action, activation.cardComponent
         )
         else -> null
@@ -377,16 +385,20 @@ internal class ActivatedManaAbilityResolver(
         val newPool = newState.getEntity(action.playerId)
             ?.get<ManaPoolComponent>()
             ?: return null
+        fun amount(color: Color): Int =
+            newPool.getAmount(color) + newPool.restrictedMana.count { it.color == color } -
+                (oldPool?.getAmount(color) ?: 0) - oldPool?.restrictedMana.orEmpty().count { it.color == color }
         return ManaAddedEvent(
             playerId = action.playerId,
             sourceId = action.sourceId,
             sourceName = nameVisibleToAll(oldState, action.sourceId, cardComponent.name),
-            white = newPool.white - (oldPool?.white ?: 0),
-            blue = newPool.blue - (oldPool?.blue ?: 0),
-            black = newPool.black - (oldPool?.black ?: 0),
-            red = newPool.red - (oldPool?.red ?: 0),
-            green = newPool.green - (oldPool?.green ?: 0),
-            colorless = newPool.colorless - (oldPool?.colorless ?: 0),
+            white = amount(Color.WHITE),
+            blue = amount(Color.BLUE),
+            black = amount(Color.BLACK),
+            red = amount(Color.RED),
+            green = amount(Color.GREEN),
+            colorless = newPool.colorless + newPool.restrictedMana.count { it.color == null } -
+                (oldPool?.colorless ?: 0) - oldPool?.restrictedMana.orEmpty().count { it.color == null },
         ).takeIf { it.white + it.blue + it.black + it.red + it.green + it.colorless > 0 }
     }
 

@@ -2,13 +2,15 @@ package com.wingedsheep.engine.view
 
 import com.wingedsheep.engine.core.ActivateAbility
 import com.wingedsheep.engine.core.CastSpell
+import com.wingedsheep.engine.core.TurnFaceUp
 import com.wingedsheep.engine.handlers.actions.spell.altAllows
 import com.wingedsheep.engine.legalactions.*
 import com.wingedsheep.engine.mechanics.mana.ManaSolver
 import com.wingedsheep.engine.mechanics.mana.SpellPaymentContext
 import com.wingedsheep.engine.mechanics.mana.buildAbilityPaymentContext
-import com.wingedsheep.engine.mechanics.mana.isSatisfiedBy
+import com.wingedsheep.engine.mechanics.mana.isEligibleForPayment
 import com.wingedsheep.engine.mechanics.mana.spellPaymentContextFor
+import com.wingedsheep.engine.otaria.OtariaEncounterMana
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.identity.CardComponent
@@ -34,11 +36,28 @@ class LegalActionEnricher(
         return actions.map { action ->
             toLegalActionInfo(
                 action,
-                manaSourceInfos,
+                manaSourcesForAction(state, playerId, action, manaSourceInfos),
                 eligibleRestrictedMana = if (restrictedMana.isEmpty() || !shouldExposeManaSources(action)) null
                 else buildEligibleRestrictedMana(state, action, restrictedMana)
             )
         }
+    }
+
+    private fun manaSourcesForAction(
+        state: GameState,
+        playerId: EntityId,
+        action: LegalAction,
+        sources: List<ManaSourceInfo>?,
+    ): List<ManaSourceInfo>? {
+        if (!OtariaEncounterMana.isEncounter(state, playerId)) return sources
+        val owner = when (val gameAction = action.action) {
+            is ActivateAbility -> OtariaEncounterMana.paymentOwner(state, gameAction.sourceId)
+            is TurnFaceUp -> OtariaEncounterMana.memberRef(state, gameAction.sourceId)
+            else -> null
+        } ?: return null
+        return sources?.filter {
+            OtariaEncounterMana.sourceOwner(state, playerId, it.entityId) == owner
+        }?.takeIf { it.isNotEmpty() }
     }
 
     /**
@@ -82,11 +101,15 @@ class LegalActionEnricher(
                     .find { it.id == gameAction.abilityId }
                 buildAbilityPaymentContext(card, state.projectedState, gameAction.sourceId, ability)
             }
+            is TurnFaceUp -> SpellPaymentContext(
+                isTurnFaceUpAction = true,
+                assignedPermanent = com.wingedsheep.engine.otaria.OtariaEncounterMana.memberRef(state, gameAction.sourceId),
+            )
             else -> null
         } ?: return null
 
         return restrictedMana
-            .filter { it.restriction.isSatisfiedBy(paymentContext) }
+            .filter { it.isEligibleForPayment(paymentContext) }
             .map { ClientRestrictedManaEntry(it.color?.symbol?.toString(), it.restriction.description) }
     }
 

@@ -353,7 +353,10 @@ export class GameWebSocket {
 export function getWebSocketUrl(): string {
   // In development, use Vite proxy
   if (import.meta.env.DEV) {
-    return `ws://${window.location.host}/game`
+    // In development as well, use same host with ws/wss based on protocol
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    return `${protocol}//${window.location.host}/game`
+    // return `ws://${window.location.host}/game`
   }
 
   // In production, use same host with ws/wss based on protocol

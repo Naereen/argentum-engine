@@ -76,7 +76,8 @@ object PermanentEntryTracker {
         entityId: EntityId,
         simultaneousEntryGroup: String? = null,
         putBy: EntityId? = null,
-        spellCopy: Boolean = false
+        spellCopy: Boolean = false,
+        replacementSourceState: GameState? = null,
     ): GameState {
         // Object-identity stamp (CR 400.7): every battlefield entry funnels through here, so
         // this is where the entering permanent gets its entry timestamp. Delayed triggers that
@@ -96,10 +97,12 @@ object PermanentEntryTracker {
             // "If a player would put a land onto the battlefield, that player instead puts it onto
             // the battlefield, then …" (Land Equilibrium) — queued here because every entry funnels
             // through this method and this is where the putting player is known.
-            EntryRiderReplacements.queue(recordPut(ticked, putter, entityId), entityId, putter, entryRiderEvaluator)
+            EntryRiderReplacements.queue(
+                recordPut(ticked, putter, entityId), entityId, putter, entryRiderEvaluator, replacementSourceState
+            )
         }
         val cardTypes = projectedCardTypes(stamped, entityId)
-        if (cardTypes.isEmpty()) return stamped
+        if (cardTypes.isEmpty() && simultaneousEntryGroup == null) return stamped
         val subtypes = stamped.projectedState.getSubtypes(entityId)
         return stamped.updateEntity(controllerId) { container ->
             val existing = container.get<PermanentsEnteredUnderControlThisTurnComponent>()
@@ -117,6 +120,39 @@ object PermanentEntryTracker {
                 )
             )
         }
+    }
+
+    /** Finish a simultaneous batch's records against the complete resulting battlefield. */
+    fun refreshSimultaneousEntries(state: GameState, entityIds: Set<EntityId>): GameState {
+        if (entityIds.isEmpty()) return state
+        val battlefield = state.getBattlefield().toSet()
+        val timestamps = entityIds.intersect(battlefield).mapNotNull { id ->
+            state.getEntity(id)?.get<BattlefieldEntryTimestampComponent>()?.timestamp?.let { id to it }
+        }.toMap()
+        if (timestamps.isEmpty()) return state
+        val projected = state.projectedState
+        val byName = CardType.entries.associateBy { it.name }
+        val characteristics = timestamps.keys.associateWith { id ->
+            projected.getTypes(id).mapNotNullTo(mutableSetOf()) { byName[it] } to projected.getSubtypes(id)
+        }
+        var current = state
+        for ((controllerId, container) in state.entities) {
+            val recorded = container.get<PermanentsEnteredUnderControlThisTurnComponent>() ?: continue
+            val updated = recorded.entries.map { entry ->
+                val timestamp = timestamps[entry.entityId]
+                if (timestamp == null || entry.entryTimestamp != timestamp) entry
+                else {
+                    val (types, subtypes) = characteristics.getValue(entry.entityId)
+                    entry.copy(cardTypes = types, subtypes = subtypes)
+                }
+            }
+            if (updated != recorded.entries) {
+                current = current.updateEntity(controllerId) {
+                    it.with(recorded.copy(entries = updated))
+                }
+            }
+        }
+        return current
     }
 
     /**

@@ -36,11 +36,14 @@ enum class DamageEdgeDirection {
 
     /** Trample overflow to the attacked battle. */
     ATTACKER_TO_BATTLE,
+
+    /** Trample overflow to an attacked encounter creature. */
+    ATTACKER_TO_CREATURE,
 }
 
 /** What kind of object a [ResolutionDefender] node represents. */
 @Serializable
-enum class ResolutionTargetKind { PLAYER, PLANESWALKER, BATTLE }
+enum class ResolutionTargetKind { PLAYER, PLANESWALKER, BATTLE, CREATURE }
 
 /**
  * One directed damage assignment from [sourceId] to [targetId], pre-filled with the

@@ -41,6 +41,11 @@ interface AttackDefenderRule {
      * Used by [getValidAttackers] for must-attack requirement validation.
      */
     fun restrictsAllDefenders(ctx: AttackCheckContext): Boolean {
+        if (ctx.state.otaria != null) {
+            return com.wingedsheep.engine.mechanics.combat.CombatDefenders
+                .attackTargets(ctx.state, ctx.projected, ctx.attackingPlayer)
+                .all { defenderId -> check(ctx, defenderId) != null }
+        }
         // Real opponents only: not a teammate (CR 805.10b), not a seat that has left (CR 800.4a).
         val opponents = ctx.state.getOpponents(ctx.attackingPlayer)
         val projected = ctx.projected

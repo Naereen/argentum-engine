@@ -24,6 +24,7 @@ import com.wingedsheep.engine.state.components.battlefield.TappedComponent
 import com.wingedsheep.engine.state.components.battlefield.ChoiceValue
 import com.wingedsheep.engine.state.components.battlefield.CastChoicesComponent
 import com.wingedsheep.engine.core.AlternativeCostType
+import com.wingedsheep.engine.core.turnOrderIndex
 import com.wingedsheep.engine.state.components.stack.SpellOnStackComponent
 import com.wingedsheep.engine.state.components.battlefield.chosenColor
 import com.wingedsheep.engine.state.components.battlefield.chosenCreatureType
@@ -501,7 +502,7 @@ class ConditionEvaluator(
             // combat phase has ended (CombatPhaseEndedThisTurnComponent) the first combat is past
             // that step — whether that combat was natural or inserted.
             is com.wingedsheep.sdk.scripting.conditions.BeforeFirstCombatStepThisTurn -> {
-                state.step.ordinal < condition.step.ordinal && !combatPhaseEndedThisTurn(state)
+                state.step.turnOrderIndex < condition.step.turnOrderIndex && !combatPhaseEndedThisTurn(state)
             }
 
             // "After combat" (Glyph of Reincarnation): a combat phase has ended this turn and we're

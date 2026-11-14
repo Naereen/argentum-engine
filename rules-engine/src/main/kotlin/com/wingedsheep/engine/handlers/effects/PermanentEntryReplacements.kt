@@ -365,6 +365,8 @@ object PermanentEntryReplacements {
         }
         return pool.filter { candidateId ->
             candidateId != entityId &&
+                (effect.copyFromZone != Zone.BATTLEFIELD ||
+                    com.wingedsheep.engine.otaria.OtariaRange.contains(state, controllerId, candidateId)) &&
                 predicateEvaluator.matches(
                     state, state.projectedState, candidateId, effect.copyFilter,
                     PredicateContext(controllerId = controllerId)
@@ -572,6 +574,7 @@ object PermanentEntryReplacements {
         val filter = choice.permanentFilter
         return state.getBattlefield().filter { eid ->
             if (eid == entityId) return@filter false
+            if (!com.wingedsheep.engine.otaria.OtariaRange.contains(state, controllerId, eid)) return@filter false
             if (filter == null) {
                 projected.getController(eid) == controllerId && projected.isCreature(eid)
             } else {

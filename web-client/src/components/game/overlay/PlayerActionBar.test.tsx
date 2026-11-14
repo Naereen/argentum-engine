@@ -22,6 +22,13 @@ const offered: LegalActionInfo = {
   isAffordable: true,
   interactionEpoch: 'original',
 }
+const victory: LegalActionInfo = {
+  actionType: 'ClaimOtariaMirariVictory',
+  description: 'Reveal Mirari and claim victory',
+  action: { type: 'ClaimOtariaMirariVictory', playerId: entityId('me'), mirariId: entityId('mirari') },
+  isAffordable: true,
+  interactionEpoch: 'original',
+}
 
 function renderedClick(): () => void {
   const bar = PlayerActionBar() as ReactElement<{ children: ReactElement<{ onClick: () => void }>[] }>
@@ -60,5 +67,33 @@ describe('player action origins', () => {
     state = { ...state, legalActions: [{ ...offered, isAffordable: false }] }
     click()
     expect(submitAction).not.toHaveBeenCalled()
+  })
+
+  it('submits the server-offered Mirari victory without needing the card on the battlefield', () => {
+    state = { ...state, legalActions: [victory] }
+    renderedClick()()
+    expect(submitAction).toHaveBeenCalledExactlyOnceWith(victory.action, 'original')
+  })
+
+  it('does not submit a victory after its offer or timeline changes', () => {
+    state = { ...state, legalActions: [victory] }
+    const oldClick = renderedClick()
+    state = { ...state, legalActions: [] }
+    oldClick()
+    expect(submitAction).not.toHaveBeenCalled()
+    state = { ...state, legalActions: [{ ...victory, interactionEpoch: 'replacement' }], interactionEpoch: 'replacement' }
+    oldClick()
+    expect(submitAction).not.toHaveBeenCalled()
+  })
+
+  it('treats omitted affordability as the server default of true', () => {
+    state = { ...state, legalActions: [{
+      actionType: victory.actionType,
+      description: victory.description,
+      action: victory.action,
+      interactionEpoch: 'original',
+    }] }
+    renderedClick()()
+    expect(submitAction).toHaveBeenCalledExactlyOnceWith(victory.action, 'original')
   })
 })

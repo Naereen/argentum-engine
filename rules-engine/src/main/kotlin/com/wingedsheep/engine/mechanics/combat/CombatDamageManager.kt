@@ -8,8 +8,10 @@ import com.wingedsheep.engine.handlers.effects.ZoneTransitionService
 import com.wingedsheep.engine.handlers.effects.damage.DamageReplacementChain
 import com.wingedsheep.engine.mechanics.battle.Battles
 import com.wingedsheep.engine.mechanics.layers.ProjectedState
+import com.wingedsheep.engine.otaria.OtariaEncounterCombat
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
+import com.wingedsheep.engine.state.nameVisibleToAll
 import com.wingedsheep.engine.state.components.stack.attachmentIdsOf
 import com.wingedsheep.engine.state.components.stack.captureLastKnown
 import com.wingedsheep.engine.state.components.stack.damagedBySourcesOf
@@ -82,7 +84,8 @@ internal class CombatDamageManager(
     fun stampFirstStrikeStepAssigners(state: GameState): GameState {
         val projected = state.projectedState
         val combatants = state.findEntitiesWith<AttackingComponent>().map { it.first } +
-            state.findEntitiesWith<BlockingComponent>().map { it.first }
+            state.findEntitiesWith<BlockingComponent>().map { it.first } +
+            OtariaEncounterCombat.retaliatingCreatures(state, projected, predicateEvaluator, cardRegistry)
         var newState = state
         for (id in combatants) {
             if (projected.hasKeyword(id, Keyword.FIRST_STRIKE) || projected.hasKeyword(id, Keyword.DOUBLE_STRIKE)) {
@@ -307,6 +310,33 @@ internal class CombatDamageManager(
         // mean another player must choose part of the graph (CR 702.22j/k).
         val boardResult = checkCombatResolutionBoard(state, projected, attackers, firstStrike)
         if (boardResult != null) return boardResult
+
+        for (defenderId in OtariaEncounterCombat.retaliatingCreatures(state, projected, predicateEvaluator, cardRegistry)) {
+            val targets = OtariaEncounterCombat.retaliationTargets(state, projected, defenderId)
+            if (targets.size < 2 || !dealsDamageThisStep(state, projected, defenderId, firstStrike)) continue
+            val defender = state.getEntity(defenderId) ?: continue
+            if (defender.get<DamageAssignmentComponent>() != null) continue
+            val power = CombatDamageUtils.getAssignedCombatDamage(
+                state, projected, defenderId, cardRegistry, predicateEvaluator = predicateEvaluator,
+            )
+            if (power <= 0) continue
+            val actor = projected.getController(defenderId) ?: continue
+            val name = nameVisibleToAll(state, defenderId, defender.get<CardComponent>()?.name ?: "Encounter creature")
+            return state.suspendForDecision(
+                question = { decisionId ->
+                    DistributeDecision(
+                        id = decisionId,
+                        playerId = actor,
+                        prompt = "Divide $name's $power combat damage among its attackers",
+                        context = DecisionContext(sourceId = defenderId, sourceName = name, phase = DecisionPhase.COMBAT),
+                        totalAmount = power,
+                        targets = targets,
+                        minPerTarget = 0,
+                    )
+                },
+                answer = OtariaEncounterRetaliationContinuation(defenderId, firstStrike),
+            )
+        }
 
         // =====================================================================
         // DAMAGE PIPELINE
@@ -612,6 +642,10 @@ internal class CombatDamageManager(
                 projected.isPlaneswalker(defenderId) -> ResolutionDefender(defenderId, ResolutionTargetKind.PLANESWALKER,
                     container.get<CardComponent>()?.name ?: "Planeswalker",
                     container.get<CountersComponent>()?.getCount(CounterType.LOYALTY))
+                OtariaEncounterCombat.actorOfCreature(state, projected, defenderId) != null ->
+                    ResolutionDefender(defenderId, ResolutionTargetKind.CREATURE,
+                        container.get<CardComponent>()?.name ?: "Encounter creature",
+                        projected.getToughness(defenderId)?.minus(container.get<DamageComponent>()?.amount ?: 0))
                 // A battle's remaining "life" is its defense — its defense-counter count
                 // (CR 310.4c) — so the damage-division UI can show how much is left to remove.
                 else -> ResolutionDefender(defenderId, ResolutionTargetKind.BATTLE,
@@ -650,6 +684,8 @@ internal class CombatDamageManager(
                 val direction = when {
                     isPlayer -> DamageEdgeDirection.ATTACKER_TO_PLAYER
                     projected.isPlaneswalker(defenderId) -> DamageEdgeDirection.ATTACKER_TO_PLANESWALKER
+                    OtariaEncounterCombat.actorOfCreature(state, projected, defenderId) != null ->
+                        DamageEdgeDirection.ATTACKER_TO_CREATURE
                     else -> DamageEdgeDirection.ATTACKER_TO_BATTLE
                 }
                 edges.add(
@@ -941,6 +977,26 @@ internal class CombatDamageManager(
                         }
                     }
                 }
+            }
+        }
+
+        for (defenderId in OtariaEncounterCombat.retaliatingCreatures(state, projected, predicateEvaluator, cardRegistry)) {
+            if (!dealsDamageThisStep(state, projected, defenderId, firstStrike)) continue
+            val targets = OtariaEncounterCombat.retaliationTargets(state, projected, defenderId)
+            val defender = state.getEntity(defenderId) ?: continue
+            val power = CombatDamageUtils.getAssignedCombatDamage(
+                state, projected, defenderId, cardRegistry, predicateEvaluator = predicateEvaluator,
+            )
+            if (power <= 0) continue
+            val manual = defender.get<DamageAssignmentComponent>()
+            if (manual != null) {
+                for ((targetId, amount) in manual.assignments) {
+                    if (targetId in targets && amount > 0) {
+                        assignments.add(CombatDamageAssignment(defenderId, targetId, amount))
+                    }
+                }
+            } else if (targets.size == 1) {
+                assignments.add(CombatDamageAssignment(defenderId, targets.single(), power))
             }
         }
 

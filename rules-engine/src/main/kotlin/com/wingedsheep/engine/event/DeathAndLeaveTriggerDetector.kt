@@ -327,7 +327,7 @@ class DeathAndLeaveTriggerDetector(
             if (toZone != null) {
                 // "Dies" / "is put into exile" trigger: verify the permanent actually went to that
                 // zone (a dies trigger doesn't fire when it was exiled or bounced, and vice versa).
-                val inTargetZone = state.turnOrder.any { attachedEntityId in state.getZone(it, toZone) }
+                val inTargetZone = state.zoneOwners.any { attachedEntityId in state.getZone(it, toZone) }
                 if (!inTargetZone) continue
             }
             triggers.add(

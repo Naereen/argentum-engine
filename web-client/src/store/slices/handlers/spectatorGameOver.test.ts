@@ -78,4 +78,14 @@ describe('spectator game over', () => {
     expect(spectatorGameOverReason({ ...result, message: 'Nobody could break the loop.' }, seats)).toBe('Nobody could break the loop.')
     expect(spectatorGameOverReason({ winnerIds: [], reason: GameOverReason.DRAW, message: null }, seats)).toBe('Nobody won — the game is a draw.')
   })
+
+  it('explains a Mirari win instead of saying the winner outlasted the other seats', () => {
+    const seats = [
+      { playerId: entityId('p1'), name: 'Alice' },
+      { playerId: entityId('p2'), name: 'Bob' },
+      { playerId: entityId('p3'), name: 'Cara' },
+    ]
+    const result = { winnerIds: [entityId('p1')], reason: GameOverReason.OTARIA_MIRARI, message: null }
+    expect(spectatorGameOverReason(result, seats)).toBe('Mirari was revealed at its matching location.')
+  })
 })

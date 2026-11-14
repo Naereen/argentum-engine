@@ -1,0 +1,36 @@
+.panel {
+  width: min(640px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid #7e755c;
+  border-radius: 12px;
+  background: #18252b;
+  color: #f0eee3;
+  text-align: center;
+}
+
+.panel h2, .panel p { margin: 0; }
+.panel h2 { font-size: 1.15rem; }
+.panel p { color: #bac8c6; font-size: .9rem; }
+.viewControls { display: flex; gap: 8px; }
+.viewControls button {
+  min-height: 44px;
+  padding: 6px 16px;
+  border: 1px solid #6c7d7a;
+  border-radius: 6px;
+  background: #203135;
+  color: #f0eee3;
+  cursor: pointer;
+  font: inherit;
+}
+.viewControls button[aria-pressed="true"] { border-color: #ffe19a; background: #3d4639; color: #ffe19a; }
+.viewControls button:focus-visible { outline: 2px solid #ffe19a; outline-offset: 3px; }
+.map { width: min(560px, 100%); }
+.map svg { aspect-ratio: 390 / 512; max-height: 56dvh; }
+
+@media (max-height: 500px) {
+  .panel { gap: 4px; padding: 8px; }
+  .map svg { max-height: 42dvh; }
+}

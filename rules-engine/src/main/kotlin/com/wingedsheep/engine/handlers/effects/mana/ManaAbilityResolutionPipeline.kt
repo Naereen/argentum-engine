@@ -12,8 +12,11 @@ import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.handlers.PredicateContext
 import com.wingedsheep.engine.handlers.PredicateEvaluator
 import com.wingedsheep.engine.handlers.effects.EffectExecutorRegistry
+import com.wingedsheep.engine.otaria.OtariaEncounterMana
+import com.wingedsheep.engine.mechanics.mana.LandManaDampening
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
+import com.wingedsheep.engine.state.ObjectRef
 import com.wingedsheep.engine.state.components.battlefield.AttachedToComponent
 import com.wingedsheep.engine.state.components.battlefield.TappedComponent
 import com.wingedsheep.engine.state.components.battlefield.chosenColor
@@ -24,8 +27,8 @@ import com.wingedsheep.sdk.core.Color
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.AdditionalManaOnSourceTap
 import com.wingedsheep.sdk.scripting.AdditionalManaOnTap
-import com.wingedsheep.sdk.scripting.DampLandManaProduction
 import com.wingedsheep.sdk.scripting.TappedForManaType
+import com.wingedsheep.sdk.scripting.effects.ManaRestriction
 import com.wingedsheep.engine.state.components.identity.faceUpCardDefinition
 
 /**
@@ -56,11 +59,12 @@ class ManaAbilityResolutionPipeline(
         SourceTriggerDoublers(cardRegistry, predicateEvaluator, conditionEvaluator)
 
     /** The state after [applyLandManaDampening], and whether the replacement actually applied. */
-    data class Dampening(val state: GameState, val dampened: Boolean)
+    data class Dampening(val state: GameState, val dampened: Boolean, val error: String? = null)
 
     private data class AdditionalManaResult(
         val state: GameState,
-        val events: List<GameEvent>
+        val events: List<GameEvent>,
+        val error: String? = null,
     )
 
     /**
@@ -78,9 +82,17 @@ class ManaAbilityResolutionPipeline(
         sourceCard: CardComponent?,
         tapperId: EntityId,
         sourceIsLand: Boolean = sourceCard?.typeLine?.isLand == true,
+        sourceId: EntityId? = null,
     ): Dampening {
         if (!sourceIsLand) return Dampening(state, false)
-        if (!hasDampLandManaProduction(state)) return Dampening(state, false)
+        val dampeners = LandManaDampening.sources(state, cardRegistry)
+        if (dampeners.isEmpty()) return Dampening(state, false)
+        if (state.otaria != null && sourceId == null) {
+            return Dampening(state, false, "Otaria land mana dampening requires a source")
+        }
+        if (sourceId != null && !LandManaDampening.affects(state, dampeners, sourceId)) {
+            return Dampening(state, false)
+        }
 
         val oldPool = stateBeforeEffect.getEntity(tapperId)?.get<ManaPoolComponent>() ?: ManaPoolComponent()
         val newPool = state.getEntity(tapperId)?.get<ManaPoolComponent>() ?: ManaPoolComponent()
@@ -98,7 +110,13 @@ class ManaAbilityResolutionPipeline(
         // activation are preserved — Damping Sphere only replaces what the land just
         // produced, not what was already in the pool. The replacement colorless carries no
         // provenance (it comes from the replacement effect, not the land).
-        val dampenedPool = oldPool.copy(colorless = oldPool.colorless + 1)
+        val dampenedPool = if (OtariaEncounterMana.isEncounter(state, tapperId)) {
+            val owner = OtariaEncounterMana.sourceOwner(stateBeforeEffect, tapperId, sourceId)
+                ?: return Dampening(state, false, "Otaria dampened mana needs an assigned encounter creature")
+            val tag = sourceId?.let { ManaProvenanceTracker.sourceTag(stateBeforeEffect, it) }
+            val replacement = oldPool.addRestricted(null, 1, ManaRestriction.AnySpend, assignedPermanent = owner)
+            if (tag != null) replacement.withRestrictedProvenance(tag, 1) else replacement
+        } else oldPool.copy(colorless = oldPool.colorless + 1)
         return Dampening(state.updateEntity(tapperId) { it.with(dampenedPool) }, true)
     }
 
@@ -125,10 +143,15 @@ class ManaAbilityResolutionPipeline(
         carriedEvents: List<GameEvent>,
         producedColors: Set<Color> = manaEvent.producedColors(),
     ): ExecutionResult {
-        val onTap = resolveAdditionalManaOnTap(state, sourceId, tapperId, carriedEvents)
+        val owner = if (OtariaEncounterMana.isEncounter(state, tapperId)) {
+            OtariaEncounterMana.sourceOwner(state, tapperId, sourceId)
+                ?: return ExecutionResult.error(state, "Otaria mana needs an assigned encounter creature")
+        } else null
+        val onTap = resolveAdditionalManaOnTap(state, sourceId, tapperId, carriedEvents, owner)
         val onSourceTap = resolveAdditionalManaOnSourceTap(
-            onTap.state, sourceId, tapperId, manaEvent, onTap.events
+            onTap.state, sourceId, tapperId, manaEvent, onTap.events, owner,
         )
+        onSourceTap.error?.let { return ExecutionResult.error(state, it) }
         var allManaEvents = onSourceTap.events
 
         // "Whenever you tap a land for mana" triggers (Forbidden Orchard) watch this event; the
@@ -153,7 +176,8 @@ class ManaAbilityResolutionPipeline(
         state: GameState,
         sourceId: EntityId,
         controllerId: EntityId,
-        existingEvents: List<GameEvent>
+        existingEvents: List<GameEvent>,
+        encounterOwner: ObjectRef?,
     ): AdditionalManaResult {
         var currentState = state
         val events = existingEvents.toMutableList()
@@ -198,13 +222,10 @@ class ManaAbilityResolutionPipeline(
                 val firings = 1 + extraFirings
                 // The aura is the source of this mana (CR 106.3), so a snow aura's bonus is snow
                 // mana whatever the land is (Glittering Frost).
-                val snowAura = ManaProvenanceTracker.isSnowSource(currentState, entityId)
                 repeat(firings) {
-                    currentState = currentState.updateEntity(landController) { c ->
-                        val pool = c.get<ManaPoolComponent>() ?: ManaPoolComponent()
-                        val added = pool.add(manaColor, amount)
-                        c.with(if (snowAura) added.markSnow(manaColor, amount) else added)
-                    }
+                    currentState = addTapBonus(
+                        currentState, landController, entityId, manaColor, amount, encounterOwner,
+                    )
 
                     events.add(ManaAddedEvent(
                         playerId = landController,
@@ -241,7 +262,8 @@ class ManaAbilityResolutionPipeline(
         sourceId: EntityId,
         tappingPlayerId: EntityId,
         manaEvent: ManaAddedEvent?,
-        existingEvents: List<GameEvent>
+        existingEvents: List<GameEvent>,
+        encounterOwner: ObjectRef?,
     ): AdditionalManaResult {
         state.getEntity(sourceId) ?: return AdditionalManaResult(state, existingEvents)
 
@@ -312,6 +334,11 @@ class ManaAbilityResolutionPipeline(
                 val bonusColor: Color? = onSourceTap.color ?: producedColor
                 val bonusColorless = onSourceTap.color == null && bonusColor == null && producedColorless
                 if (bonusColor == null && !bonusColorless) continue
+                if (encounterOwner != null && onSourceTap.rider != null) {
+                    return AdditionalManaResult(
+                        state, existingEvents, "Otaria tap-bonus riders are not supported for encounter creatures yet",
+                    )
+                }
 
                 // Triggered mana abilities bypass the stack but are still triggered
                 // abilities — so AdditionalSourceTriggers (Twinflame Travelers) doubles
@@ -319,14 +346,10 @@ class ManaAbilityResolutionPipeline(
                 val extraFirings = countAdditionalSourceTriggerDoublers(currentState, entityId, staticController)
                 val firings = 1 + extraFirings
                 // This static's permanent is the mana's source (CR 106.3): snow if it is snow.
-                val snowSource = ManaProvenanceTracker.isSnowSource(currentState, entityId)
                 repeat(firings) {
-                    currentState = currentState.updateEntity(tappingPlayerId) { c ->
-                        val pool = c.get<ManaPoolComponent>() ?: ManaPoolComponent()
-                        val newPool = if (bonusColor != null) pool.add(bonusColor, bonusAmount)
-                                      else pool.addColorless(bonusAmount)
-                        c.with(if (snowSource) newPool.markSnow(bonusColor, bonusAmount) else newPool)
-                    }
+                    currentState = addTapBonus(
+                        currentState, tappingPlayerId, entityId, bonusColor, bonusAmount, encounterOwner,
+                    )
 
                     events.add(ManaAddedEvent(
                         playerId = tappingPlayerId,
@@ -347,6 +370,11 @@ class ManaAbilityResolutionPipeline(
                     val rider = onSourceTap.rider
                     if (rider != null) {
                         val riderResult = effectExecutorRegistry.execute(currentState, rider, effectContext)
+                        if (riderResult.outcome !is com.wingedsheep.engine.core.Outcome.Done) {
+                            return AdditionalManaResult(
+                                state, existingEvents, riderResult.error ?: "A mana tap-bonus rider cannot pause",
+                            )
+                        }
                         currentState = riderResult.state
                         events.addAll(riderResult.events)
                     }
@@ -355,6 +383,29 @@ class ManaAbilityResolutionPipeline(
         }
 
         return AdditionalManaResult(currentState, events)
+    }
+
+    private fun addTapBonus(
+        state: GameState,
+        playerId: EntityId,
+        sourceId: EntityId,
+        color: Color?,
+        amount: Int,
+        encounterOwner: ObjectRef?,
+    ): GameState {
+        val tag = if (encounterOwner != null) ManaProvenanceTracker.sourceTag(state, sourceId) else null
+        val snow = ManaProvenanceTracker.isSnowSource(state, sourceId)
+        return state.updateEntity(playerId) { container ->
+            val pool = container.get<ManaPoolComponent>() ?: ManaPoolComponent()
+            val added = if (encounterOwner != null && tag != null) {
+                pool.addRestricted(color, amount, ManaRestriction.AnySpend, assignedPermanent = encounterOwner)
+                    .withRestrictedProvenance(tag, amount)
+            } else {
+                val ordinary = if (color != null) pool.add(color, amount) else pool.addColorless(amount)
+                if (snow) ordinary.markSnow(color, amount) else ordinary
+            }
+            container.with(added)
+        }
     }
 
     /**
@@ -390,20 +441,6 @@ class ManaAbilityResolutionPipeline(
         sourceTriggerDoublers.doubles(state, it, triggerSourceId, triggerControllerId)
     }
 
-    /**
-     * Check if any permanent on the battlefield has DampLandManaProduction static ability.
-     */
-    private fun hasDampLandManaProduction(state: GameState): Boolean {
-        for (playerId in state.turnOrder) {
-            for (entityId in state.getBattlefield(playerId)) {
-                val cardDef = state.getEntity(entityId)?.faceUpCardDefinition(cardRegistry) ?: continue
-                if (cardDef.script.staticAbilities.any { it is DampLandManaProduction }) {
-                    return true
-                }
-            }
-        }
-        return false
-    }
 }
 
 /** The colors among the mana this event added — empty for colorless (or no event). */

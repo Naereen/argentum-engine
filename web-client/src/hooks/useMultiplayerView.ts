@@ -4,7 +4,7 @@ import { selectGameState, selectViewingPlayerId, useViewedOpponent } from '@/sto
 import { hasPendingInputSelection, isFollowingAction } from '@/store/slices/ui/boardViewSlice'
 import { MOBILE_BREAKPOINT } from '@/hooks/useResponsive'
 import type { ClientPlayer, EntityId } from '@/types'
-import { defendingPlayerOf } from '@/utils/combatTargets'
+import { defendingPlayerOf, presentationSeatOf } from '@/utils/combatTargets'
 
 /**
  * Multiplayer camera controls: follow-the-action and keyboard board switching.
@@ -23,7 +23,9 @@ export function useMultiplayerView(enabled: boolean, opponents: readonly ClientP
   const viewingPlayerId = useGameStore(selectViewingPlayerId)
   const followViewTo = useGameStore((state) => state.followViewTo)
 
-  const activePlayerId = gameState?.activePlayerId ?? null
+  const activePlayerId = gameState?.activePlayerId
+    ? presentationSeatOf(gameState.activePlayerId, gameState.otaria?.encounters)
+    : null
   const priorityPlayerId = gameState?.priorityPlayerId ?? null
   const hotseat = gameState?.hotseat ?? false
   const combat = gameState?.combat ?? null
@@ -38,13 +40,13 @@ export function useMultiplayerView(enabled: boolean, opponents: readonly ClientP
   // Being attacked: slide to the attacking player's board.
   useEffect(() => {
     if (!enabled || !combat || !viewingPlayerId || !gameState) return
-    if (combat.attackingPlayerId === viewingPlayerId) return
+    if (presentationSeatOf(combat.attackingPlayerId, gameState.otaria?.encounters) === viewingPlayerId) return
     const attacksMe = combat.attackers.some((a) =>
       a.attackingTarget.type === 'Player'
         ? a.attackingTarget.playerId === viewingPlayerId
-        : defendingPlayerOf(a.attackingTarget.permanentId, gameState.cards) === viewingPlayerId
+        : defendingPlayerOf(a.attackingTarget.permanentId, gameState.cards, gameState.otaria?.encounters) === viewingPlayerId
     )
-    if (attacksMe) followViewTo(combat.attackingPlayerId)
+    if (attacksMe) followViewTo(presentationSeatOf(combat.attackingPlayerId, gameState.otaria?.encounters))
   }, [enabled, combat, viewingPlayerId, gameState, followViewTo])
 
   // Hotseat dev loop: the single connection acts for whichever seat holds
@@ -52,8 +54,8 @@ export function useMultiplayerView(enabled: boolean, opponents: readonly ClientP
   useEffect(() => {
     if (!enabled || !hotseat || !priorityPlayerId || !viewingPlayerId) return
     if (priorityPlayerId === viewingPlayerId) return
-    followViewTo(priorityPlayerId)
-  }, [enabled, hotseat, priorityPlayerId, viewingPlayerId, followViewTo])
+    followViewTo(presentationSeatOf(priorityPlayerId, gameState?.otaria?.encounters))
+  }, [enabled, hotseat, priorityPlayerId, viewingPlayerId, gameState?.otaria?.encounters, followViewTo])
 
   // Keyboard switching.
   useEffect(() => {
@@ -123,7 +125,7 @@ export function useCombatDefenderFocus(enabled: boolean): readonly EntityId[] {
       reset()
       return
     }
-    if (combat.attackingPlayerId === viewingPlayerId) {
+    if (presentationSeatOf(combat.attackingPlayerId, gameState.otaria?.encounters) === viewingPlayerId) {
       reset()
       return
     }
@@ -132,7 +134,7 @@ export function useCombatDefenderFocus(enabled: boolean): readonly EntityId[] {
       const d =
         a.attackingTarget.type === 'Player'
           ? a.attackingTarget.playerId
-          : defendingPlayerOf(a.attackingTarget.permanentId, gameState.cards)
+          : defendingPlayerOf(a.attackingTarget.permanentId, gameState.cards, gameState.otaria?.encounters)
       if (d) defenders.add(d)
     }
     // You're among the defenders → the attacker slides into view (useMultiplayerView)
@@ -144,7 +146,7 @@ export function useCombatDefenderFocus(enabled: boolean): readonly EntityId[] {
     // Both sides of the fight must be on screen: the attacker and every defending
     // seat, minus whichever of them already occupies the viewed slot.
     const combatants = new Set<EntityId>(defenders)
-    combatants.add(combat.attackingPlayerId)
+    combatants.add(presentationSeatOf(combat.attackingPlayerId, gameState.otaria?.encounters))
     const next = gameState.players
       .filter((p) => !p.hasLost && combatants.has(p.playerId))
       .map((p) => p.playerId)

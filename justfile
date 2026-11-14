@@ -32,6 +32,11 @@ test-scenarios ERA="":
 test-server:
     scripts/gradle-locked :game-server:test
 
+# Run sequential, headless full-AI Otaria matches (use --help for CLI options)
+[group: 'ai']
+otaria-simulate *ARGS:
+    scripts/gradle-locked :game-server:otariaSimulate --args="{{ARGS}}"
+
 # Run tests for the AI module only (advisors, deckbuild/draft heuristics)
 [group: 'build']
 test-ai:
@@ -710,7 +715,7 @@ test-gym-trainer:
 # Start the web client in dev mode
 [group: 'dev']
 client:
-    cd web-client && npm run dev
+    cd web-client && npm run dev -- --host
 
 # Install web client dependencies
 [group: 'dev']

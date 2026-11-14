@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { reconstructSnapshots, type SpectatorReplayDelta, type SpectatorStateUpdate } from './reconstructSnapshots'
+import { otariaBoard } from '@/test/otariaFixtures'
 
 const snapshot: SpectatorStateUpdate = {
   gameSessionId: 'g',
@@ -25,5 +26,18 @@ describe('reconstructSnapshots', () => {
 
     expect(frames.map((g) => g.voidActive)).toEqual([false, true, true, false])
     expect(frames.map((g) => g.dayNight)).toEqual([null, 'DAY', 'DAY', 'DAY'])
+  })
+
+  it('follows Otaria snapshots through additions, updates, omissions, and clears', () => {
+    const board = otariaBoard()
+    const changed = { ...board, treasureCount: 10 }
+    const frames = reconstructSnapshots(snapshot, [
+      frame({ otaria: board }),
+      frame({}),
+      frame({ otaria: changed }),
+      frame({ otariaCleared: true }),
+    ]).map((s) => (s.gameState as { otaria?: unknown }).otaria ?? null)
+
+    expect(frames).toEqual([null, board, board, changed, null])
   })
 })

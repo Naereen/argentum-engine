@@ -34,6 +34,7 @@ import com.wingedsheep.ai.insight.CombatPlan
 import com.wingedsheep.ai.insight.CombatPlanTrace
 import com.wingedsheep.engine.core.ActivateAbility
 import com.wingedsheep.engine.core.CastSpell
+import com.wingedsheep.engine.core.ClaimOtariaMirariVictory
 import com.wingedsheep.engine.core.CrewVehicle
 import com.wingedsheep.engine.core.DeclareAttackers
 import com.wingedsheep.engine.core.DeclareBlockers
@@ -45,6 +46,7 @@ import com.wingedsheep.engine.core.SaddleMount
 import com.wingedsheep.engine.state.components.battlefield.SummoningSicknessComponent
 import com.wingedsheep.engine.state.components.battlefield.TappedComponent
 import com.wingedsheep.engine.core.doesntUntapDuringUntapStep
+import com.wingedsheep.engine.core.turnOrderIndex
 import com.wingedsheep.ai.engine.knowledge.SelfTapGrowthWindow
 import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.engine.handlers.costs.GraveyardTotalExileResolver
@@ -375,11 +377,14 @@ class Strategist(
     ): LegalAction {
         val startNanos = if (insightSink != null) System.nanoTime() else 0L
         val forcedPlay = state.pendingDecision is com.wingedsheep.engine.core.PlayCardDecision
-        val evaluationState = stateSampler?.invoke(state, playerId) ?: state
         // Combat declaration steps need the CombatAdvisor to fill in attacker/blocker maps
         // even when there's only one legal action (which is the common case — the enumerator
         // returns a single DeclareAttackers/DeclareBlockers with an empty default map).
         val combatAction = legalActions.find { it.actionType == "DeclareAttackers" || it.actionType == "DeclareBlockers" }
+        if (combatAction == null) {
+            legalActions.firstOrNull { it.action is ClaimOtariaMirariVictory }?.let { return it }
+        }
+        val evaluationState = stateSampler?.invoke(state, playerId) ?: state
         if (combatAction != null) {
             val budget = budgetPolicy.budgetFor(state, playerId, listOf(combatAction))
             return handleCombatDeclaration(evaluationState, combatAction, playerId, budget, startNanos)
@@ -1321,7 +1326,7 @@ class Strategist(
         if (state.step != Step.PRECOMBAT_MAIN) {
             // Before attacks (untap, upkeep, draw, beginning of combat) the ride still has its
             // attack ahead of it; only once declarations are past is it certainly for nothing.
-            return if (state.step.ordinal >= Step.DECLARE_ATTACKERS.ordinal) floor else null
+            return if (state.step.turnOrderIndex >= Step.DECLARE_ATTACKERS.turnOrderIndex) floor else null
         }
         if (state.stack.isNotEmpty() || leafState.gameOver || leafState.pendingDecision != null) return null
         // A Vehicle that came in this turn (or is tapped, or can't attack) rides into nothing; the

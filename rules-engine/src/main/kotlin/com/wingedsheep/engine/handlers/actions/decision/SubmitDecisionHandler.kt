@@ -84,6 +84,12 @@ class SubmitDecisionHandler(
             // "You draw a card during each opponent's draw step" — leaves priority with the active
             // player once those draws are dealt with (CR 117.3a).
             finishedDrawStepDraw -> result.state.activePlayerId ?: action.playerId
+            answer is OtariaEncounterEntryManaChoiceContinuation ||
+                answer is OtariaEncounterEntryChoiceContinuation ||
+                answer is OtariaEncounterEntryCopyContinuation ->
+                state.priorityPlayerId ?: result.state.activePlayerId ?: action.playerId
+            answer is OtariaEncounterRetaliationContinuation ->
+                result.state.activePlayerId ?: action.playerId
             answer.placesTrigger() -> state.priorityPlayerId ?: result.state.activePlayerId ?: action.playerId
             else -> action.playerId
         }

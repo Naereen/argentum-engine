@@ -22,6 +22,7 @@ import { SubgameTransition } from './components/animations/SubgameTransition'
 import { StandaloneConcedeButton } from './components/game/overlay'
 import { NextGameActions } from './components/tournament/NextGameActions'
 import overlay from './components/game/overlay/GameOverlays.module.css'
+import { formatGameOverReason } from './components/game/overlay/gameOverReason'
 import { AnteResultPanel } from './components/ante/AnteResultPanel'
 import { trackPageView } from './utils/analytics'
 import { randomBackground } from './utils/background'
@@ -35,7 +36,6 @@ import { LearnCoach } from '@/components/learn/LearnCoach'
 import { useViewingPlayer, useBattlefieldCards, selectTeamMap } from './store/selectors'
 import type { EntityId, BetweenGamesMessage } from './types'
 import type { LastMatchScore } from './store/slices/types'
-import { GameOverReason } from './types'
 
 // Limited-format and spectator screens are a minority of sessions but about a third of this
 // chunk, so they load on demand. Each keeps its own <Suspense> — the one in main.tsx would blank
@@ -290,7 +290,7 @@ export default function App() {
       // Multiplayer with exactly one legal attack target that is a player (attack
       // left/right, last opponent standing — and no attackable planeswalkers):
       // pre-assign it as the sticky defender so every selected attacker gets it
-      // and the "Attack which player?" popup never needs to ask.
+      // and the defender picker never needs to ask.
       const playerIdSet = new Set(gameState?.players.map((p) => p.playerId) ?? [])
       const soleDefenderId =
         (gameState?.players.length ?? 0) > 2 &&
@@ -482,38 +482,6 @@ export default function App() {
       <SessionReplacedOverlay />
     </div>
   )
-}
-
-function formatGameOverReason(
-  reason: GameOverReason,
-  result: 'win' | 'lose' | 'draw',
-  table: 'duel' | 'pod' | 'teams' = 'duel',
-): string {
-  if (result === 'draw') {
-    // CARD_EFFECT: an effect said "the game is a draw" while players were still in.
-    if (reason === GameOverReason.CARD_EFFECT) return 'An effect made the game a draw. Nobody won.'
-    return table === 'duel' ? 'Both players lost simultaneously.' : 'The remaining players lost simultaneously.'
-  }
-  // A pod is won by outlasting several opponents, so "your opponent" (singular, and naming only
-  // how the last one fell) misdescribes it.
-  if (result === 'win' && table === 'pod') return 'You are the last player standing.'
-  if (result === 'win' && table === 'teams') return 'Your team is the last one standing.'
-  const winMessages: Partial<Record<GameOverReason, string>> = {
-    [GameOverReason.LIFE_ZERO]: "Your opponent's life total reached zero.",
-    [GameOverReason.DECK_OUT]: 'Your opponent had no cards left to draw.',
-    [GameOverReason.CONCESSION]: 'Your opponent conceded the game.',
-    [GameOverReason.POISON_COUNTERS]: 'Your opponent received ten poison counters.',
-    [GameOverReason.DISCONNECTION]: 'Your opponent disconnected.',
-  }
-  const loseMessages: Partial<Record<GameOverReason, string>> = {
-    [GameOverReason.LIFE_ZERO]: 'Your life total reached zero.',
-    [GameOverReason.DECK_OUT]: 'You had no cards left to draw.',
-    [GameOverReason.CONCESSION]: 'You conceded the game.',
-    [GameOverReason.POISON_COUNTERS]: 'You received ten poison counters.',
-    [GameOverReason.DISCONNECTION]: 'You disconnected from the game.',
-  }
-  const messages = result === 'win' ? winMessages : loseMessages
-  return messages[reason] ?? 'The game has ended.'
 }
 
 /**

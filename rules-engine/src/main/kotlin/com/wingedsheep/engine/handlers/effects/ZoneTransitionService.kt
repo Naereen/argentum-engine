@@ -113,6 +113,8 @@ data class ZoneEntryOptions(
      * Each one's `onlyIf` is read off the entrant's prospective characteristics.
      */
     val entryCounters: List<SuppliedEntryCounter> = emptyList(),
+    /** Run printed and global entry-counter replacements even without effect-supplied counters. */
+    val applyEntryCounterReplacements: Boolean = false,
     /** Original board for one simultaneous entry event; excludes other entrants' global replacements. */
     val entryCounterReplacementState: GameState? = null,
     /** Opaque game-local token shared only by cards entering in this instruction. */
@@ -238,6 +240,12 @@ data class ZoneTransitionOutcome(
     val cause: ZoneTransitionCause = ZoneTransitionCause.PRIMARY
 )
 
+/** A newly minted, unzoned object and its individual battlefield-entry options. */
+data class NewBattlefieldObject(
+    val entityId: EntityId,
+    val options: ZoneEntryOptions = ZoneEntryOptions(),
+)
+
 
 /**
  * Single canonical zone transition pipeline.
@@ -300,6 +308,63 @@ class ZoneTransitionService(
         destinationZone: Zone,
         options: ZoneEntryOptions = ZoneEntryOptions(),
         fromZoneKey: ZoneKey? = null
+    ): ZoneTransitionResult = moveToZoneInternal(
+        state, entityId, destinationZone, options, fromZoneKey, allowNewObject = false
+    )
+
+    /**
+     * Put new objects onto the battlefield as one event. Entry choices must already have been
+     * made against [state]; no object may have belonged to any Magic zone previously.
+     */
+    fun enterNewObjects(state: GameState, objects: List<NewBattlefieldObject>): ZoneTransitionResult {
+        require(objects.map { it.entityId }.distinct().size == objects.size) {
+            "A new battlefield object may only enter once"
+        }
+        for ((entityId) in objects) {
+            val container = requireNotNull(state.getEntity(entityId)) { "New object $entityId does not exist" }
+            val card = requireNotNull(container.get<CardComponent>()) { "New object $entityId has no card characteristics" }
+            requireNotNull(card.ownerId) { "New object $entityId has no owner" }
+            require(findEntityZone(state, entityId) == null && state.objectRef(entityId) == null) {
+                "Object $entityId is not new and unzoned"
+            }
+        }
+        if (objects.isEmpty()) return ZoneTransitionResult(state, emptyList())
+        val (group, startingState) = if (objects.size > 1) state.newRoutingId() else null to state
+        var current = startingState
+        val events = mutableListOf<EngineGameEvent>()
+        val transitions = mutableListOf<ZoneTransitionOutcome>()
+        for ((entityId, options) in objects) {
+            val result = moveToZoneInternal(
+                current, entityId, Zone.BATTLEFIELD,
+                options.copy(
+                    applyEntryCounterReplacements = true,
+                    entryCounterReplacementState = startingState,
+                    simultaneousEntryGroup = group,
+                ),
+                fromZoneKey = null,
+                allowNewObject = true,
+            )
+            current = result.state
+            events.addAll(result.events)
+            transitions.addAll(result.transitions)
+        }
+        if (group != null) {
+            val entered = transitions.asSequence()
+                .filter { it.toZone == Zone.BATTLEFIELD && it.cause == ZoneTransitionCause.PRIMARY }
+                .mapNotNull { it.newObject?.entityId }
+                .toSet()
+            current = PermanentEntryTracker.refreshSimultaneousEntries(current, entered)
+        }
+        return ZoneTransitionResult(current, events, transitions = transitions)
+    }
+
+    private fun moveToZoneInternal(
+        state: GameState,
+        entityId: EntityId,
+        destinationZone: Zone,
+        options: ZoneEntryOptions,
+        fromZoneKey: ZoneKey?,
+        allowNewObject: Boolean,
     ): ZoneTransitionResult {
         // 1. Look up entity info
         val container = state.getEntity(entityId)
@@ -312,15 +377,20 @@ class ZoneTransitionService(
             ?: return ZoneTransitionResult(state, emptyList())
 
         val currentZoneKey = fromZoneKey ?: findEntityZone(state, entityId)
-            ?: return ZoneTransitionResult(state, emptyList())
+        if (currentZoneKey == null && !allowNewObject) return ZoneTransitionResult(state, emptyList())
+        if (allowNewObject) require(currentZoneKey == null && state.objectRef(entityId) == null) {
+            "Object $entityId is not new and unzoned"
+        }
 
         val oldObject = options.meldedPermanent ?: state.objectRef(entityId)
-        val fromZone = currentZoneKey.zoneType
+        val fromZone = currentZoneKey?.zoneType
         val leavingBattlefield = fromZone == Zone.BATTLEFIELD && options.meldedPermanent == null
 
         // A token that has left the battlefield stays where it is until the SBA removes it
         // (CR 111.8) — "exile it, then return it" (Flicker of Fate) must not bring a token back.
-        if (container.has<TokenComponent>() && fromZone != Zone.BATTLEFIELD && fromZone != Zone.STACK) {
+        if (container.has<TokenComponent>() && fromZone != null &&
+            fromZone != Zone.BATTLEFIELD && fromZone != Zone.STACK
+        ) {
             return ZoneTransitionResult(state, emptyList())
         }
 
@@ -418,7 +488,8 @@ class ZoneTransitionService(
                 predicateEvaluator = predicateEvaluator,
                 entersAsCreature = {
                     EntryCharacteristics.wouldBeCreature(
-                        state, entityId, options.controllerId, options.entryCopy, options.faceDown,
+                        options.entryCounterReplacementState ?: state,
+                        entityId, options.controllerId, options.entryCopy, options.faceDown,
                         cardRegistry, predicateEvaluator, options.entersWith
                     )
                 }
@@ -433,7 +504,8 @@ class ZoneTransitionService(
         // (CR 304.4). Checked after the redirect, so it judges the zone the card would really enter.
         if (actualDestZone == Zone.BATTLEFIELD &&
             EntryLocks.cantEnter(
-                state, entityId, fromZone, cardRegistry, predicateEvaluator, faceDown = options.faceDown
+                options.entryCounterReplacementState ?: state,
+                entityId, fromZone, cardRegistry, predicateEvaluator, faceDown = options.faceDown
             )
         ) {
             return ZoneTransitionResult(state, emptyList(), redirectResult, actualDestination = fromZone)
@@ -449,12 +521,18 @@ class ZoneTransitionService(
         // battlefield-to-battlefield move is not an entry.
         if (actualDestZone == Zone.BATTLEFIELD && fromZone != Zone.BATTLEFIELD &&
             !options.paidToEnter && !options.faceDown &&
-            EntryPayment.enteringCost(state, entityId, options.entryCopy, cardRegistry, predicateEvaluator) != null
+            EntryPayment.enteringCost(
+                options.entryCounterReplacementState ?: state, entityId, options.entryCopy, cardRegistry, predicateEvaluator
+            ) != null
         ) {
             if (fromZone == Zone.GRAVEYARD) {
                 return ZoneTransitionResult(state, emptyList(), redirectResult, actualDestination = Zone.GRAVEYARD)
             }
-            return moveToZone(state, entityId, Zone.GRAVEYARD, ZoneEntryOptions(), currentZoneKey)
+            return moveToZoneInternal(
+                state, entityId, Zone.GRAVEYARD,
+                ZoneEntryOptions(entryCounterReplacementState = options.entryCounterReplacementState),
+                currentZoneKey, allowNewObject,
+            )
         }
 
         // A card-intrinsic redirect into the library shuffles the card in rather than placing it on
@@ -503,7 +581,7 @@ class ZoneTransitionService(
             var retained = state
             val retainedEvents = mutableListOf<EngineGameEvent>()
             if (actualDestZone == Zone.LIBRARY) {
-                retained = retained.removeFromZone(currentZoneKey, entityId)
+                retained = retained.removeFromZone(requireNotNull(currentZoneKey), entityId)
                 retained = placeInLibrary(retained, entityId, destZoneKey, effectiveLibraryPlacement)
                 if (effectiveLibraryPlacement is LibraryPlacement.Shuffled) {
                     retained = com.wingedsheep.engine.handlers.effects.library.LibraryRevealUtils
@@ -521,7 +599,9 @@ class ZoneTransitionService(
                             moverId = options.libraryMoverId,
                             allPlayers = retained.turnOrder,
                             knownPosition = effectiveLibraryPlacement !is LibraryPlacement.Shuffled
-                        )
+                        ),
+                        anchor = com.wingedsheep.engine.handlers.effects.library.LibraryRevealUtils
+                            .placementAnchor(effectiveLibraryPlacement),
                     )
             }
             val extra = redirectResult.additionalEffect
@@ -782,8 +862,7 @@ class ZoneTransitionService(
         // Use the provided fromZoneKey directly — it already identifies the correct zone.
         // Don't derive from ControllerComponent, as the card may be on a different
         // player's battlefield zone (e.g., control-changed permanents in some zone layouts).
-        val removeZoneKey = currentZoneKey
-        newState = newState.removeFromZone(removeZoneKey, entityId)
+        if (currentZoneKey != null) newState = newState.removeFromZone(currentZoneKey, entityId)
         if (fromZone == Zone.STACK) newState = newState.removeFromStack(entityId)
 
         // A card off the battlefield can be enchanted ("Enchant creature card in a graveyard",
@@ -1031,8 +1110,11 @@ class ZoneTransitionService(
                 // last copy effect applied, so it wins over the entrant's own as-enters choice;
                 // among several, the one the controller chose to apply last (asked by replay).
                 // A face-down entrant is modified too: it copies under its face-down status (CR 708.10).
+                val copyView = EntersWithReplacements.prospectiveEntryView(
+                    newState, entityId, options.entryCounterReplacementState
+                )
                 val grantedCopy = com.wingedsheep.engine.handlers.effects.copy
-                    .GrantedEntryCopy.find(newState, entityId, predicateEvaluator)
+                    .GrantedEntryCopy.find(copyView, entityId, predicateEvaluator)
                 var grantedChoice: com.wingedsheep.engine.handlers.effects.copy.EntryCopyChoice? = null
                 if (grantedCopy != null) {
                     val (choice, decided) = com.wingedsheep.engine.handlers.effects.copy.GrantedEntryCopy
@@ -1072,23 +1154,23 @@ class ZoneTransitionService(
                             .bake(recorded, modeId, cardRegistry)
                     }
                 }
-                val entryCounterTotals = options.entryCounters.takeIf { it.isNotEmpty() }?.let {
+                val entryCounterTotals = options.entryCounters.takeIf {
+                    it.isNotEmpty() || options.applyEntryCounterReplacements
+                }?.let {
                     mutableMapOf<com.wingedsheep.sdk.core.CounterType, Int>()
                 }
-                if (!options.faceDown) {
-                    for (riotMode in options.grantedRiotModes) {
-                        if (entryCounterTotals != null && riotMode == com.wingedsheep.sdk.dsl.RIOT_MODE_COUNTER) {
-                            val kind = com.wingedsheep.sdk.core.CounterType.PLUS_ONE_PLUS_ONE
-                            entryCounterTotals[kind] = (entryCounterTotals[kind] ?: 0) + 1
-                            continue
-                        }
-                        val (riotState, riotEvents) = EntersWithReplacements.applyGrantedRiotBranch(
-                            newState, entityId, destControllerId, riotMode, cardComponent.name,
-                            predicateEvaluator = predicateEvaluator
-                        )
-                        newState = riotState
-                        events.addAll(riotEvents)
+                for (riotMode in options.grantedRiotModes) {
+                    if (entryCounterTotals != null && riotMode == com.wingedsheep.sdk.dsl.RIOT_MODE_COUNTER) {
+                        val kind = com.wingedsheep.sdk.core.CounterType.PLUS_ONE_PLUS_ONE
+                        entryCounterTotals[kind] = (entryCounterTotals[kind] ?: 0) + 1
+                        continue
                     }
+                    val (riotState, riotEvents) = EntersWithReplacements.applyGrantedRiotBranch(
+                        newState, entityId, destControllerId, riotMode, cardComponent.name,
+                        predicateEvaluator = predicateEvaluator
+                    )
+                    newState = riotState
+                    events.addAll(riotEvents)
                 }
                 options.auraHostId?.let { host ->
                     val (attached, attachmentEvents) =
@@ -1101,7 +1183,10 @@ class ZoneTransitionService(
                 // This pipeline records via PermanentEntryTracker.record directly rather than
                 // BattlefieldEntry.place because the read must happen *after* applyBattlefieldEntry
                 // wires the controller — only then does projection see the right controller.
-                newState = PermanentEntryTracker.record(newState, destControllerId, entityId, options.simultaneousEntryGroup)
+                newState = PermanentEntryTracker.record(
+                    newState, destControllerId, entityId, options.simultaneousEntryGroup,
+                    replacementSourceState = options.entryCounterReplacementState,
+                )
                 if (!options.faceDown && options.entryChoices.isNotEmpty()) {
                     newState = EntryRiderReplacements.queueOwnChoiceRiders(newState, entityId, destControllerId,
                         newState.getEntity(entityId)?.get<CardComponent>()?.let { cardRegistry.getCard(it.cardDefinitionId) })
@@ -1219,7 +1304,9 @@ class ZoneTransitionService(
                                 moverId = options.libraryMoverId,
                                 allPlayers = newState.turnOrder,
                                 knownPosition = effectiveLibraryPlacement !is LibraryPlacement.Shuffled,
-                            )
+                            ),
+                        anchor = com.wingedsheep.engine.handlers.effects.library.LibraryRevealUtils
+                            .placementAnchor(effectiveLibraryPlacement),
                     )
             }
             Zone.EXILE -> {
@@ -1230,17 +1317,18 @@ class ZoneTransitionService(
                 // road, not a choke point: the direct-`addToZone` exiles listed on
                 // ExiledFromZoneComponent write the same stamp themselves, and anything still
                 // unstamped takes ToZoneExiledFrom's fallback.
-                newState = newState.updateEntity(entityId) { c ->
-                    c.with(
-                        com.wingedsheep.engine.state.components.identity
-                            .ExiledFromZoneComponent(
-                                fromZone,
-                                // A move redirected into exile (Rest in Peace) was exiled by the
-                                // replacement's controller, not by whoever was moving it elsewhere.
-                                exiledBy = if (destinationZone == Zone.EXILE) options.exiledBy
-                                else redirectResult.effectControllerId
-                            )
-                    )
+                if (fromZone != null) {
+                    newState = newState.updateEntity(entityId) { c ->
+                        c.with(
+                            com.wingedsheep.engine.state.components.identity
+                                .ExiledFromZoneComponent(
+                                    fromZone,
+                                    // A redirected move was exiled by the replacement's controller.
+                                    exiledBy = if (destinationZone == Zone.EXILE) options.exiledBy
+                                    else redirectResult.effectControllerId
+                                )
+                        )
+                    }
                 }
                 if (options.faceDownExile) {
                     newState = newState.updateEntity(entityId) { c -> c.with(FaceDownComponent) }
@@ -1341,6 +1429,13 @@ class ZoneTransitionService(
                 meldedPermanent = options.meldedPermanent
             )
         )
+
+        if (leavingBattlefield && actualDestZone != Zone.BATTLEFIELD && oldObject != null) {
+            val (afterManaRemoval, manaEvents) =
+                com.wingedsheep.engine.otaria.OtariaEncounterMana.removeForDeparture(newState, oldObject)
+            newState = afterManaRemoval
+            events.addAll(manaEvents)
+        }
 
         val partnerIds = listOfNotNull(melded?.partnerId) + merged?.partnerIds(entityId).orEmpty()
         for (partnerId in partnerIds) {
@@ -1894,8 +1989,11 @@ class ZoneTransitionService(
         // permanent onto the battlefield tapped (ramp/fetch). Checked after the entity is fully
         // placed so its controller/type are visible to the filter. (tappedAndAttacking — combat
         // tokens — is intentionally not overridden; its filter never matches a land anyway.)
+        val replacementView = EntersWithReplacements.prospectiveEntryView(
+            withDayboundEntry, entityId, options.entryCounterReplacementState
+        )
         val entersUntapped = EnterUntappedReplacements.entersUntapped(
-            withDayboundEntry,
+            replacementView,
             entityId,
             controllerId,
             predicateEvaluator = predicateEvaluator
@@ -1906,14 +2004,14 @@ class ZoneTransitionService(
         // return from exile, a search-library move — arrives here, and until this call each of
         // them entered untapped no matter what the card said.
         val selfEntersTapped = !options.faceDown &&
-            selfEntersTapped(withDayboundEntry, entityId, controllerId)
+            selfEntersTapped(replacementView, entityId, controllerId)
         val withTapResolved = when {
             // "Instead it enters tapped and attacking" (PermanentsEnterTapped.attackDefender —
             // Kira Nerys, Firebrand): a tapped-and-attacking entry, so — like options.tappedAndAttacking
             // — an "enters untapped" replacement doesn't undo the tap. A face-down entrant is a 2/2
             // creature and is read as one by the filter.
             !options.tappedAndAttacking &&
-                EnterTappedReplacements.entersAttacking(withDayboundEntry, entityId, predicateEvaluator = predicateEvaluator) ->
+                EnterTappedReplacements.entersAttacking(replacementView, entityId, predicateEvaluator = predicateEvaluator) ->
                 EnterTappedReplacements.enterTappedAndAttacking(withDayboundEntry, entityId, controllerId)
             // A tapped entry — asked for by the effect (ramp/fetch) or printed on the card itself
             // — overridden by "enters untapped" (The Wandering Minstrel). Two applicable entry
@@ -1928,7 +2026,7 @@ class ZoneTransitionService(
             !options.tapped && !entersUntapped &&
                 (
                     selfEntersTapped ||
-                        EnterTappedReplacements.entersTapped(withDayboundEntry, entityId, controllerId, predicateEvaluator = predicateEvaluator)
+                        EnterTappedReplacements.entersTapped(replacementView, entityId, controllerId, predicateEvaluator = predicateEvaluator)
                     ) ->
                 withDayboundEntry.updateEntity(entityId) { it.with(TappedComponent) }
             else -> withDayboundEntry
@@ -2195,7 +2293,7 @@ class ZoneTransitionService(
             state: GameState,
             entityId: EntityId,
             ownerId: EntityId,
-            fromZone: Zone,
+            fromZone: Zone?,
             arrivingCard: CardComponent,
             isToken: Boolean
         ): GameState {
@@ -2229,11 +2327,13 @@ class ZoneTransitionService(
                     )
                 )
             }
-            bump { p ->
-                p.with(
-                    (p.get<CardsPutIntoGraveyardByOriginThisTurnComponent>()
-                        ?: CardsPutIntoGraveyardByOriginThisTurnComponent()).plus(fromZone)
-                )
+            if (fromZone != null) {
+                bump { p ->
+                    p.with(
+                        (p.get<CardsPutIntoGraveyardByOriginThisTurnComponent>()
+                            ?: CardsPutIntoGraveyardByOriginThisTurnComponent()).plus(fromZone)
+                    )
+                }
             }
             return newState
         }

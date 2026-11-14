@@ -1,0 +1,1 @@
+- Claims immediate Mirari victories, manages Otaria encounter entry choices and combat under the encounter's own seat, and chooses free flight when exploring without an untapped army.

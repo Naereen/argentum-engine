@@ -4,9 +4,11 @@ import com.wingedsheep.engine.core.EndResolutionControlContinuation
 import com.wingedsheep.engine.core.ExecutionResult
 import com.wingedsheep.engine.core.FinishResolvingAbilityContinuation
 import com.wingedsheep.engine.core.FinishResolvingSpellContinuation
+import com.wingedsheep.engine.core.GameEvent
 import com.wingedsheep.engine.core.GameEndReason
 import com.wingedsheep.engine.core.PlayerLeftGameEvent
 import com.wingedsheep.engine.handlers.effects.ZoneTransitionService
+import com.wingedsheep.engine.otaria.OtariaEncounterMana
 import com.wingedsheep.engine.mechanics.layers.SerializableModification
 import com.wingedsheep.engine.mechanics.dungeon.DungeonService
 import com.wingedsheep.engine.mechanics.initiative.InitiativeService
@@ -127,9 +129,23 @@ object PlayerLeavesGameProcessor {
         s = removeAttackersAimedAt(s, leaver, toRemove)
 
         // 4. Remove the objects from the game entirely.
+        val departureEvents = mutableListOf<GameEvent>()
         for (id in toRemove) {
+            val ref = s.objectRef(id)
+            if (ref != null) {
+                val (afterManaRemoval, manaEvents) = OtariaEncounterMana.removeForDeparture(s, ref)
+                s = afterManaRemoval
+                departureEvents.addAll(manaEvents)
+            }
             s = s.removeEntity(id)
         }
+        // Explorer of Otaria: a reserve is outside every zone, so drop the departed cards from it too.
+        s = s.otaria?.let { mode ->
+            s.copy(otaria = mode.copy(players = mode.players.mapValues { (_, player) ->
+                if (player.reserve.none { it in toRemove }) player
+                else player.copy(reserve = player.reserve.filterNot { it in toRemove })
+            }))
+        } ?: s
 
         // 5. End the continuous effects that depended on a departed object. Only those: the
         //    effect of a spell or ability the leaver already *resolved* persists (CR 611.2c) — a
@@ -203,7 +219,7 @@ object PlayerLeavesGameProcessor {
 
         // 11. Leaving the game ends zone-return durations without producing a return trigger.
         val returns = com.wingedsheep.engine.handlers.effects.ZoneReturnService.returnDepartedSources(zones, s)
-        val events = listOf(PlayerLeftGameEvent(leaver, reason, toRemove.size)) + abandoned.events +
+        val events = listOf(PlayerLeftGameEvent(leaver, reason, toRemove.size)) + departureEvents + abandoned.events +
             monarchEvents + initiativeEvents + controlEvents + returns.events
         return if (abandoned.outcome is com.wingedsheep.engine.core.Outcome.Paused) {
             ExecutionResult.propagatePause(returns.state, events)

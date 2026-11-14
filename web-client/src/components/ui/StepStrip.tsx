@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { Phase, Step, StepShortNames } from '@/types'
+import type { ClientOtariaTurn } from '@/types'
 import { useResponsive } from '@/hooks/useResponsive.ts'
 import type { PriorityMode } from '@/store/selectors.ts'
 
@@ -28,16 +29,8 @@ interface StepStripProps {
   stopOverrides: { myTurnStops: Step[]; opponentTurnStops: Step[] }
   onToggleStop: (step: Step, isMyTurn: boolean) => void
   isSpectator?: boolean
+  otariaTurn?: ClientOtariaTurn | null | undefined
 }
-
-const STEP_ORDER: Step[] = [
-  Step.UNTAP, Step.UPKEEP, Step.DRAW,
-  Step.PRECOMBAT_MAIN,
-  Step.BEGIN_COMBAT, Step.DECLARE_ATTACKERS, Step.DECLARE_BLOCKERS,
-  Step.FIRST_STRIKE_COMBAT_DAMAGE, Step.COMBAT_DAMAGE, Step.END_COMBAT,
-  Step.POSTCOMBAT_MAIN,
-  Step.END, Step.CLEANUP,
-]
 
 interface PhaseGroupDef {
   id: string
@@ -51,6 +44,37 @@ const PHASE_GROUPS: PhaseGroupDef[] = [
   { id: 'main2', steps: [Step.POSTCOMBAT_MAIN] },
   { id: 'end', steps: [Step.END, Step.CLEANUP] },
 ]
+
+function otariaPhaseGroups(turn: ClientOtariaTurn | null | undefined): PhaseGroupDef[] {
+  if (!turn || turn.action === 'COMBAT') return PHASE_GROUPS
+  const beginning: PhaseGroupDef = { id: 'beginning', steps: [Step.UNTAP, Step.UPKEEP] }
+  const main: PhaseGroupDef = { id: 'main1', steps: [Step.PRECOMBAT_MAIN] }
+  const end: PhaseGroupDef = { id: 'end', steps: [Step.END, Step.CLEANUP] }
+  if (turn.action === 'MOVE') {
+    return turn.movementAllowed
+      ? [beginning, main, { id: 'movement', steps: [Step.OTARIA_MOVEMENT] }, end]
+      : [beginning, end]
+  }
+  if (turn.action === 'PREPARE') {
+    return [
+      beginning,
+      { id: 'preparation', steps: [Step.OTARIA_PREPARATION] },
+      { id: 'draw', steps: [Step.DRAW] },
+      main,
+      end,
+    ]
+  }
+  const exploration: PhaseGroupDef = { id: 'exploration', steps: [Step.OTARIA_EXPLORATION] }
+  if (turn.encounterInitiative === 'ENCOUNTER') return [beginning, main, exploration, end]
+  if (turn.encounterAction === 'MOVE') {
+    return [beginning, main, exploration, { id: 'movement', steps: [Step.OTARIA_MOVEMENT] }, end]
+  }
+  return [
+    beginning, main, exploration,
+    ...(turn.encounterAction === 'COMBAT' ? PHASE_GROUPS.filter((group) => group.id === 'combat') : []),
+    { id: 'main2', steps: [Step.POSTCOMBAT_MAIN] }, end,
+  ]
+}
 
 /** Steps where players never receive priority (no stop dots) */
 const NO_PRIORITY_STEPS = new Set<Step>([Step.UNTAP, Step.CLEANUP])
@@ -70,6 +94,9 @@ const STEP_PIP_LABELS: Record<Step, string> = {
   [Step.POSTCOMBAT_MAIN]: '',
   [Step.END]: 'End',
   [Step.CLEANUP]: 'Cl',
+  [Step.OTARIA_PREPARATION]: 'Prep',
+  [Step.OTARIA_MOVEMENT]: 'Move',
+  [Step.OTARIA_EXPLORATION]: 'Explore',
 }
 
 type ColorSet = { border: string; glow: string; highlight: string; text: string }
@@ -116,6 +143,7 @@ export function StepStrip({
   stopOverrides,
   onToggleStop,
   isSpectator = false,
+  otariaTurn,
 }: StepStripProps) {
   const responsive = useResponsive()
   const colors = priorityMode === 'waiting' && isActivePlayer
@@ -127,7 +155,9 @@ export function StepStrip({
   // viewport under 560px tall) gets the same density — at desktop size the strip took a third of
   // the board's height there.
   const isMobile = responsive.isMobile || responsive.isShortDesktop || responsive.viewportHeight < 560
-  const currentStepIndex = STEP_ORDER.indexOf(step)
+  const phaseGroups = otariaPhaseGroups(otariaTurn)
+  const stepOrder = phaseGroups.flatMap(group => group.steps)
+  const currentStepIndex = stepOrder.indexOf(step)
 
   const statusText = activePlayerName
     ? activePlayerLeft
@@ -258,9 +288,9 @@ export function StepStrip({
         alignItems: 'flex-start',
         gap: isMobile ? 6 : 10,
       }}>
-        {PHASE_GROUPS.map((group) => {
+        {phaseGroups.map((group) => {
           const isActiveGroup = group.steps.includes(step)
-          const isPastGroup = group.steps.every(s => STEP_ORDER.indexOf(s) < currentStepIndex)
+          const isPastGroup = group.steps.every(s => stepOrder.indexOf(s) < currentStepIndex)
           const iconColor = isActiveGroup
             ? colors.highlight
             : isPastGroup
@@ -284,7 +314,7 @@ export function StepStrip({
               {/* Step pips */}
               <div style={{ display: 'flex', gap: 0, alignItems: 'flex-start' }}>
                 {group.steps.map(s => {
-                  const i = STEP_ORDER.indexOf(s)
+                  const i = stepOrder.indexOf(s)
                   return (
                     <StepPip
                       key={s}
@@ -336,7 +366,8 @@ function PhaseIcon({ phase, color, size, glow }: {
   const glowFilter = glow ? `drop-shadow(0 0 3px ${glow})` : 'none'
 
   // Roman numerals for main phases
-  if (phase === 'main1' || phase === 'main2') {
+  if (phase === 'main1' || phase === 'main2' ||
+      phase === 'preparation' || phase === 'movement' || phase === 'exploration') {
     return (
       <span style={{
         color,
@@ -349,7 +380,8 @@ function PhaseIcon({ phase, color, size, glow }: {
         filter: glowFilter,
         transition: 'color 0.2s, filter 0.2s',
       }}>
-        {phase === 'main1' ? 'I' : 'II'}
+        {phase === 'main1' ? 'I' : phase === 'main2' ? 'II' :
+          phase === 'preparation' ? 'P' : phase === 'movement' ? 'M' : 'E'}
       </span>
     )
   }
@@ -362,7 +394,7 @@ function PhaseIcon({ phase, color, size, glow }: {
       fill="none"
       style={{ display: 'block', filter: glowFilter, transition: 'filter 0.2s' }}
     >
-      {phase === 'beginning' && (
+      {(phase === 'beginning' || phase === 'draw') && (
         /* Sun: circle with 4 rays */
         <>
           <circle cx="8" cy="8" r="2.5" fill={color} />

@@ -406,6 +406,121 @@ what an old input stream re-simulates to. Stored replays therefore pin the card 
 on and carry position checkpoints, with an archived frame stream as the last resort — see
 [data-contracts.md](data-contracts.md) → *Compact replays*.
 
+The Explorer of Otaria v0.4 foundation stores its optional map, exploration counts, shuffled piles
+and player reserves in `GameState.otaria`. Setup consumes the state's `GameRng` and emits an event;
+it does not mutate the supplied state. The boss supply includes the confirmed 22nd boss, Kamahl,
+Pit Fighter; setup rejects an insufficient supply rather than creating duplicate cards. Its location
+pile has three cards per starred location, as in the proxy annex. A future host can choose the first
+seat with
+`OtariaSeating.startingPlayerIndex` and pass that index and seed to `GameConfig`, preserving seating
+order instead of shuffling all players. Pile order, location cards and reserves are private engine
+data and must not be sent directly to clients. An exploration can add a matching basic land to
+the reserve before drawing from either the terrain's color pile or, at a starred location, the
+star pile. An unopposed movement transition checks the hex distance and the one-space limit for
+ten or more controlled permanents. The turn manager asks for the chosen turn action before untap
+and enters movement, preparation, or exploration with a mandatory, serializable decision; movement
+destinations are computed by the engine and sent to the client. Opposed escapes still need encounter
+resolution.
+Starting a location exploration consumes its quota and holds the drawn card in a
+pending state. An empty exploration pile is replenished by shuffling its own discard. If both are
+empty, only the optional land can be taken; no starred quota is consumed. A noncreature spell goes
+to the reserve; a discovery resolves its private treasure first (or no treasure if
+that pile is empty), then waits for a separate choice of whether to draw a location. Scrap and rock
+treasures are counted separately from real cards in the reserve; they are not card definitions.
+The discovery card returns to the discard of the pile it came from. The turn's exploration is marked
+finished for an empty pile, a noncreature, a completed discovery, or a resolved supported event,
+allowing the second main phase. Naturalisation, Frappe Concertée, Infestation and Pyroclasme use
+ordinary non-targeted selections, continuous effects and simultaneous damage. Blocage cérébral mills
+once per event, including a distinct token copy for each spell already cast that turn; those copies
+are neither spells nor battlefield permanents. Event resolution can pause for choices or replacements
+before its proxy returns to its source pile's discard. Its temporary source is not a spell or a
+permanent controlled by a player. Encounter draws and other events are
+rejected atomically until their resolution exists; the mode is not offered for play yet. The Mirari victory is a player action available
+at priority, including during another player's turn or with a nonempty stack. It reveals the card
+and ends the game directly rather than using the stack; auto-pass cannot skip that choice. A
+persisted mode-state flag lets players and spectators receive the distinct `OTARIA_MIRARI`
+game-over reason, including after state restoration, rather than a last-player-standing message. The
+internal Otaria initializer validates the constructed starting deck, places the two basic lands
+chosen by each player, and then draws five cards at 15
+life with no mulligans; its Jumpstart option requires the host to verify the deck's provenance.
+The board's basic-land supplies are unlimited. Preparation may add selected private reserve cards
+to the library, then shuffles the cards whose positions the player cannot preserve. Explicit looks
+and placements remember whether a position was learned from the top or bottom, including when later
+buried; action and effect-instruction boundaries also remember cards visible through a top-of-library
+permission. A card observed from both ends retains both kinds of knowledge. Other known middle
+positions may be forgotten. If the entire library is known, its order stays on top and newly added
+cards are shuffled beneath it. If top and bottom anchors conflict, the original order
+and top positions take precedence, moving bottom-anchored cards only as far as necessary. The
+shuffle has an Otaria game-rule cause, not the spell-or-ability cause, and its private reserve
+identities are not projected as public events.
+The AI's `OtariaCampaignPolicy` intercepts only typed turn, movement, exploration, preparation and
+discovery continuations, in both the live responder and the simulation-free rollout responder.
+A library of four cards or fewer with a nonempty reserve forces preparation. Reserve selection
+reuses the engine AI's castability-aware card valuation, adds deck land-balance and mana-curve needs,
+and replenishes toward eight cards when possible, preserving Mirari whenever other reserve cards
+are available. A bot with a depleted library and no reserve avoids combat turns, which would draw.
+Otherwise, a held or controlled real
+Mirari sends the explorer along a shortest hex route to the nearest star matching one of its own
+location cards. Before seeking or exploring a star, the policy requires a developed army with
+multiple attackers and blockers, enough total power and toughness, aerial blocking capacity and a
+healthy life total and library. This conservative heuristic reduces boss risk without claiming a
+specific encounter is safe; it rechecks untapped blockers when choosing the exploration source.
+While building up, bots explore terrain for reserve cards and basic lands. Exploration quotas, the
+starting-location restriction, visible competing armies, and terrain affinity guide navigation;
+preparation turns also draw to develop a small hand, even with an empty reserve, but not when the
+library is critically low. Favorable nearby combat is another alternative. Discovery accepts location cards.
+No policy decision reads opponents' reserves,
+location cards, hidden encounter identities or exploration-pile order. The policy does not submit
+state transitions: ordinary engine continuations still validate and execute every response,
+including preparation's existing shuffle and the existing explicit Mirari victory claim.
+Casting, priorities, targets, abilities, encounter choices and combat declarations stay with the
+existing engine AI; the campaign policy only decides whether to choose a combat turn.
+`OtariaContestPlanner` plans initiative and separate retreat contests with deterministic D6 rolls,
+rerolling ties and requiring the explorer to win against every blocking opponent. A creature's
+projected haste wins initiative without a roll, including any effects that add or remove haste
+from a face-down creature. These rolls and the reinforcement dice are Otaria rule rolls: Magic card
+abilities do not modify or observe them, and the encounter side is distinct from its human manager.
+The host must apply the returned RNG and publish dedicated Otaria roll events; the planner does not
+yet start encounters, resolve flight, or provide those events.
+Otaria targeting and attack declarations use a one-hex range, including their legal-action
+previews and resolution-time target rechecks. Battlefield group selection and layered continuous
+effects also use the range; controller changes are read from the current projection. The remaining
+battlefield effects and encounter-specific range exceptions still need an end-to-end audit before
+the mode is offered for play. Global color-word changes reach only spells and permanents within
+range; their effective text is recomputed as control changes move their source or recipient. Face-up
+trigger observation is range-limited, including attached observers, except for the current primary
+object of an encounter whose support entry explicitly grants that exception. Land-mana dampening
+uses the same projected, range-limited sources for previews and actual production, including sources
+controlled by an encounter. The
+existing post-layer power-dependent control reversion can still leave earlier projected effects
+stale until the duration is removed, so that case is not yet a complete spatial projection.
+`OtariaProjector` exposes the board, positions, counters and pile sizes while retaining pile order
+and other players' reserves as private state. A player's private reserve and location cards are
+visible only to that player or their input controller; a face-down encounter's identity is visible
+only to its manager or that manager's input controller. Spectators receive neither, even when their
+viewpoint uses a player's ID. The client can inspect these projected facts on the Otaria map and
+select a server-offered movement destination; projections are carried through live deltas and
+spectator replays, including an explicit clear.
+The encounter-support catalog records the annex's physical reinforcements in an unlimited stock
+separate from the exploration piles, including token characteristics, cards supplied to a
+creature's hand, and the face-up-trigger range exception. Its pure planner resolves fixed and
+seeded die counts; the four-copy cap includes the encountered card and any other copies already
+in play. If the encountered card itself exceeds that limit it still enters, but receives no
+additional copies. The planner does not create permanents or execute their simultaneous entry.
+Encounter rule mana is tracked per creature's current battlefield object, survives turn and step
+boundaries, and is removed when that object leaves. Noncreature reinforcements do not receive it.
+Turn-start choices use the highest land count among opponents; replenishment on entry is not
+implemented yet. Fixed, dynamic, and chosen-color mana abilities attach ordinary, expiring mana to
+their source creature; noncreature support sources require an explicit current-object assignment.
+The assignment survives mana-color choices, mana dampening, and fixed or chosen tap bonuses.
+Expiring mana is spent before persistent rule mana where both can satisfy the same payment.
+Ability auto-payment only taps sources assigned to the paying creature, including when a
+context-free source cache was supplied; the action's visible sources are filtered the same way.
+Other auto-payment paths, resolution-time source selection and tap-bonus riders remain closed until
+they can carry the same attribution and creature-damage semantics; unassigned mana is rejected
+atomically instead of being shared. Experimental saves containing shared encounter mana are rejected. These
+transitions are internal and are not yet a playable game mode.
+
 #### Reproducible routing identity
 
 `GameState.newRoutingId()` allocates game-local correlation tokens for player questions,
@@ -1868,6 +1983,11 @@ phases advance. Without auto-pass, players would click "pass" dozens of times pe
 
 Players can override this with per-step stops (e.g., "always stop in opponent's upkeep") or full
 control mode that disables all auto-passing.
+
+When executing an automatic pass, the session submits an empty combat declaration only if the
+engine's `CombatDeclarationControl.owedDeclaration` says that seat still owes one. In multiplayer
+and Otaria encounters, an unattacked player passes priority normally during declare blockers;
+asking that player to declare blockers would be rejected and stall the automatic priority loop.
 
 **Why server-side auto-pass?**
 

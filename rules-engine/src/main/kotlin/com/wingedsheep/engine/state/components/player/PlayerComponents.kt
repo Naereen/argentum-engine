@@ -2,6 +2,7 @@ package com.wingedsheep.engine.state.components.player
 
 import com.wingedsheep.engine.state.Component
 import com.wingedsheep.engine.state.GameState
+import com.wingedsheep.engine.state.ObjectRef
 import com.wingedsheep.sdk.core.BendType
 import com.wingedsheep.sdk.core.CardType
 import com.wingedsheep.sdk.core.Color
@@ -196,9 +197,12 @@ data class ManaPoolComponent(
         amount: Int,
         restriction: ManaRestriction,
         riders: Set<ManaSpellRider> = emptySet(),
-        expiry: ManaExpiry = ManaExpiry.END_OF_TURN
+        expiry: ManaExpiry = ManaExpiry.END_OF_TURN,
+        assignedPermanent: ObjectRef? = null,
     ): ManaPoolComponent {
-        val entries = (1..amount).map { RestrictedManaEntry(color, restriction, riders, expiry) }
+        val entries = (1..amount).map {
+            RestrictedManaEntry(color, restriction, riders, expiry, assignedPermanent = assignedPermanent)
+        }
         return copy(restrictedMana = restrictedMana + entries)
     }
 
@@ -208,7 +212,7 @@ data class ManaPoolComponent(
      * without disturbing ordinary mana that persists to end of turn.
      */
     fun clearExpired(expiry: ManaExpiry): ManaPoolComponent =
-        copy(restrictedMana = restrictedMana.filterNot { it.expiry == expiry })
+        copy(restrictedMana = restrictedMana.filterNot { it.expiry == expiry && !it.remainsUntilSpent })
 
     /**
      * Convert every restricted-mana entry whose expiry matches [expiry] into mana of [color] instead
@@ -219,8 +223,8 @@ data class ManaPoolComponent(
      * pool with no matching entries is unchanged.
      */
     fun convertExpired(expiry: ManaExpiry, color: Color?): ManaPoolComponent {
-        if (restrictedMana.none { it.expiry == expiry }) return this
-        val (converting, kept) = restrictedMana.partition { it.expiry == expiry }
+        if (restrictedMana.none { it.expiry == expiry && !it.remainsUntilSpent }) return this
+        val (converting, kept) = restrictedMana.partition { it.expiry == expiry && !it.remainsUntilSpent }
         return copy(restrictedMana = kept).withConverted(converting, color)
     }
 
@@ -231,7 +235,9 @@ data class ManaPoolComponent(
      * mana of [color].
      */
     private fun withConverted(entries: List<RestrictedManaEntry>, color: Color?): ManaPoolComponent {
-        val (plain, restricted) = entries.partition { it.restriction == ManaRestriction.AnySpend && it.riders.isEmpty() }
+        val (plain, restricted) = entries.partition {
+            it.restriction == ManaRestriction.AnySpend && it.riders.isEmpty() && it.assignedPermanent == null
+        }
         val recoloured = restricted.map { it.copy(color = color, expiry = ManaExpiry.END_OF_TURN) }
         return copy(restrictedMana = restrictedMana + recoloured,
             manaUnits = manaUnits + plain.mapNotNull { entry -> entry.source?.let {
@@ -304,8 +310,42 @@ data class ManaPoolComponent(
      * ([ManaExpiry.END_OF_TURN]) mana is subject to this action.
      */
     fun emptyAtBoundary(convertTo: ConvertEmptyingMana?, retain: Set<Color>): ManaPoolComponent {
-        val preserved = restrictedMana.filter { it.expiry != ManaExpiry.END_OF_TURN }
-        val lostRestricted = restrictedMana.filter { it.expiry == ManaExpiry.END_OF_TURN }
+        val lasting = manaUnits.filter { it.survivesStepAndTurnEnds }
+        if (lasting.isNotEmpty()) {
+            fun count(color: Color?) = lasting.count { it.color == color }
+            fun snow(color: Color?) = lasting.count { it.color == color && it.source.isSnow }
+            check(Color.entries.all { count(it) <= getAmount(it) && snow(it) <= (snowMana[it] ?: 0) } &&
+                count(null) <= colorless && snow(null) <= snowColorless) {
+                "Lasting mana units must be present in their pool"
+            }
+            val lastingSnow = Color.entries.associateWith(::snow).filterValues { it > 0 }
+            val transient = copy(
+                white = white - count(Color.WHITE),
+                blue = blue - count(Color.BLUE),
+                black = black - count(Color.BLACK),
+                red = red - count(Color.RED),
+                green = green - count(Color.GREEN),
+                colorless = colorless - count(null),
+                manaUnits = manaUnits.filterNot { it.survivesStepAndTurnEnds },
+                snowMana = snowMana.mapValues { (color, amount) -> amount - snow(color) }.filterValues { it > 0 },
+                snowColorless = snowColorless - snow(null),
+            )
+            val preserved = ManaPoolComponent(
+                white = count(Color.WHITE),
+                blue = count(Color.BLUE),
+                black = count(Color.BLACK),
+                red = count(Color.RED),
+                green = count(Color.GREEN),
+                colorless = count(null),
+                manaUnits = lasting,
+                snowMana = lastingSnow,
+                snowColorless = snow(null),
+            )
+            return transient.emptyAtBoundary(convertTo, retain).plus(preserved)
+        }
+        val (preserved, lostRestricted) = restrictedMana.partition {
+            it.remainsUntilSpent || it.expiry != ManaExpiry.END_OF_TURN
+        }
         return when {
             convertTo != null -> {
                 // Provenance tags are markers on already-counted colour mana, not extra mana; the
@@ -381,7 +421,21 @@ data class RestrictedManaEntry(
     @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val obligationIds: Set<String> = emptySet(),
-)
+    /** A reserve belonging to this particular battlefield object rather than the whole player. */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val assignedPermanent: ObjectRef? = null,
+    /** This unit is not lost at step, phase, or turn boundaries. */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val remainsUntilSpent: Boolean = false,
+) {
+    init {
+        require(!remainsUntilSpent || assignedPermanent != null) {
+            "Persistent permanent mana must belong to a specific object"
+        }
+    }
+}
 
 /**
  * What produced a unit of mana, snapshotted when it was made: the source's id, subtypes, card

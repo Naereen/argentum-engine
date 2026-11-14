@@ -913,10 +913,19 @@ class TriggerMatcher(
                 )
             }
             is EventPattern.TurnFaceUpEvent -> {
-                event is TurnFaceUpEvent && (binding != TriggerBinding.SELF || event.entityId == sourceId)
+                event is TurnFaceUpEvent &&
+                    (binding != TriggerBinding.SELF || event.entityId == sourceId) &&
+                    (binding != TriggerBinding.OTHER || event.entityId != sourceId) &&
+                    com.wingedsheep.engine.otaria.OtariaRange.observesFaceUp(
+                        state, sourceId, controllerId, event.controllerId,
+                    )
             }
             is EventPattern.CreatureTurnedFaceUpEvent -> {
                 if (event !is TurnFaceUpEvent) return false
+                if (!com.wingedsheep.engine.otaria.OtariaRange.observesFaceUp(
+                        state, sourceId, controllerId, event.controllerId,
+                    )
+                ) return false
                 if (!matchesPlayer(state, trigger.player, event.controllerId, controllerId, sourceId)) return false
                 // "a Detective you control is turned face up" — the filter reads the permanent's
                 // post-flip characteristics, which is what the projected state already holds by
@@ -2877,7 +2886,9 @@ class TriggerMatcher(
         val byController = triggers.groupBy { it.controllerId }
 
         // Get player order starting from active player
-        val playerOrder = state.turnOrder.let { players ->
+        val playerOrder = if (state.otaria?.encounters?.isNotEmpty() == true) {
+            state.apnapOrder
+        } else state.turnOrder.let { players ->
             val activeIndex = players.indexOf(activePlayerId)
             if (activeIndex == -1) players
             else players.drop(activeIndex) + players.take(activeIndex)

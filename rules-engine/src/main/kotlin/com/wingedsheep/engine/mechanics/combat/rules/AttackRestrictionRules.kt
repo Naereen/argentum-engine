@@ -445,6 +445,20 @@ class AttackModeDefenderRule : AttackDefenderRule {
     }
 }
 
+class OtariaAttackRangeRule : AttackDefenderRule {
+    override fun check(ctx: AttackCheckContext, defenderId: EntityId): String? {
+        if (!com.wingedsheep.engine.otaria.OtariaRange.containsForCombat(ctx.state, ctx.attackingPlayer, defenderId)) {
+            return "Attack target is outside Otaria range"
+        }
+        if (com.wingedsheep.engine.otaria.OtariaEncounterCombat.actorOfCreature(ctx.state, ctx.projected, defenderId) != null &&
+            ctx.projected.hasKeyword(defenderId, Keyword.FLYING) &&
+            !ctx.projected.hasKeyword(ctx.attackerId, Keyword.FLYING) &&
+            !ctx.projected.hasKeyword(ctx.attackerId, Keyword.REACH)
+        ) return "Only a creature with flying or reach can attack this flying encounter creature"
+        return null
+    }
+}
+
 // =========================================================================
 // Shared helpers
 // =========================================================================
@@ -534,5 +548,6 @@ fun defaultAttackDefenderRules(predicateEvaluator: PredicateEvaluator): List<Att
     CantBeAttackedByDefenderRule(predicateEvaluator = predicateEvaluator),
     CantAttackYouDefenderRule(predicateEvaluator = predicateEvaluator),
     CantBeAttackedWhileAttachedDefenderRule(),
-    AttackModeDefenderRule()
+    AttackModeDefenderRule(),
+    OtariaAttackRangeRule()
 )

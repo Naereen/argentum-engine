@@ -740,6 +740,18 @@ function processStateUpdate(
     getPreferences().gameplay.forcedChoices,
     msg.autoAnswerPublic === true
   )
+  const initiativeEvent = msg.events.find(
+    (event) => event.type === 'otariaNotice' && event.initiativeOutcome != null
+  )
+  const initiativeResultNotice = initiativeEvent?.type === 'otariaNotice' && initiativeEvent.initiativeOutcome
+    ? {
+        key: Date.now(),
+        explorerName: resolvedState.players.find((player) => player.playerId === initiativeEvent.explorerId)?.name ?? 'The explorer',
+        explorerIsYou: initiativeEvent.explorerId === playerId,
+        outcome: initiativeEvent.initiativeOutcome,
+        rolls: initiativeEvent.initiativeRolls ?? null,
+      }
+    : null
 
   set((state) => ({
     gameState: resolvedState,
@@ -757,6 +769,7 @@ function processStateUpdate(
     // long game paid steadily more per click. Map only the new tail and keep the prefix's
     // existing entries, which also keeps their identity stable for the log list.
     eventLog: appendGameLogTail(state.eventLog, resolvedState.gameLog),
+    ...(initiativeResultNotice && !suppressAnimations ? { initiativeResultNotice } : {}),
     ...(newDrawAnimations.length > 0 && !suppressAnimations ? { drawAnimations: [...state.drawAnimations, ...newDrawAnimations] } : {}),
     ...(newDamageAnimations.length > 0 && !suppressAnimations ? { damageAnimations: [...state.damageAnimations, ...newDamageAnimations] } : {}),
     ...(newRevealAnimations.length > 0 && !suppressAnimations ? { revealAnimations: [...state.revealAnimations, ...newRevealAnimations] } : {}),

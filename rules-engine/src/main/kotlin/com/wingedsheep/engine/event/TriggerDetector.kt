@@ -220,7 +220,7 @@ class TriggerDetector(
         // Damage observers join the same observer lists the battlefield pass fills, for the same
         // reason — the per-event matcher never matches a DealsDamageEvent (Bloodfeather Phoenix).
         for (zone in NON_BATTLEFIELD_ACTIVE_ZONES) {
-            for (playerId in state.turnOrder) {
+            for (playerId in state.zoneOwners) {
                 for (entityId in state.getZone(playerId, zone)) {
                     val container = state.getEntity(entityId) ?: continue
                     val cardComponent = container.get<CardComponent>() ?: continue
@@ -796,7 +796,7 @@ class TriggerDetector(
         // Cards in all three are owned rather than controlled, so the owner is the controller of
         // any ability they produce.
         for (zone in NON_BATTLEFIELD_ACTIVE_ZONES) {
-            for (playerId in state.turnOrder) {
+            for (playerId in state.zoneOwners) {
                 for (entityId in state.getZone(playerId, zone)) {
                     val container = state.getEntity(entityId) ?: continue
                     val cardComponent = container.get<CardComponent>() ?: continue
@@ -2277,7 +2277,7 @@ class TriggerDetector(
         for (zone in NON_BATTLEFIELD_ACTIVE_ZONES) {
             val grantsOnly = zone !in NON_BATTLEFIELD_EVENT_TRIGGER_ZONES
             if (grantsOnly && (zone != Zone.EXILE || (!exileGrantsInPlay && suspendCastCandidate == null))) continue
-            for (playerId in state.turnOrder) {
+            for (playerId in state.zoneOwners) {
                 for (entityId in state.getZone(playerId, zone)) {
                     val container = state.getEntity(entityId) ?: continue
                     val cardComponent = container.get<CardComponent>() ?: continue

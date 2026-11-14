@@ -291,7 +291,15 @@ class SpellCounterer(
         }
         if (destZone == Zone.LIBRARY) {
             newState = LibraryRevealUtils
-                .markRevealed(newState, listOf(spellId), newState.turnOrder.toSet())
+                .markRevealed(
+                    newState, listOf(spellId), newState.turnOrder.toSet(),
+                    when (position) {
+                        LibraryChoicePosition.Top, LibraryChoicePosition.SecondFromTop ->
+                            com.wingedsheep.engine.state.components.identity.LibraryPositionAnchor.TOP
+                        LibraryChoicePosition.Bottom, null ->
+                            com.wingedsheep.engine.state.components.identity.LibraryPositionAnchor.BOTTOM
+                    },
+                )
         }
 
         return ExecutionResult.success(

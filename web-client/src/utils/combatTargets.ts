@@ -1,4 +1,12 @@
-import type { ClientCard, EntityId } from '@/types'
+import type { ClientCard, ClientOtariaEncounter, EntityId } from '@/types'
+
+/** A non-player encounter actor is displayed on its human manager's board. */
+export function presentationSeatOf(
+  actorId: EntityId,
+  encounters: readonly ClientOtariaEncounter[] | null | undefined,
+): EntityId {
+  return encounters?.find((encounter) => encounter.actorId === actorId)?.managerId ?? actorId
+}
 
 /**
  * The player who defends an attack aimed at [targetId] — a player, or a permanent looked up in
@@ -8,11 +16,11 @@ import type { ClientCard, EntityId } from '@/types'
  */
 export function defendingPlayerOf(
   targetId: EntityId,
-  cards: Readonly<Record<EntityId, ClientCard | undefined>> | null | undefined,
+  cards: Readonly<Record<EntityId, Pick<ClientCard, 'controllerId' | 'protectorId'> | undefined>> | null | undefined,
+  encounters?: readonly ClientOtariaEncounter[] | null,
 ): EntityId {
   const card = cards?.[targetId]
-  if (!card) return targetId
-  return card.protectorId ?? card.controllerId
+  return presentationSeatOf(card ? (card.protectorId ?? card.controllerId) : targetId, encounters)
 }
 
 /** Whether a permanent is a battle (CR 310). */
@@ -25,6 +33,7 @@ export function isBattle(card: ClientCard): boolean {
  * which sits in front of the player who protects it. That's where attacks on it come from and
  * who blocks for it, so it reads as that player's to defend.
  */
-export function tableSideOf(card: ClientCard): EntityId {
-  return isBattle(card) && card.protectorId ? card.protectorId : card.controllerId
+export function tableSideOf(card: ClientCard, encounters?: readonly ClientOtariaEncounter[] | null): EntityId {
+  const controller = isBattle(card) && card.protectorId ? card.protectorId : card.controllerId
+  return presentationSeatOf(controller, encounters)
 }

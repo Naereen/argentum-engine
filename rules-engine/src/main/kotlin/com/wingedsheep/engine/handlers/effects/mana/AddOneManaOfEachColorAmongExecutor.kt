@@ -6,11 +6,13 @@ import com.wingedsheep.engine.core.EffectResult
 import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.handlers.effects.BattlefieldFilterUtils
 import com.wingedsheep.engine.handlers.effects.EffectExecutor
+import com.wingedsheep.engine.otaria.OtariaEncounterMana
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.player.ManaPoolComponent
 import com.wingedsheep.sdk.core.Color
 import com.wingedsheep.sdk.scripting.effects.AddOneManaOfEachColorAmongEffect
 import com.wingedsheep.sdk.scripting.effects.ManaColorSource
+import com.wingedsheep.sdk.scripting.effects.ManaRestriction
 import kotlin.reflect.KClass
 
 /**
@@ -60,12 +62,24 @@ class AddOneManaOfEachColorAmongExecutor(
             return EffectResult.success(state)
         }
 
+        val encounterOwner = if (OtariaEncounterMana.isEncounter(state, context.controllerId)) {
+            if (context.sourceReferenceLost) return EffectResult.error(state, "The Otaria mana source has left")
+            OtariaEncounterMana.sourceOwner(
+                state, context.controllerId, context.sourceId, context.objectReferences.origin,
+            ) ?: return EffectResult.error(state, "Otaria mana needs an assigned encounter creature")
+        } else null
+        val sourceTag = if (encounterOwner != null) {
+            context.sourceId?.let { ManaProvenanceTracker.sourceTag(state, it) }
+        } else null
         val restriction = ChosenTypeManaRestriction.bind(effect.restriction, state, context.sourceId)
         val newState = state.updateEntity(context.controllerId) { container ->
             var manaPool = container.get<ManaPoolComponent>() ?: ManaPoolComponent()
             for (color in availableColors) {
-                manaPool = if (restriction != null) {
-                    manaPool.addRestricted(color, 1, restriction)
+                manaPool = if (restriction != null || encounterOwner != null) {
+                    val added = manaPool.addRestricted(
+                        color, 1, restriction ?: ManaRestriction.AnySpend, assignedPermanent = encounterOwner,
+                    )
+                    if (sourceTag != null) added.withRestrictedProvenance(sourceTag, 1) else added
                 } else {
                     manaPool.add(color, 1)
                 }

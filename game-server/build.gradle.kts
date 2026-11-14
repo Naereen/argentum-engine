@@ -52,6 +52,20 @@ dependencies {
     testImplementation(libs.testcontainersJunit)
 }
 
+springBoot {
+    mainClass.set("com.wingedsheep.gameserver.GameServerApplicationKt")
+}
+
+tasks.register<JavaExec>("otariaSimulate") {
+    group = "simulation"
+    description = "Run headless full-AI Otaria matches and write JSONL telemetry"
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("com.wingedsheep.gameserver.otaria.simulation.OtariaSimulationMainKt")
+    workingDir = rootProject.projectDir
+    javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) })
+    maxHeapSize = "2g"
+}
+
 /**
  * Bakes the engine AI changelog into `engine-ai-history.tsv` on the classpath, for
  * the admin "AI vs humans" view: each entry becomes a marker on the win-rate timeline, and is

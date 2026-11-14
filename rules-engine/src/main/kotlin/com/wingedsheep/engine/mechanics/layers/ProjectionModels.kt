@@ -287,7 +287,9 @@ data class ContinuousEffect(
      */
     val grantedBy: EntityId? = null,
     /** The granting static's own condition ("as long as enchanted permanent is an Equipment"), read with [grantedBy] as source. */
-    val grantCondition: Condition? = null
+    val grantCondition: Condition? = null,
+    /** Original printed filter, retained when a battlefield static's text can change during projection. */
+    val textUnmodifiedFilter: AffectsFilter? = null
 ) {
     val layer: Layer get() = modification.layer
     val sublayer: Sublayer? get() = modification.sublayer

@@ -90,17 +90,33 @@ object CombatDefenders {
      * teammate: then the nearest opponent on that side is more than one seat away and the player
      * can't attack at all (CR 803.1a / 803.1b).
      */
-    fun legalDefendingPlayers(state: GameState, attackingPlayer: EntityId): Set<EntityId> =
-        when (state.attackMode) {
+    fun legalDefendingPlayers(state: GameState, attackingPlayer: EntityId): Set<EntityId> {
+        val normal = when (state.attackMode) {
             com.wingedsheep.sdk.core.AttackMode.MULTIPLE -> state.getOpponents(attackingPlayer).toSet()
             com.wingedsheep.sdk.core.AttackMode.LEFT ->
                 adjacentOpponent(state, attackingPlayer, state.getNextPlayer(attackingPlayer))
             com.wingedsheep.sdk.core.AttackMode.RIGHT ->
                 adjacentOpponent(state, attackingPlayer, state.getPreviousPlayer(attackingPlayer))
         }
+        val mode = state.otaria ?: return normal
+        val attackingEncounter = mode.encounters[attackingPlayer]
+        if (attackingEncounter != null) return normal.filterTo(mutableSetOf()) { it in attackingEncounter.participants }
+        val encountersInRange = mode.encounters.keys.filter {
+            com.wingedsheep.engine.otaria.OtariaRange.betweenControllers(state, attackingPlayer, it)
+        }
+        return normal.filterTo(mutableSetOf()) {
+            com.wingedsheep.engine.otaria.OtariaRange.containsForCombat(state, attackingPlayer, it)
+        } +
+            encountersInRange
+    }
 
     private fun adjacentOpponent(state: GameState, attackingPlayer: EntityId, neighbour: EntityId): Set<EntityId> =
         if (neighbour in state.getOpponents(attackingPlayer)) setOf(neighbour) else emptySet()
+
+    private fun canAttackPlayerInOtaria(state: GameState, attacker: EntityId, defender: EntityId): Boolean =
+        state.otaria?.encounters?.values?.none {
+            attacker in it.participants && defender == it.managerId
+        } != false
 
     /**
      * Everything [attackingPlayer] may declare an attack on this combat, before any per-creature
@@ -110,13 +126,18 @@ object CombatDefenders {
      */
     fun attackTargets(state: GameState, projected: ProjectedState, attackingPlayer: EntityId): List<EntityId> {
         val opponents = legalDefendingPlayers(state, attackingPlayer)
-        return opponents.toList() + state.getBattlefield().filter { entityId ->
+        val candidates = opponents.filter { it in state.activePlayers && canAttackPlayerInOtaria(state, attackingPlayer, it) } +
+            state.getBattlefield().filter { entityId ->
             when {
                 projected.isBattle(entityId) ->
                     com.wingedsheep.engine.mechanics.battle.Battles.canBeAttackedBy(state, entityId, attackingPlayer, opponents)
                 projected.isPlaneswalker(entityId) -> projected.getController(entityId) in opponents
+                com.wingedsheep.engine.otaria.OtariaEncounterCombat.actorOfCreature(state, projected, entityId) in opponents -> true
                 else -> false
             }
+        }
+        return candidates.filter {
+            com.wingedsheep.engine.otaria.OtariaRange.containsForCombat(state, attackingPlayer, it)
         }
     }
 
@@ -129,11 +150,15 @@ object CombatDefenders {
      * chosen one ([enteringAttackTargets]) is drawn from it.
      */
     fun isLegalEnteringAttackTarget(state: GameState, controllerId: EntityId, defenderId: EntityId): Boolean {
+        if (!com.wingedsheep.engine.otaria.OtariaRange.containsForCombat(state, controllerId, defenderId)) return false
         val defending = legalDefendingPlayers(state, controllerId)
-        if (defenderId in state.turnOrder) return defenderId in defending
+        if (defenderId in state.turnOrder) {
+            return defenderId in defending && canAttackPlayerInOtaria(state, controllerId, defenderId)
+        }
         if (defenderId !in state.getBattlefield()) return false
         val projected = state.projectedState
-        return (projected.isPlaneswalker(defenderId) && projected.getController(defenderId) in defending) ||
+        return (com.wingedsheep.engine.otaria.OtariaEncounterCombat.actorOfCreature(state, projected, defenderId) in defending) ||
+            (projected.isPlaneswalker(defenderId) && projected.getController(defenderId) in defending) ||
             (projected.isBattle(defenderId) &&
                 com.wingedsheep.engine.mechanics.battle.Battles.canBeAttackedBy(state, defenderId, controllerId, defending))
     }
@@ -168,7 +193,7 @@ object CombatDefenders {
         val projected = state.projectedState
         val permanents = state.getBattlefield()
             .filter { isLegalEnteringAttackTarget(state, controllerId, it) }
-        return state.turnOrder.filter { it in defending } +
+        return state.turnOrder.filter { it in defending && isLegalEnteringAttackTarget(state, controllerId, it) } +
             permanents.filter { projected.isPlaneswalker(it) } +
             permanents.filterNot { projected.isPlaneswalker(it) }
     }
@@ -212,6 +237,9 @@ object CombatDefenders {
     fun defendingPlayersInApnapOrder(state: GameState): List<EntityId> {
         val defenders = defendingPlayers(state)
         if (defenders.isEmpty()) return emptyList()
+        if (state.otaria?.encounters?.isNotEmpty() == true) {
+            return state.apnapOrder.filter { it in defenders }
+        }
         val order = state.turnOrder
         if (order.isEmpty()) return defenders.toList()
         val startIdx = state.activePlayerId?.let { order.indexOf(it) }?.coerceAtLeast(0) ?: 0

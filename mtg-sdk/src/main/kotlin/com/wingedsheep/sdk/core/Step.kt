@@ -25,7 +25,12 @@ enum class Step(val phase: Phase, val displayName: String) {
 
     // Ending Phase
     END(Phase.ENDING, "End Step"),
-    CLEANUP(Phase.ENDING, "Cleanup Step");
+    CLEANUP(Phase.ENDING, "Cleanup Step"),
+
+    // Explorer of Otaria phases have no separate steps.
+    OTARIA_PREPARATION(Phase.OTARIA_PREPARATION, "Preparation Phase"),
+    OTARIA_MOVEMENT(Phase.OTARIA_MOVEMENT, "Movement Phase"),
+    OTARIA_EXPLORATION(Phase.OTARIA_EXPLORATION, "Exploration Phase");
 
     val isMainPhase: Boolean
         get() = this == PRECOMBAT_MAIN || this == POSTCOMBAT_MAIN
@@ -50,6 +55,9 @@ enum class Step(val phase: Phase, val displayName: String) {
         POSTCOMBAT_MAIN -> END
         END -> CLEANUP
         CLEANUP -> UNTAP // Wraps to next turn
+        OTARIA_PREPARATION -> DRAW
+        OTARIA_MOVEMENT -> END
+        OTARIA_EXPLORATION -> POSTCOMBAT_MAIN
     }
 
     companion object {
@@ -63,6 +71,9 @@ enum class Step(val phase: Phase, val displayName: String) {
             Phase.COMBAT -> BEGIN_COMBAT
             Phase.POSTCOMBAT_MAIN -> POSTCOMBAT_MAIN
             Phase.ENDING -> END
+            Phase.OTARIA_PREPARATION -> OTARIA_PREPARATION
+            Phase.OTARIA_MOVEMENT -> OTARIA_MOVEMENT
+            Phase.OTARIA_EXPLORATION -> OTARIA_EXPLORATION
         }
 
         fun lastStepOf(phase: Phase): Step = when (phase) {
@@ -71,6 +82,9 @@ enum class Step(val phase: Phase, val displayName: String) {
             Phase.COMBAT -> END_COMBAT
             Phase.POSTCOMBAT_MAIN -> POSTCOMBAT_MAIN
             Phase.ENDING -> CLEANUP
+            Phase.OTARIA_PREPARATION -> OTARIA_PREPARATION
+            Phase.OTARIA_MOVEMENT -> OTARIA_MOVEMENT
+            Phase.OTARIA_EXPLORATION -> OTARIA_EXPLORATION
         }
     }
 }

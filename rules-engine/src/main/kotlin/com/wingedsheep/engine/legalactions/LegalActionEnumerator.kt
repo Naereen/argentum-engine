@@ -38,6 +38,7 @@ class LegalActionEnumerator(
     private val enumerators: List<ActionEnumerator> = listOf(
         PassPriorityEnumerator(),
         PlayerActionEnumerator(),
+        OtariaVictoryEnumerator(),
         PlayLandEnumerator(),
         MorphCastEnumerator(),
         CastSpellEnumerator(predicateEvaluator = predicateEvaluator),

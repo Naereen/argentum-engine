@@ -16,6 +16,7 @@ val gameServerSerializersModule = SerializersModule {
 
     // ClientEvent hierarchy for game log persistence
     polymorphic(ClientEvent::class) {
+        subclass(ClientEvent.OtariaNotice::class)
         subclass(ClientEvent.LifeChanged::class)
         subclass(ClientEvent.DamageDealt::class)
         subclass(ClientEvent.StatsModified::class)

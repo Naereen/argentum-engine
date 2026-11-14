@@ -87,10 +87,10 @@ class EngineAiPlayerController(
         learnOpponentDecklists(gameState)
 
         // Handle pending decisions using the engine AI's responder
-        if (pendingDecision != null && pendingDecision.playerId == playerId) {
-            val response = aiPlayer.respondToDecision(gameState, pendingDecision)
+        if (pendingDecision != null && gameState.actorFor(pendingDecision.playerId) == playerId) {
+            val response = playerFor(pendingDecision.playerId).respondToDecision(gameState, pendingDecision)
             logger.info("Engine AI decision: {} → {}", pendingDecision::class.simpleName, response::class.simpleName)
-            return ActionResponse.SubmitDecision(playerId, response)
+            return ActionResponse.SubmitDecision(pendingDecision.playerId, response)
         }
 
         if (legalActions.isEmpty()) {
@@ -120,12 +120,17 @@ class EngineAiPlayerController(
         }
 
         // Use the engine AI to choose the best action from the real game state
-        val action = aiPlayer.chooseAction(gameState)
+        val actingSeat = legalActions.first().action.playerId
+        val action = playerFor(actingSeat).chooseAction(gameState)
         logger.info("Engine AI chose: {}", action::class.simpleName)
         return ActionResponse.SubmitAction(action)
     }
 
     private val seatPlayers = mutableMapOf<EntityId, AIPlayer>()
+
+    private fun playerFor(seat: EntityId): AIPlayer =
+        if (seat == playerId) aiPlayer
+        else seatPlayers.getOrPut(seat) { AIPlayer.create(cardRegistry, seat, profile) }
 
     /**
      * The [offered] declaration's seat owes, chosen by an engine AI playing that seat. It doesn't
@@ -135,8 +140,7 @@ class EngineAiPlayerController(
      */
     private fun declarationFor(offered: GameAction, gameState: GameState): GameAction {
         val seat = offered.playerId
-        val chosen = seatPlayers.getOrPut(seat) { AIPlayer.create(cardRegistry, seat, AiProfile.LIVE) }
-            .chooseAction(gameState)
+        val chosen = playerFor(seat).chooseAction(gameState)
         return if (chosen::class == offered::class && chosen.playerId == seat) chosen else offered
     }
 

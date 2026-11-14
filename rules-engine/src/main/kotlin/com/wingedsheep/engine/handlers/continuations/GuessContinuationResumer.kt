@@ -157,7 +157,10 @@ class GuessContinuationResumer(
         // Reveal the top card to everyone (if any). Empty library => no card revealed.
         val actualKind: CardKind? = if (topCardId != null) {
             val card = state.getEntity(topCardId)?.get<CardComponent>()
-            newState = LibraryRevealUtils.markRevealed(newState, listOf(topCardId), newState.turnOrder.toSet())
+            newState = LibraryRevealUtils.markRevealed(
+                newState, listOf(topCardId), newState.turnOrder.toSet(),
+                com.wingedsheep.engine.state.components.identity.LibraryPositionAnchor.TOP,
+            )
             events.add(
                 CardsRevealedEvent(
                     revealingPlayerId = libraryOwnerId,

@@ -24,8 +24,10 @@ object SharedTeamBlockChoices {
         return forced && actors.distinct().size > 1
     }
 
+    // Non-team actors (including Otaria encounters) need not be part of the turn order.
     private fun holder(state: GameState, playerId: EntityId): EntityId =
-        state.turnOrder.first { it in state.sharedTurnTeam(playerId) }
+        if (state.format.sharesTeamTurns) state.turnOrder.first { it in state.sharedTurnTeam(playerId) }
+        else playerId
 
     private fun choices(state: GameState, playerId: EntityId): TeamBlockerChoicesComponent =
         state.getEntity(holder(state, playerId))?.get<TeamBlockerChoicesComponent>()

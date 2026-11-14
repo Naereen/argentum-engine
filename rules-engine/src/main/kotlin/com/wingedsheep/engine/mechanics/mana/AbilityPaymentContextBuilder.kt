@@ -2,6 +2,7 @@ package com.wingedsheep.engine.mechanics.mana
 
 import com.wingedsheep.engine.handlers.actions.ability.extractManaCost
 import com.wingedsheep.engine.mechanics.layers.ProjectedState
+import com.wingedsheep.engine.otaria.OtariaEncounterMana
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.sdk.core.CardType
 import com.wingedsheep.sdk.model.EntityId
@@ -51,5 +52,6 @@ internal fun buildAbilityPaymentContext(
         isClassLevelUpActivation = ability?.effect is com.wingedsheep.sdk.scripting.effects.LevelUpClassEffect,
         hasXInCost = manaCost?.hasX == true,
         costSymbols = manaCost?.symbols?.toSet().orEmpty(),
+        assignedPermanent = OtariaEncounterMana.paymentOwner(projected.getBaseState(), sourceId),
     )
 }

@@ -290,6 +290,9 @@ export interface StateDelta {
   /** The subgame in progress (CR 729). Present = changed; `subgameCleared` = the main game resumed. */
   readonly subgame?: ClientGameState['subgame'] | null
   readonly subgameCleared?: boolean | null
+  /** Viewer-specific Otaria board; `otariaCleared` replaces it with null. */
+  readonly otaria?: ClientGameState['otaria'] | null
+  readonly otariaCleared?: boolean | null
   /** Whether the Void condition holds this turn. Null means unchanged. */
   readonly voidActive?: boolean | null
   /** Combat state changes */
@@ -800,6 +803,7 @@ export type DamageEdgeDirection =
   | 'ATTACKER_TO_PLAYER'
   | 'ATTACKER_TO_PLANESWALKER'
   | 'ATTACKER_TO_BATTLE'
+  | 'ATTACKER_TO_CREATURE'
 
 /**
  * One directed damage assignment on the combat resolution board. Pre-filled with the
@@ -852,7 +856,7 @@ export interface ResolutionBlocker {
   readonly markedDamage: number
 }
 
-export type ResolutionTargetKind = 'PLAYER' | 'PLANESWALKER' | 'BATTLE'
+export type ResolutionTargetKind = 'PLAYER' | 'PLANESWALKER' | 'BATTLE' | 'CREATURE'
 
 export interface ResolutionDefender {
   readonly id: EntityId

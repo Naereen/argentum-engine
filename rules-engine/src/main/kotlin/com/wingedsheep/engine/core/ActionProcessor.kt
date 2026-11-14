@@ -12,6 +12,9 @@ import com.wingedsheep.engine.handlers.actions.room.RoomModule
 import com.wingedsheep.engine.handlers.actions.special.SpecialActionsModule
 import com.wingedsheep.engine.handlers.actions.spell.SpellModule
 import com.wingedsheep.engine.mechanics.SplitSecond
+import com.wingedsheep.engine.otaria.ClaimOtariaMirariVictoryHandler
+import com.wingedsheep.engine.otaria.OtariaEncounterMana
+import com.wingedsheep.engine.otaria.OtariaLibraryKnowledge
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.core.UndoPolicyComputer
@@ -63,9 +66,13 @@ class ActionProcessor(
         registerModule(RoomModule(services))
         registerModule(SpellModule(services))
         registerModule(DecisionModule(services))
+        register(ClaimOtariaMirariVictoryHandler())
     }
 
     private val forcedManaPaymentSafety = com.wingedsheep.engine.mechanics.mana.ForcedManaPaymentSafety(services)
+    private val otariaLibraryKnowledge by lazy {
+        OtariaLibraryKnowledge(services.cardRegistry, services.predicateEvaluator)
+    }
 
     /**
      * Process a game action and return the result.
@@ -82,11 +89,15 @@ class ActionProcessor(
 
         // Handlers never detect triggers or check state-based actions themselves. The one settle
         // boundary does that for every action, paused or not (CR 117.5, 603.3).
-        val executed = services.settler.settle(registry.execute(ControlHistory.initialize(state), action)).let {
+        val remembered = otariaLibraryKnowledge.rememberVisibleTops(state)
+        val executed = services.settler.settle(registry.execute(ControlHistory.initialize(remembered), action)).let {
             it.copy(state = com.wingedsheep.engine.handlers.effects.copy.GrantedEntryCopy.settle(it.state))
         }
         val paymentError = forcedManaPaymentSafety.rejection(state, executed, action)
-        val checked = paymentError?.let { ExecutionResult.error(state, it) } ?: executed
+        val sharingError = if (executed.outcome !is Outcome.Rejected &&
+            OtariaEncounterMana.hasUnassignedMana(executed.state)
+        ) "This Otaria mana production cannot be assigned to an encounter creature" else null
+        val checked = (paymentError ?: sharingError)?.let { ExecutionResult.error(state, it) } ?: executed
 
         // Action handlers may compose several immutable intermediate states before a nested
         // handler or resumed continuation rejects a later step. The public action contract is
@@ -102,7 +113,8 @@ class ActionProcessor(
             // Cards revealed into hand or bounced back to hand stay visible until a same-named
             // card is played — see [RevealedInHandTracker]. Paused actions are accepted in-flight
             // actions, so they retain this existing bookkeeping just like completed successes.
-            com.wingedsheep.engine.mechanics.RevealedInHandTracker.applyAfterAction(checked)
+            val tracked = com.wingedsheep.engine.mechanics.RevealedInHandTracker.applyAfterAction(checked)
+            tracked.copy(state = otariaLibraryKnowledge.rememberVisibleTops(tracked.state))
         }
         val undoPolicy = if (computeUndo) {
             UndoPolicyComputer.compute(action, state, result, services.cardRegistry)
@@ -126,9 +138,10 @@ class ActionProcessor(
             state.getEntity(it)?.get<com.wingedsheep.engine.state.components.player.MulliganStateComponent>()
         }
         if (mulligans.any { it == null || !it.skipped || it.leylinePhaseStarted }) return ExecutionResult.success(state, events)
-        return services.settler.settle(services.mulliganHandler.tryAdvancePastMulliganPhase(
+        val started = services.settler.settle(services.mulliganHandler.tryAdvancePastMulliganPhase(
             ControlHistory.initialize(state), events, services.turnManager,
         ))
+        return started.copy(state = otariaLibraryKnowledge.rememberVisibleTops(started.state))
     }
 
     /**
@@ -149,9 +162,24 @@ class ActionProcessor(
             return "Game is already over"
         }
 
+        if (OtariaEncounterMana.hasUnassignedLegacyMana(state)) {
+            return "This Otaria save has unassigned encounter mana and cannot be resumed; restart the game"
+        }
+        if (OtariaEncounterMana.hasUnassignedMana(state)) {
+            return "This Otaria save has unassigned encounter mana and cannot be resumed; restart the game"
+        }
+
         // Check player exists
-        if (!state.turnOrder.contains(action.playerId)) {
+        val isEncounter = state.otaria?.encounters?.containsKey(action.playerId) == true &&
+            state.getEntity(action.playerId) != null
+        if (!state.turnOrder.contains(action.playerId) && !isEncounter) {
             return "Unknown player: ${action.playerId}"
+        }
+        if (isEncounter && action is Concede) return "An encounter cannot concede"
+        if (isEncounter && action is SubmitDecision && action.response is ManaSourcesSelectedResponse &&
+            (action.response.autoPay || action.response.selectedSources.isNotEmpty())
+        ) {
+            return "Otaria encounter mana-source payment windows are not supported yet"
         }
 
         // Nobody has priority before the first turn (CR 103.8): until every player has kept and

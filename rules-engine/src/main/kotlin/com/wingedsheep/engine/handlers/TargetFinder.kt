@@ -146,7 +146,9 @@ class TargetFinder(
                 if (excludeId != null) baseTargets.filter { it != excludeId } else baseTargets
             }
         }
-        if (ignoreTargetingRestrictions) return candidates
+        val inRange = if (state.otaria == null) candidates
+        else candidates.filter { com.wingedsheep.engine.otaria.OtariaRange.contains(state, controllerId, it) }
+        if (ignoreTargetingRestrictions) return inRange
         val projected = state.projectedState
         val sourceColors = sourceId?.takeIf { state.hasEntity(it) }?.let { id ->
             sourceColorNames(state, projected, id)
@@ -157,7 +159,7 @@ class TargetFinder(
         )
         // CardsInZonesCantBeTargeted (Ground Seal; Tomik): read once, on the first non-player candidate.
         val zoneLocks by lazy(LazyThreadSafetyMode.NONE) { UntargetableByRules.zoneLocks(state) }
-        return candidates.filter { id ->
+        return inRange.filter { id ->
             if (id in state.turnOrder) {
                 !PlayerProtectionRules.blocksTargeting(
                     state, id, sourceId, controllerId, predicateEvaluator = predicateEvaluator

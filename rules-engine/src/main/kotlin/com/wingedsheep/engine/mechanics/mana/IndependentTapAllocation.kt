@@ -18,7 +18,7 @@ internal fun canPayWithIndependentTaps(
     xColors: Set<Color> = emptySet(),
 ): Boolean {
     val initialPool = if (context == null) initial.copy(restrictedMana = initial.restrictedMana.filter {
-        it.restriction == ManaRestriction.AnySpend
+        it.restriction == ManaRestriction.AnySpend && it.assignedPermanent == null
     }) else initial
     val paymentContext = context ?: SpellPaymentContext()
     fun completes(pool: ManaPool, obligations: Set<String>): Boolean {

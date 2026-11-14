@@ -3,6 +3,7 @@ package com.wingedsheep.engine.handlers.effects.library
 import com.wingedsheep.engine.core.CardPlottedEvent
 import com.wingedsheep.engine.core.EffectResult
 import com.wingedsheep.engine.core.GameEvent
+import com.wingedsheep.engine.core.turnOrderIndex
 import com.wingedsheep.engine.event.DelayedTriggeredAbility
 import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.handlers.effects.EffectExecutor
@@ -329,7 +330,7 @@ internal fun resolveControllerStepTurn(
     expiry: MayPlayExpiry.UntilControllerStep
 ): Int {
     val onControllerTurn = state.isActiveTurnFor(controllerId)
-    val targetReachedThisTurn = state.step.ordinal >= expiry.step.ordinal
+    val targetReachedThisTurn = state.step.turnOrderIndex >= expiry.step.turnOrderIndex
     val thisTurnStillCounts = onControllerTurn && expiry.includeCurrentTurn && !targetReachedThisTurn
 
     // This turn's matching step still counts — expire this turn. Otherwise the

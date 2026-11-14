@@ -146,10 +146,12 @@ class DecisionResponder(
 ) {
     private val priors: ChoicePriors? = if (informedChoices) ChoicePriors(simulator.cardRegistry) else null
     private val spellRedirect = SpellRedirectChoice(simulator.cardRegistry, intents)
+    private val otariaCampaign = OtariaCampaignPolicy(intents)
 
     var forcedPlayPicker: (GameState, EntityId) -> GameAction = simulator::completeForcedPlay
 
     fun respond(state: GameState, decision: PendingDecision, playerId: EntityId): DecisionResponse {
+        otariaCampaign.respond(state, decision)?.let { return it }
         // Secret commitments must bypass both simulation and advisors: either can inspect the
         // saved private answers and let the last chooser respond to information they cannot see.
         val secret = (state.peekContinuation() as? Suspension)?.takeIf {
@@ -1320,6 +1322,11 @@ class DecisionResponder(
         playerId: EntityId
     ): DecisionResponse {
         if (decision.options.size == 1) return OptionChosenResponse(decision.id, 0)
+        if (decision.optionMetadata.firstOrNull()?.id == "otaria-initiative:combat" &&
+            state.projectedState.getBattlefieldControlledBy(playerId).none {
+                state.projectedState.isCreature(it) && state.getEntity(it)?.has<TappedComponent>() != true
+            }
+        ) return OptionChosenResponse(decision.id, 1)
         if (topOrBottomWeighsTheDraw && castabilityAwareCardSelection) {
             topOrBottomByDraw(state, decision)?.let { return it }
         }

@@ -1,6 +1,7 @@
 package com.wingedsheep.ai.engine.knowledge
 
 import com.wingedsheep.engine.core.ActivateAbility
+import com.wingedsheep.engine.core.turnOrderIndex
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.sdk.core.Step
 import com.wingedsheep.sdk.model.EntityId
@@ -74,7 +75,7 @@ internal object SelfTapGrowthWindow {
         if (state.isActiveTurnFor(playerId)) return false
         val active = state.activePlayerId ?: return false
         if (!state.turnAfterIsOurs(active, playerId)) return false
-        return state.step.ordinal >= Step.DECLARE_BLOCKERS.ordinal
+        return state.step.turnOrderIndex >= Step.DECLARE_BLOCKERS.turnOrderIndex
     }
 
     /** Whether the turn after [after]'s is ours — a later opponent's turn could still use the block. */

@@ -23,7 +23,7 @@ import { ResponsiveContext } from '@/components/game/board'
 export function CombatResolutionBoard({ decision }: { decision: CombatResolutionDecision }) {
   const submit = useGameStore((s) => s.submitCombatResolutionDecision)
   const gameState = useGameStore((s) => s.gameState)
-  const playerId = useGameStore((s) => s.playerId)
+  const playerId = decision.playerId
   const hoverCard = useGameStore((s) => s.hoverCard)
   const responsive = useResponsive()
 

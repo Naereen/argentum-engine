@@ -82,18 +82,25 @@ object EntryRiderReplacements {
         state: GameState,
         enteringEntityId: EntityId,
         putterId: EntityId,
-        predicateEvaluator: PredicateEvaluator
+        predicateEvaluator: PredicateEvaluator,
+        replacementSourceState: GameState? = null,
     ): GameState {
         var riders: List<PendingReplacementRider>? = null
-        for (sourceId in state.getBattlefield()) {
+        val view = EntersWithReplacements.prospectiveEntryView(state, enteringEntityId, replacementSourceState)
+        val entryGroup = view.getEntity(enteringEntityId)
+            ?.get<BattlefieldEntryTimestampComponent>()?.simultaneousEntryGroup
+        for (sourceId in view.getBattlefield()) {
             if (sourceId == enteringEntityId) continue
-            val container = state.getEntity(sourceId) ?: continue
-            val replacements = state.activeReplacementSource(sourceId) ?: continue
-            val sourceControllerId = state.projectedState.getController(sourceId) ?: continue
+            val container = view.getEntity(sourceId) ?: continue
+            if (entryGroup != null &&
+                container.get<BattlefieldEntryTimestampComponent>()?.simultaneousEntryGroup == entryGroup
+            ) continue
+            val replacements = view.activeReplacementSource(sourceId) ?: continue
+            val sourceControllerId = view.projectedState.getController(sourceId) ?: continue
             for (effect in replacements.replacementEffects) {
                 if (effect !is PutOntoBattlefieldThen) continue
-                if (!matchesPutter(state, effect.putter, putterId, sourceControllerId)) continue
-                if (!matchesEnterFilter(effect.appliesTo, enteringEntityId, sourceId, sourceControllerId, state, predicateEvaluator)) continue
+                if (!matchesPutter(view, effect.putter, putterId, sourceControllerId)) continue
+                if (!matchesEnterFilter(effect.appliesTo, enteringEntityId, sourceId, sourceControllerId, view, predicateEvaluator)) continue
                 val gate = effect.condition
                 if (gate != null) {
                     val context = EffectContext(
@@ -101,7 +108,7 @@ object EntryRiderReplacements {
                         controllerId = sourceControllerId,
                         triggeringPlayerId = putterId,
                     )
-                    if (!predicateEvaluator.conditions.evaluate(withoutEntering(state, enteringEntityId), gate, context)) continue
+                    if (!predicateEvaluator.conditions.evaluate(withoutEntering(view, enteringEntityId), gate, context)) continue
                 }
                 riders = (riders ?: emptyList()) + PendingReplacementRider(
                     effect = effect.effect,

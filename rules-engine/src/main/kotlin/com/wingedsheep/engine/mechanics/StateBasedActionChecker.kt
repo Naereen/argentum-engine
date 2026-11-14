@@ -37,7 +37,8 @@ class StateBasedActionChecker(
      * destruction replaced by "instead sacrifice this Aura and that land gains indestructible"
      * (Crackling Emergence). It is part of the same event, so it runs before the next pass looks.
      */
-    private val effectExecutor: ((GameState, Effect, EffectContext) -> EffectResult)? = null
+    private val effectExecutor: ((GameState, Effect, EffectContext) -> EffectResult)? = null,
+    private val otariaCards: com.wingedsheep.engine.registry.CardRegistry? = null,
 ) {
     /**
      * Backward-compatible constructor used by existing call sites.
@@ -53,7 +54,7 @@ class StateBasedActionChecker(
          */
         finishAbandonedResolution: (GameState) -> ExecutionResult,
         effectExecutor: ((GameState, Effect, EffectContext) -> EffectResult)? = null
-    ) : this(buildDefaultRegistry(zones, decisionHandler, cardRegistry, finishAbandonedResolution), effectExecutor)
+    ) : this(buildDefaultRegistry(zones, decisionHandler, cardRegistry, finishAbandonedResolution), effectExecutor, cardRegistry)
 
     /**
      * Check and apply all state-based actions until none apply.
@@ -154,7 +155,9 @@ class StateBasedActionChecker(
             events.addAll(result.events)
         }
 
-        val result = ExecutionResult.success(newState, events)
+        val result = if (otariaCards != null && newState.otaria != null) {
+            com.wingedsheep.engine.otaria.OtariaEncounterLifecycle.departures(newState, events, otariaCards)
+        } else ExecutionResult.success(newState, events)
         return GraveyardOrdering.finish(result)
     }
 

@@ -55,6 +55,10 @@ data class StateDelta(
     val subgame: ClientSubgame? = null,
     val subgameCleared: Boolean? = null,
 
+    /** Otaria board changes; [otariaCleared] replaces a previous board with null. */
+    val otaria: ClientOtariaState? = null,
+    val otariaCleared: Boolean? = null,
+
     /** Whether the Void condition holds this turn. `null` means unchanged. */
     val voidActive: Boolean? = null,
 

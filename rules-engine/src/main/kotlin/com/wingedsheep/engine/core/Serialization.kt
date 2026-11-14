@@ -29,6 +29,7 @@ val engineSerializersModule = SerializersModule {
     // GameAction hierarchy
     polymorphic(GameAction::class) {
         subclass(PassPriority::class)
+        subclass(ClaimOtariaMirariVictory::class)
         subclass(CastSpell::class)
         subclass(ActivateAbility::class)
         subclass(PlayLand::class)
@@ -56,6 +57,31 @@ val engineSerializersModule = SerializersModule {
 
     // GameEvent hierarchy
     polymorphic(GameEvent::class) {
+        subclass(OtariaSetupEvent::class)
+        subclass(OtariaTurnActionChosenEvent::class)
+        subclass(OtariaEncounterManaAddedEvent::class)
+        subclass(OtariaReinforcementRolledEvent::class)
+        subclass(OtariaEncounterSupportHandCreatedEvent::class)
+        subclass(OtariaEncounterStartedEvent::class)
+        subclass(OtariaEncounterJoinedEvent::class)
+        subclass(OtariaStartingLandsPlacedEvent::class)
+        subclass(OtariaPlayerMovedEvent::class)
+        subclass(OtariaPreparedEvent::class)
+        subclass(OtariaExplorationStartedEvent::class)
+        subclass(OtariaExplorationEmptyEvent::class)
+        subclass(OtariaExplorationPileShuffledEvent::class)
+        subclass(OtariaCardAddedToReserveEvent::class)
+        subclass(OtariaDiscoveryTreasureResolvedEvent::class)
+        subclass(OtariaDiscoveryFinishedEvent::class)
+        subclass(OtariaEventCopiesCreatedEvent::class)
+        subclass(OtariaEventCopyFinishedEvent::class)
+        subclass(OtariaEventFinishedEvent::class)
+        subclass(OtariaCardSkippedEvent::class)
+        subclass(OtariaInitiativeDeterminedEvent::class)
+        subclass(OtariaCreatureCapturedEvent::class)
+        subclass(OtariaEncounterReturnedEvent::class)
+        subclass(OtariaEncounterEndedEvent::class)
+        subclass(OtariaRetreatDeterminedEvent::class)
         subclass(ZoneChangeEvent::class)
         subclass(LifeChangedEvent::class)
         subclass(DamageDealtEvent::class)
@@ -266,6 +292,10 @@ val engineSerializersModule = SerializersModule {
     // Structural suspension and automatic execution work
     polymorphic(ContinuationFrame::class) {
         subclass(Suspension::class)
+        subclass(FinishOtariaEncounterEntryContinuation::class)
+        subclass(FinishOtariaEventContinuation::class)
+        subclass(ContinueOtariaEventEffectsContinuation::class)
+        subclass(FinishOtariaEventCopyContinuation::class)
         subclass(FinishResolvingSpellContinuation::class)
         subclass(FinishResolvingAbilityContinuation::class)
         subclass(FinishForcedPlayContinuation::class)
@@ -302,6 +332,10 @@ val engineSerializersModule = SerializersModule {
     }
 
     polymorphic(AutomaticContinuation::class) {
+        subclass(FinishOtariaEncounterEntryContinuation::class)
+        subclass(FinishOtariaEventContinuation::class)
+        subclass(ContinueOtariaEventEffectsContinuation::class)
+        subclass(FinishOtariaEventCopyContinuation::class)
         subclass(FinishForcedPlayContinuation::class)
         subclass(ManaAbilitySourcesContinuation::class)
         subclass(ManaSpendingObligationsContinuation::class)
@@ -339,6 +373,17 @@ val engineSerializersModule = SerializersModule {
 
     polymorphic(AnswerContinuation::class) {
         subclass(TurnStartReplacementContinuation::class)
+        subclass(OtariaTurnChoiceContinuation::class)
+        subclass(OtariaEncounterManaChoiceContinuation::class)
+        subclass(OtariaEncounterEntryManaChoiceContinuation::class)
+        subclass(OtariaEncounterEntryChoiceContinuation::class)
+        subclass(OtariaEncounterEntryCopyContinuation::class)
+        subclass(OtariaEncounterRetaliationContinuation::class)
+        subclass(OtariaMovementChoiceContinuation::class)
+        subclass(OtariaPreparationChoiceContinuation::class)
+        subclass(OtariaExplorationChoiceContinuation::class)
+        subclass(OtariaEncounterInitiativeContinuation::class)
+        subclass(OtariaDiscoveryChoiceContinuation::class)
         subclass(TokenCreationReplacementContinuation::class)
         subclass(TokenSubstitutionChoiceContinuation::class)
         subclass(SacrificeContinuation::class)

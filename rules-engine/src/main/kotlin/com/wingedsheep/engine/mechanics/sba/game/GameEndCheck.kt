@@ -5,6 +5,7 @@ import com.wingedsheep.engine.core.GameEndReason
 import com.wingedsheep.engine.core.GameEndedEvent
 import com.wingedsheep.engine.mechanics.sba.SbaOrder
 import com.wingedsheep.engine.mechanics.sba.StateBasedActionCheck
+import com.wingedsheep.engine.otaria.OtariaCardKind
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.player.LossReason
 import com.wingedsheep.engine.state.components.player.PlayerLostComponent
@@ -29,6 +30,20 @@ class GameEndCheck : StateBasedActionCheck {
             // first surviving member; both members are winners (neither carries PlayerLostComponent).
             val winningTeam = activeTeams.first()
             val winner = winningTeam.first { state.getEntity(it)?.has<PlayerLostComponent>() != true }
+            val exploration = state.otaria?.pendingExploration
+            if (exploration != null && exploration.explorerId in winningTeam &&
+                exploration.card.kind in setOf(OtariaCardKind.CREATURE, OtariaCardKind.BOSS)
+            ) {
+                return ExecutionResult.success(state)
+            }
+            if (state.otaria?.encounters?.values?.any { encounter ->
+                    encounter.participants.any { it in winningTeam } && encounter.members.any {
+                        state.objectRef(it.entityId) == it && state.projectedState.isCreature(it.entityId)
+                    }
+                } == true
+            ) {
+                return ExecutionResult.success(state)
+            }
             val reason = losingReason(state)
             return ExecutionResult.success(
                 state.copy(gameOver = true, winnerId = winner),

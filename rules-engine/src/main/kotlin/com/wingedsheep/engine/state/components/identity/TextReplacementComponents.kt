@@ -1,5 +1,6 @@
 package com.wingedsheep.engine.state.components.identity
 
+import com.wingedsheep.engine.otaria.OtariaRange
 import com.wingedsheep.engine.state.Component
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.battlefield.TimestampComponent
@@ -126,37 +127,72 @@ object TextChanges {
     fun of(state: GameState, entityId: EntityId): TextReplacementComponent? {
         val own = state.getEntity(entityId)?.get<TextReplacementComponent>()
         val reachesGlobal = entityId in state.stack || entityId in state.getBattlefield()
-        return merge(if (reachesGlobal) global(state) else emptyList(), own)
+        if (!reachesGlobal) return own
+        val index = index(state)
+        if (state.otaria == null || index.isEmpty) return merge(index.all, own)
+        val projected = state.projectedState
+        val controller = OtariaRange.controllerInProjection(state, entityId, projected.getController(entityId))
+        return merge(index.forController(state, controller) { id -> projected.getController(id) }, own)
     }
 
     /**
      * Effective replacements for a spell being cast or resolving. It is a spell from CR 601.2a,
      * before its modes and targets are chosen (601.2b–c), and it is already off the stack by the
      * time the resolver reads its targets and effect — so neither moment can be told from
-     * [of]'s zone check, and the global rules apply unconditionally.
+     * [of]'s zone check. Its caster supplies the spell's position, which may differ from its owner's.
      */
-    fun forSpell(state: GameState, cardId: EntityId): TextReplacementComponent? =
-        merge(global(state), state.getEntity(cardId)?.get<TextReplacementComponent>())
+    fun forSpell(state: GameState, cardId: EntityId, casterId: EntityId): TextReplacementComponent? {
+        val index = index(state)
+        val global = if (state.otaria == null || index.isEmpty) index.all else {
+            val projected = state.projectedState
+            index.forController(state, casterId) { id -> projected.getController(id) }
+        }
+        return merge(global, state.getEntity(cardId)?.get<TextReplacementComponent>())
+    }
+
+    internal data class GlobalSource(val id: EntityId, val timestamp: Long, val chosen: Color)
+
+    internal class GlobalIndex(private val sources: List<GlobalSource>) {
+        val isEmpty: Boolean get() = sources.isEmpty()
+        val all: List<TextReplacement> by lazy { replacements(sources) }
+
+        fun forController(
+            state: GameState,
+            targetController: EntityId?,
+            sourceController: (EntityId) -> EntityId?,
+        ): List<TextReplacement> {
+            if (state.otaria == null) return all
+            return replacements(sources.filter { source ->
+                val controller = sourceController(source.id)
+                    ?: state.getEntity(source.id)?.get<ControllerComponent>()?.playerId
+                OtariaRange.betweenControllers(state, controller, targetController)
+            })
+        }
+
+        private fun replacements(sources: List<GlobalSource>): List<TextReplacement> =
+            sources.flatMap { source ->
+                Color.entries.filter { it != source.chosen }.map {
+                    TextReplacement(it.displayName, source.chosen.displayName, TextReplacementCategory.COLOR_WORD)
+                }
+            }
+    }
+
+    internal fun index(state: GameState): GlobalIndex {
+        val sources = state.getBattlefield().mapNotNull { id ->
+            val container = state.getEntity(id) ?: return@mapNotNull null
+            if (!container.has<ChangesAllColorWordsComponent>() || container.has<FaceDownComponent>()) return@mapNotNull null
+            val color = container.chosenColor() ?: return@mapNotNull null
+            GlobalSource(id, container.get<TimestampComponent>()?.timestamp ?: 0L, color)
+        }.sortedBy { it.timestamp }
+        return GlobalIndex(sources)
+    }
 
     /**
      * The global rules in force: for each battlefield source (in timestamp order), every other
      * color word becomes its chosen color. Callers that look up many objects in one pass compute
      * this once and [merge] it with each object's own component.
      */
-    fun global(state: GameState): List<TextReplacement> {
-        val sources = state.getBattlefield().mapNotNull { id ->
-            val container = state.getEntity(id) ?: return@mapNotNull null
-            if (!container.has<ChangesAllColorWordsComponent>() || container.has<FaceDownComponent>()) return@mapNotNull null
-            val color = container.chosenColor() ?: return@mapNotNull null
-            (container.get<TimestampComponent>()?.timestamp ?: 0L) to color
-        }
-        if (sources.isEmpty()) return emptyList()
-        return sources.sortedBy { it.first }.flatMap { (_, chosen) ->
-            Color.entries.filter { it != chosen }.map {
-                TextReplacement(it.displayName, chosen.displayName, TextReplacementCategory.COLOR_WORD)
-            }
-        }
-    }
+    fun global(state: GameState): List<TextReplacement> = index(state).all
 
     /** [global] rules followed by the object's [own] rules; null when there are none. */
     fun merge(global: List<TextReplacement>, own: TextReplacementComponent?): TextReplacementComponent? = when {

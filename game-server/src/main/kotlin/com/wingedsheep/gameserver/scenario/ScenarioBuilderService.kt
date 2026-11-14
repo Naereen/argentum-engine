@@ -226,6 +226,9 @@ class ScenarioBuilderService(
         Phase.COMBAT -> Step.BEGIN_COMBAT
         Phase.POSTCOMBAT_MAIN -> Step.POSTCOMBAT_MAIN
         Phase.ENDING -> Step.END
+        Phase.OTARIA_PREPARATION -> Step.OTARIA_PREPARATION
+        Phase.OTARIA_MOVEMENT -> Step.OTARIA_MOVEMENT
+        Phase.OTARIA_EXPLORATION -> Step.OTARIA_EXPLORATION
     }
 
     /**

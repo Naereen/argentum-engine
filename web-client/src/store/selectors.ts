@@ -8,7 +8,7 @@ import type {
   LegalActionInfo,
   ZoneId,
 } from '@/types'
-import { ZoneType, zoneIdEquals, graveyard, library } from '@/types'
+import { ZoneType, zoneIdEquals, graveyard, library, actingPlayerFor } from '@/types'
 import { isViewerEliminated } from './slices/ui/boardViewSlice'
 import { seatColor, teamColor, type SeatColor } from '@/styles/seatColors'
 import {
@@ -91,7 +91,7 @@ export const selectConnectionStatus = (state: GameStore) => state.connectionStat
 export const selectIsMyTurn = (state: GameStore): boolean => {
   const { gameState, playerId } = state
   if (!gameState || !playerId) return false
-  if (gameState.activePlayerId === playerId) return true
+  if (actingPlayerFor(gameState, gameState.activePlayerId) === playerId) return true
   // CR 805.4 — a team takes one turn together, so your ally's turn is your turn: you untap, draw,
   // play a land and act at sorcery speed on it. False in every format that doesn't share turns.
   return selectSharesTeamTurn(state, gameState.activePlayerId, playerId)
@@ -103,7 +103,7 @@ export const selectIsMyTurn = (state: GameStore): boolean => {
 export const selectHasPriority = (state: GameStore): boolean => {
   const { gameState, playerId } = state
   if (!gameState || !playerId) return false
-  if (gameState.priorityPlayerId === playerId) return true
+  if (actingPlayerFor(gameState, gameState.priorityPlayerId) === playerId) return true
   // CR 805.5 — under shared team turns the whole team holds priority, so a teammate's baton is
   // ours too. `selectSharesTeamTurn` is false in every format that doesn't share turns.
   return selectSharesTeamTurn(state, gameState.priorityPlayerId, playerId)
@@ -846,10 +846,11 @@ export function useBattlefieldCards(
     const isNotAttached = (c: ClientCard) => !c.attachedTo || !cardIdSet.has(c.attachedTo)
     // Sides go by `tableSideOf`, not raw controller: a battle sits in front of its protector, so
     // a Siege you cast lands across the table where your attacks go and your opponent blocks.
-    const playerCards = cards.filter((c) => tableSideOf(c) === playerId)
+    const encounters = gameState.otaria?.encounters
+    const playerCards = cards.filter((c) => tableSideOf(c, encounters) === playerId)
     const opponentCards = opponentId
-      ? cards.filter((c) => tableSideOf(c) === opponentId)
-      : cards.filter((c) => tableSideOf(c) !== playerId)
+      ? cards.filter((c) => tableSideOf(c, encounters) === opponentId)
+      : cards.filter((c) => tableSideOf(c, encounters) !== playerId)
 
     const isLand = (c: ClientCard) => c.cardTypes.includes('LAND')
     const isCreature = (c: ClientCard) => c.cardTypes.includes('CREATURE')

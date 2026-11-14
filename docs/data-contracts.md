@@ -108,6 +108,25 @@ Sent whenever the game state changes.
 }
 ```
 
+Explorer of Otaria snapshots may also carry `state.otaria`, a masked map projection containing
+public positions, exploration counts and supply sizes. A player's reserve and location cards are
+visible only to that player or their input controller; a face-down exploration card's identity is
+visible only to its manager or that manager's input controller. Spectators receive neither private
+view. A delta replaces `otaria` when it changes and uses `otariaCleared` when the mode state is
+removed. In an Otaria movement decision, each legal `ChooseOptionDecision` option carries an
+`optionMetadata.id` of `otaria-move:<column>:<row>`; the client presents only these supplied hexes.
+Preparation choices, including their card information, are sent only to the deciding player.
+The host cannot yet launch a complete playable mode. On development servers only,
+`GET /api/dev/otaria` lists validated starting decks, AI availability, limitations and missing
+supply definitions. `POST /api/dev/otaria` accepts `playerName`, `aiOpponents` (2–4), `color`
+and an optional integer `seed`. It creates an unranked, experimental Otaria session and returns
+the scenario response shape: `player1` is the human with a reconnect token, and `players` lists
+all 3–5 seats with AI tokens masked as `(AI)`. The `/otaria` playtest screen exposes this
+local integration harness, not a finished public lobby mode.
+
+An immediate Mirari win is reported to players and spectators with
+`gameOver.reason: "OTARIA_MIRARI"`, distinct from the ordinary last-player-standing outcome.
+
 ### B. Action Submission (Client -> Server)
 
 Sent when the user interacts with the UI.

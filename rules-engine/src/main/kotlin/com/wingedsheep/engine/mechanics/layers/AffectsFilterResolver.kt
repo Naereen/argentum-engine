@@ -103,7 +103,7 @@ internal class AffectsFilterResolver(
     ): Set<EntityId> {
         if (filter == null) return setOf(sourceId)
 
-        return when (filter) {
+        val affected = when (filter) {
             is AffectsFilter.Self -> setOf(sourceId)
             is AffectsFilter.AllCreaturesYouControl -> {
                 val controller = youId ?: projectedController(state, sourceId, projectedValues)
@@ -248,6 +248,14 @@ internal class AffectsFilterResolver(
             is AffectsFilter.Generic -> {
                 resolveGenericFilter(state, sourceId, filter.groupFilter, projectedValues, youId)
             }
+        }
+        if (state.otaria == null) return affected
+        val sourceController = projectedValues[sourceId]?.controllerId ?: youId
+            ?: com.wingedsheep.engine.otaria.OtariaRange.controllerInProjection(state, sourceId, null)
+        return affected.filterTo(linkedSetOf()) { entityId ->
+            com.wingedsheep.engine.otaria.OtariaRange.containsInProjection(
+                state, sourceController, entityId, projectedValues[entityId]?.controllerId,
+            )
         }
     }
 
@@ -911,13 +919,14 @@ internal class AffectsFilterResolver(
         // Stack-only, like WasCast: a permanent has no chosen targets.
         StatePredicate.HasSingleTarget -> false
         StatePredicate.HasGreatestPower -> hasGreatestPowerInProjection(state, entityId, container, projectedValues)
-        StatePredicate.HasLeastPowerAmongAllCreatures -> hasLeastPowerAmongAllCreaturesInProjection(state, entityId, container, projectedValues)
+        StatePredicate.HasLeastPowerAmongAllCreatures ->
+            hasLeastPowerAmongAllCreaturesInProjection(state, entityId, container, projectedValues, sourceController)
         // Relational minimum-mana-value matching is intended for point-of-use filters (targeting
         // and gathering), where PredicateEvaluator has the full ability context. It is not a
         // continuous-effect applicability predicate.
         is StatePredicate.HasLeastManaValueAmong -> false
         StatePredicate.HasGreatestManaValueAmongAllCreatures ->
-            hasGreatestManaValueAmongAllCreaturesInProjection(state, entityId, container, projectedValues)
+            hasGreatestManaValueAmongAllCreaturesInProjection(state, entityId, container, projectedValues, sourceController)
         StatePredicate.HasLeastPower -> hasLeastPowerInProjection(state, entityId, container, projectedValues)
         StatePredicate.HasAnyCounter -> {
             val counters = container.get<CountersComponent>()
@@ -977,14 +986,20 @@ internal class AffectsFilterResolver(
         state: GameState,
         entityId: EntityId,
         container: ComponentContainer,
-        projectedValues: Map<EntityId, MutableProjectedValues>
+        projectedValues: Map<EntityId, MutableProjectedValues>,
+        sourceController: EntityId?,
     ): Boolean {
         if (!isCreatureInProjection(state, entityId, projectedValues)) return false
         val entityManaValue = if (projectedValues[entityId]?.isFaceDown == true) 0
         else container.get<CardComponent>()?.manaValue ?: return false
         val maxManaValue = state.getBattlefield()
             .asSequence()
-            .filter { isCreatureInProjection(state, it, projectedValues) }
+            .filter {
+                isCreatureInProjection(state, it, projectedValues) &&
+                    com.wingedsheep.engine.otaria.OtariaRange.containsInProjection(
+                        state, sourceController, it, projectedValues[it]?.controllerId,
+                    )
+            }
             .mapNotNull { candidateId ->
                 if (projectedValues[candidateId]?.isFaceDown == true) 0
                 else state.getEntity(candidateId)?.get<CardComponent>()?.manaValue
@@ -998,14 +1013,20 @@ internal class AffectsFilterResolver(
         state: GameState,
         entityId: EntityId,
         container: ComponentContainer,
-        projectedValues: Map<EntityId, MutableProjectedValues>
+        projectedValues: Map<EntityId, MutableProjectedValues>,
+        sourceController: EntityId?,
     ): Boolean {
         if (!isCreatureInProjection(state, entityId, projectedValues)) return false
         val entityPower = projectedValues[entityId]?.power
             ?: container.get<CardComponent>()?.baseStats?.basePower
             ?: return false
         val minPower = state.getBattlefield()
-            .filter { isCreatureInProjection(state, it, projectedValues) }
+            .filter {
+                isCreatureInProjection(state, it, projectedValues) &&
+                    com.wingedsheep.engine.otaria.OtariaRange.containsInProjection(
+                        state, sourceController, it, projectedValues[it]?.controllerId,
+                    )
+            }
             .minOfOrNull {
                 projectedValues[it]?.power
                     ?: state.getEntity(it)?.get<CardComponent>()?.baseStats?.basePower

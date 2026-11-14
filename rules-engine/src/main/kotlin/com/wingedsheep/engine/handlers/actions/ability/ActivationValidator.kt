@@ -472,6 +472,17 @@ internal class ActivationValidator(
     /** Validate explicit payment sources. */
     private fun checkExplicitPaymentSources(state: GameState, action: ActivateAbility): String? {
         if (action.paymentStrategy !is PaymentStrategy.Explicit) return null
+        if (com.wingedsheep.engine.otaria.OtariaEncounterMana.isEncounter(state, action.playerId)) {
+            if (action.paymentStrategy.phyrexianLifePayments.isNotEmpty()) {
+                return "Encounter creature life payments are not supported"
+            }
+            val owner = com.wingedsheep.engine.otaria.OtariaEncounterMana.paymentOwner(state, action.sourceId)
+            if (action.paymentStrategy.manaAbilitiesToActivate.any {
+                    owner == null ||
+                        com.wingedsheep.engine.otaria.OtariaEncounterMana.sourceOwner(state, action.playerId, it) != owner
+                }
+            ) return "The selected mana source belongs to a different encounter creature"
+        }
         for (sourceId in action.paymentStrategy.manaAbilitiesToActivate) {
             val sourceContainer = state.getEntity(sourceId)
                 ?: return "Mana source not found: $sourceId"

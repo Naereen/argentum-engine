@@ -15,8 +15,9 @@ fun finishScopedManaProduction(
 ): ExecutionResult {
     val before = state.updateEntity(frame.playerId) { it.with(frame.poolBefore) }
     val dampening = if (frame.costsTap) pipeline.applyLandManaDampening(before, state, frame.sourceCard, frame.playerId,
-        sourceIsLand = com.wingedsheep.sdk.core.CardType.LAND in frame.sourceTag.cardTypes)
+        sourceIsLand = com.wingedsheep.sdk.core.CardType.LAND in frame.sourceTag.cardTypes, sourceId = frame.sourceId)
         else ManaAbilityResolutionPipeline.Dampening(state, false)
+    dampening.error?.let { return ExecutionResult.error(state, it) }
     val pool = dampening.state.getEntity(frame.playerId)?.get<ManaPoolComponent>() ?: ManaPoolComponent()
     fun amount(color: Color): Int = pool.getAmount(color) - frame.poolBefore.getAmount(color) +
         pool.restrictedMana.count { it.color == color } - frame.poolBefore.restrictedMana.count { it.color == color }

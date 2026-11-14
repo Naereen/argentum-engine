@@ -367,6 +367,7 @@ export function CombatArrows() {
   const gameStateCombat = gameState?.combat
   const currentStep = gameState?.currentStep
   const cards = gameState?.cards
+  const encounters = gameState?.otaria?.encounters
   const players = gameState?.players
   const teamMap = useGameStore(selectTeamMap)
   const viewingPlayerId = useGameStore(selectViewingPlayerId)
@@ -635,7 +636,7 @@ export function CombatArrows() {
         // The target is a player, a planeswalker, or a battle; the defending player is the
         // player themself, the planeswalker's controller, or the battle's protector.
         const targetCard = cards?.[targetId]
-        const defenderId = defendingPlayerOf(targetId, cards)
+        const defenderId = defendingPlayerOf(targetId, cards, encounters)
         const isOtherOpponent =
           isMulti && defenderId !== viewingPlayerId && defenderId !== viewedOpponentId
         // A defender board sharing the strip (table overview / combat defender-focus
@@ -732,7 +733,7 @@ export function CombatArrows() {
       // Seat color for an indicator given the attack's target id (player or planeswalker).
       const indicatorColorFor = (targetId: EntityId | undefined): string => {
         if (!targetId) return '#ff4444'
-        return seatColorOf(defendingPlayerOf(targetId, cards))
+        return seatColorOf(defendingPlayerOf(targetId, cards, encounters))
       }
 
       if (combatState?.mode === 'declareAttackers' && combatState.selectedAttackers.length > 0) {
@@ -793,7 +794,7 @@ export function CombatArrows() {
     updateArrows()
     const interval = setInterval(updateArrows, 100)
     return () => clearInterval(interval)
-  }, [combatState, gameStateCombat, opponentAttackerTargets, opponentBlockerAssignments, isDeclaringBlockers, isInCombatPhase, isDeclareAttackersStep, isDeclareBlockersStep, cards, isSpectating, isSelectingDamageOrder, players, teamMap, isMulti, viewedOpponentId, viewingPlayerId, blockedWithoutBlockers])
+  }, [combatState, gameStateCombat, opponentAttackerTargets, opponentBlockerAssignments, isDeclaringBlockers, isInCombatPhase, isDeclareAttackersStep, isDeclareBlockersStep, cards, encounters, isSpectating, isSelectingDamageOrder, players, teamMap, isMulti, viewedOpponentId, viewingPlayerId, blockedWithoutBlockers])
 
   // Hover focus: hovering a creature in combat lifts its whole clique (see computeCombatClique)
   // and dims every other arrow, so one block can be read out of a crowded board.

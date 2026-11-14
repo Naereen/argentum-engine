@@ -55,9 +55,11 @@ class TargetEnumerationUtils(
         val unblocked = if (untargetableKeywords.isEmpty()) candidates
         else candidates.filterNot { UntargetableByRules.isBlocked(state, it, untargetableKeywords) }
         // CardsInZonesCantBeTargeted (Ground Seal; Tomik, Distinguished Advokist).
+        val inRange = if (state.otaria == null) unblocked
+        else unblocked.filter { com.wingedsheep.engine.otaria.OtariaRange.contains(state, playerId, it) }
         val zoneLocks = UntargetableByRules.zoneLocks(state)
-        return if (zoneLocks.isEmpty()) unblocked
-        else unblocked.filterNot { UntargetableByRules.isZoneLocked(state, it, playerId, zoneLocks, predicateEvaluator) }
+        return if (zoneLocks.isEmpty()) inRange
+        else inRange.filterNot { UntargetableByRules.isZoneLocked(state, it, playerId, zoneLocks, predicateEvaluator) }
     }
 
     private fun findCandidateTargets(
@@ -371,7 +373,7 @@ class TargetEnumerationUtils(
         targetReqs: List<TargetRequirement>,
         cardId: EntityId
     ): List<TargetInfo> {
-        val text = com.wingedsheep.engine.state.components.identity.TextChanges.forSpell(state, cardId)
+        val text = com.wingedsheep.engine.state.components.identity.TextChanges.forSpell(state, cardId, playerId)
         val effective = if (text == null) targetReqs else targetReqs.map { it.applyTextReplacement(text) }
         return buildTargetInfos(state, playerId, effective, cardId, TargetingSourceType.SPELL)
     }

@@ -1416,7 +1416,7 @@ class CastSpellHandler(
             val modeIndex = chosenModeIndices[ordinal]
             val mode = modes[modeIndex]
             // Read through text-changing effects in force (CR 613.1c) — the spell exists (601.2a).
-            val modeText = TextChanges.forSpell(state, cardId)
+            val modeText = TextChanges.forSpell(state, cardId, casterId)
             val modeTargetReqs = mode.targetRequirements.map { req -> modeText?.let { req.applyTextReplacement(it) } ?: req }
             if (modeTargetReqs.isEmpty()) {
                 targetsAccum = targetsAccum + listOf(emptyList())

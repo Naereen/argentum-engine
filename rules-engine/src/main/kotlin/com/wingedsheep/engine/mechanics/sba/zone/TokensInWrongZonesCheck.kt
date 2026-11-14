@@ -21,14 +21,15 @@ class TokensInWrongZonesCheck : StateBasedActionCheck {
 
         val tokensToRemove = mutableListOf<Pair<EntityId, ZoneKey>>()
 
-        for (playerId in state.turnOrder) {
-            for (zoneType in listOf(Zone.HAND, Zone.GRAVEYARD, Zone.LIBRARY, Zone.EXILE)) {
-                val zoneKey = ZoneKey(playerId, zoneType)
-                for (entityId in state.getZone(zoneKey)) {
-                    val container = state.getEntity(entityId) ?: continue
-                    if (container.has<TokenComponent>()) {
-                        tokensToRemove.add(entityId to zoneKey)
-                    }
+        for ((zoneKey, entities) in state.zones) {
+            when (zoneKey.zoneType) {
+                Zone.HAND, Zone.GRAVEYARD, Zone.LIBRARY, Zone.EXILE -> Unit
+                else -> continue
+            }
+            for (entityId in entities) {
+                val container = state.getEntity(entityId) ?: continue
+                if (container.has<TokenComponent>()) {
+                    tokensToRemove.add(entityId to zoneKey)
                 }
             }
         }

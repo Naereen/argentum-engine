@@ -93,6 +93,7 @@ class DrawCardsExecutor(
         /** The card whose cycling ability causes this draw (`EventPattern.DrawEvent.cyclingOf`). */
         cycledCardId: EntityId? = null
     ): EffectResult {
+        if (playerId in state.otaria?.encounters.orEmpty()) return EffectResult.success(state)
         // Pre-loop announcement check (CR 121.2a): static replacement effects like
         // ModifyDrawAmount (e.g., Quantum Riddler's "draw that many cards plus one")
         // fire here against the total draw count before any individual card is drawn.

@@ -6,7 +6,12 @@ import kotlinx.serialization.Serializable
 
 /** A source-tagged unrestricted unit; its color remains the color actually produced. */
 @Serializable
-data class ManaUnit(val color: Color?, val source: ManaSourceTag)
+data class ManaUnit(
+    val color: Color?,
+    val source: ManaSourceTag,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val survivesStepAndTurnEnds: Boolean = false,
+)
 
 /** Match the same plain/snow buckets that the payment deducted, with oldest tagged units first. */
 internal fun List<ManaUnit>.consume(color: Color?, plain: Int, snow: Int): List<ManaUnit> {

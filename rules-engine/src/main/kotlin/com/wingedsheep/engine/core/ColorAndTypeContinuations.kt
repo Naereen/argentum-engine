@@ -66,7 +66,10 @@ data class ChooseManaColorContinuation(
 data class AnyColorTapBonus(
     val auraId: EntityId,
     val controllerId: EntityId,
-    val amount: Int
+    val amount: Int,
+    /** The encountered permanent whose individual reserve receives the bonus. */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val assignmentSource: com.wingedsheep.engine.state.ObjectRef? = null,
 )
 
 /**

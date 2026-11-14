@@ -629,11 +629,12 @@ class CleanupPhaseManager(
     fun emptyManaPools(state: GameState): GameState {
         // Runs on every step/phase boundary; almost always every pool is already empty (no mana
         // floated), so skip the battlefield scans below in that common case.
-        if (state.turnOrder.all { state.getEntity(it)?.get<ManaPoolComponent>()?.isEmpty != false }) return state
+        val actors = state.turnOrder + state.priorityParticipants.filter { it !in state.turnOrder }
+        if (actors.all { state.getEntity(it)?.get<ManaPoolComponent>()?.isEmpty != false }) return state
         if (isManaPoolEmptyingPrevented(state)) return state
         var newState = state
         val conversions = emptyingManaConversions(state, cardRegistry)
-        for (playerId in state.turnOrder) {
+        for (playerId in actors) {
             newState = newState.updateEntity(playerId) { container ->
                 val manaPool = container.get<ManaPoolComponent>()
                 if (manaPool != null && !manaPool.isEmpty) {
@@ -818,7 +819,8 @@ class CleanupPhaseManager(
         // The RetainUnspentManaComponent marker (The Last Agni Kai) still keeps its colours here; the
         // marker itself is cleared in step 4 below. "Until end of turn, you don't lose this mana"
         // (Brazen Collector) ends first (CR 514.2), so that mana empties here with the rest.
-        for (playerId in newState.turnOrder) {
+        val manaActors = newState.turnOrder + newState.priorityParticipants.filter { it !in newState.turnOrder }
+        for (playerId in manaActors) {
             val pool = newState.getEntity(playerId)?.get<ManaPoolComponent>() ?: continue
             val expired = pool.expireTurnKeptMana()
             if (expired !== pool) newState = newState.updateEntity(playerId) { it.with(expired) }
@@ -1504,7 +1506,10 @@ class CleanupPhaseManager(
             val permanentsWithDamage = newState.entities.filter { (entityId, container) ->
                 entityId in battlefield && container.has<DamageComponent>()
             }.keys
+            val encounterMembers = newState.otaria?.encounters?.values
+                ?.flatMapTo(hashSetOf()) { it.members }.orEmpty()
             for (entityId in permanentsWithDamage) {
+                if (newState.objectRef(entityId) in encounterMembers && newState.projectedState.isCreature(entityId)) continue
                 if (damagePersistsThroughCleanup(newState, cardRegistry, entityId)) continue
                 newState = DamageUtils.healMarkedDamage(newState, entityId)
             }

@@ -142,7 +142,7 @@ object EntersWithReplacements {
     ): Pair<GameState, List<GameEvent>> {
         val container = state.getEntity(enteringEntityId) ?: return state to emptyList()
         val cardComponent = container.get<CardComponent>() ?: return state to emptyList()
-        val cardDef = cardRegistry.getCard(cardComponent.cardDefinitionId) ?: return state to emptyList()
+        val cardDef = cardRegistry.getCard(cardComponent.cardDefinitionId)
 
         var newState = prospectiveEntryView(state, enteringEntityId, replacementSourceState)
         val events = mutableListOf<GameEvent>()
@@ -150,8 +150,12 @@ object EntersWithReplacements {
 
         // Its own "enters with" replacements are gone if a battlefield static strips its abilities
         // as it would exist there (Humility, Blood Sun — CR 614.12).
-        val ownLost = EntryCharacteristics.wouldLoseAllAbilities(state, enteringEntityId, enteringControllerId, cardRegistry, predicateEvaluator)
-        val (ownState, ownEvents) = if (ownLost || suppliedCounters != null && container.has<com.wingedsheep.engine.state.components.identity.FaceDownComponent>()) {
+        val ownLost = EntryCharacteristics.wouldLoseAllAbilities(
+            newState, enteringEntityId, enteringControllerId, cardRegistry, predicateEvaluator
+        )
+        val (ownState, ownEvents) = if (cardDef == null || ownLost ||
+            suppliedCounters != null && container.has<com.wingedsheep.engine.state.components.identity.FaceDownComponent>()
+        ) {
             newState to emptyList<GameEvent>()
         } else applyFromDefinition(
             newState, enteringEntityId, cardDef, enteringControllerId, xValue,
@@ -178,6 +182,7 @@ object EntersWithReplacements {
                 newState = placed
                 events.addAll(placementEvents)
                 if (kind == CounterType.PLUS_ONE_PLUS_ONE && placementEvents.isEmpty() &&
+                    cardDef != null &&
                     cardDef.script.replacementEffects.filterIsInstance<EntersWithCounters>().any { isPrintedRiotCounter(cardDef, it) }) {
                     newState = fallBackToRiotHaste(newState, enteringEntityId)
                 }
@@ -185,7 +190,7 @@ object EntersWithReplacements {
         }
         // "This creature enters prepared" (CR 722.3a) — a token copy of a preparation creature too.
         // After the zone restore above: becoming prepared puts the prepare-spell copy into exile.
-        if (!container.has<com.wingedsheep.engine.state.components.identity.FaceDownComponent>()) {
+        if (cardDef != null && !container.has<com.wingedsheep.engine.state.components.identity.FaceDownComponent>()) {
             newState = com.wingedsheep.engine.mechanics.stack.PreparationLogic
                 .enterPreparedIfKeyworded(newState, enteringEntityId, cardDef, enteringControllerId)
         }
@@ -503,7 +508,7 @@ object EntersWithReplacements {
             sources.add(GlobalReplacementSource(sourceId, sourceControllerId, effects))
         }
         if (cardRegistry != null) {
-            for (playerId in sourceState.turnOrder) {
+            for (playerId in sourceState.zoneOwners) {
                 for (sourceId in sourceState.getGraveyard(playerId)) {
                     if (sourceId == enteringEntityId) continue
                     val cardComponent = sourceState.getEntity(sourceId)?.get<CardComponent>() ?: continue

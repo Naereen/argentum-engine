@@ -71,6 +71,9 @@ internal class CombatProjector(private val visibility: Visibility) {
                                 ClientCombatTarget.Player(attackingComponent.defenderId)
                             state.projectedState.isBattle(attackingComponent.defenderId) ->
                                 ClientCombatTarget.Battle(attackingComponent.defenderId)
+                            com.wingedsheep.engine.otaria.OtariaEncounterCombat.actorOfCreature(
+                                state, state.projectedState, attackingComponent.defenderId,
+                            ) != null -> ClientCombatTarget.Creature(attackingComponent.defenderId)
                             else -> ClientCombatTarget.Planeswalker(attackingComponent.defenderId)
                         },
                         blockedBy = blockedComponent?.blockerIds ?: emptyList(),

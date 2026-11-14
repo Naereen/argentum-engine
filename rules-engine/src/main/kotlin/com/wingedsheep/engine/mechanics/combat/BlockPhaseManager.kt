@@ -773,6 +773,9 @@ internal class BlockPhaseManager(
         if (!projected.isCreature(blockerId)) {
             return "Only creatures can block: ${publicName(state, blockerId)}"
         }
+        if (com.wingedsheep.engine.otaria.OtariaEncounterCombat.isBeingAttacked(state, blockerId)) {
+            return "An attacked encounter creature cannot also block"
+        }
         // CR 509.1a / 506.3f: a creature that is also a battle can't block.
         if (projected.isBattle(blockerId)) {
             return "A battle can't block: ${publicName(state, blockerId)}"
@@ -880,6 +883,7 @@ internal class BlockPhaseManager(
         state.getEntity(attackerId) ?: return false
 
         blockerContainer.get<CardComponent>() ?: return false
+        if (com.wingedsheep.engine.otaria.OtariaEncounterCombat.isBeingAttacked(state, blockerId)) return false
 
         if (projected.cantBlock(blockerId)) {
             return false
@@ -1560,6 +1564,7 @@ internal class BlockPhaseManager(
 
                 projected.isCreature(entityId) &&
                     !projected.isBattle(entityId) &&
+                    !com.wingedsheep.engine.otaria.OtariaEncounterCombat.isBeingAttacked(state, entityId) &&
                     controller in state.sharedTurnTeam(blockingPlayer) &&
                     !TappedBlockBypass.tappedPreventsBlocking(state, entityId, cardRegistry, predicateEvaluator)
             }

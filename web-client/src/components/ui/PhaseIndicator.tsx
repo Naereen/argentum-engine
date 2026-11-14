@@ -116,6 +116,9 @@ function PhaseIcon({ phase, isMobile = false }: { phase: Phase; isMobile?: boole
     [Phase.COMBAT]: '⚔️',
     [Phase.POSTCOMBAT_MAIN]: '📜',
     [Phase.ENDING]: '🌙',
+    [Phase.OTARIA_PREPARATION]: '📚',
+    [Phase.OTARIA_MOVEMENT]: '🧭',
+    [Phase.OTARIA_EXPLORATION]: '🔎',
   }
 
   return <span style={{ fontSize: isMobile ? 14 : 18 }}>{icons[phase]}</span>
@@ -130,13 +133,16 @@ export function PhaseBreakdown({
   currentPhase: Phase
   currentStep: Step
 }) {
-  const phases = [
+  const normalPhases = [
     Phase.BEGINNING,
     Phase.PRECOMBAT_MAIN,
     Phase.COMBAT,
     Phase.POSTCOMBAT_MAIN,
     Phase.ENDING,
   ]
+  const phases = normalPhases.includes(currentPhase)
+    ? normalPhases
+    : [Phase.BEGINNING, currentPhase, Phase.ENDING]
 
   return (
     <div

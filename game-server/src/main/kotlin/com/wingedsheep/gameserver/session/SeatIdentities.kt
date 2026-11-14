@@ -4,6 +4,7 @@ import com.wingedsheep.engine.core.engineSerializersModule
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.ZoneKey
 import com.wingedsheep.engine.state.components.identity.CardComponent
+import com.wingedsheep.engine.view.OtariaVisibility
 import com.wingedsheep.engine.view.Visibility
 import com.wingedsheep.gameserver.persistence.dto.PersistentSeatNames
 import com.wingedsheep.gameserver.persistence.dto.PersistentSighting
@@ -47,20 +48,34 @@ internal class SeatIdentities {
      * Where a card was when the seat last looked, whether it could see that whole zone, and whether
      * it saw the card itself or only knew it was in there.
      */
-    private data class Sighting(val zone: Zone, val zoneOpen: Boolean, val seen: Boolean = true)
+    private data class Sighting(
+        val zone: Zone,
+        val zoneOpen: Boolean,
+        val seen: Boolean = true,
+        val reserveOwner: EntityId? = null,
+    )
+
+    private data class Place(
+        val zone: Zone,
+        val key: ZoneKey? = null,
+        val reserveOwner: EntityId? = null,
+    ) {
+    }
 
     /**
      * Give a new name to every card the seat can no longer follow in [state], then note every card
      * in a zone it can't see as a whole, so that card is renamed too once it leaves.
      */
-    fun forgetUntrackable(state: GameState, seat: EntityId, visibility: Visibility) {
-        val keyOf = zoneKeys(state)
+    fun forgetUntrackable(state: GameState, seat: EntityId, visibility: Visibility, isSpectator: Boolean = false) {
+        val places = places(state)
         val lost = lastSeen.entries.filter { (id, seen) ->
-            val zone = zoneOf(state, keyOf, id) ?: return@filter false
-            if (seen.zone in HIDDEN_ZONES && !seen.zoneOpen && zone != seen.zone) return@filter true
-            seen.seen && zone in HIDDEN_ZONES &&
-                !visibility.isZoneVisibleTo(state, keyOf.getValue(id), seat) &&
-                !identified(state, keyOf, id, zone, seat, visibility)
+            val place = places[id] ?: return@filter false
+            if (seen.zone in HIDDEN_ZONES && !seen.zoneOpen &&
+                (place.zone != seen.zone || place.reserveOwner != seen.reserveOwner)
+            ) return@filter true
+            seen.seen && place.zone in HIDDEN_ZONES &&
+                !zoneVisible(state, place, seat, visibility, isSpectator) &&
+                !identified(state, place, id, seat, visibility, isSpectator)
         }.map { it.key }
         for (id in lost) {
             lastSeen.remove(id)
@@ -69,20 +84,29 @@ internal class SeatIdentities {
             nameOf[id] = name
             engineIdOf[name] = id
         }
-        for ((key, ids) in state.zones) {
-            if (key.zoneType !in HIDDEN_ZONES || visibility.isZoneVisibleTo(state, key, seat)) continue
-            for (id in ids) lastSeen.putIfAbsent(id, Sighting(key.zoneType, zoneOpen = false, seen = false))
+        for ((id, place) in places) {
+            if (place.zone !in HIDDEN_ZONES || zoneVisible(state, place, seat, visibility, isSpectator)) continue
+            lastSeen.putIfAbsent(
+                id,
+                Sighting(place.zone, zoneOpen = false, seen = false, reserveOwner = place.reserveOwner),
+            )
         }
     }
 
     /** Record where the seat is seeing each card in [ids] (engine ids) as of [state]. */
-    fun noteSeen(state: GameState, seat: EntityId, visibility: Visibility, ids: Collection<EntityId>) {
-        val keyOf = zoneKeys(state)
+    fun noteSeen(
+        state: GameState,
+        seat: EntityId,
+        visibility: Visibility,
+        ids: Collection<EntityId>,
+        isSpectator: Boolean = false,
+    ) {
+        val places = places(state)
         for (id in ids) {
             if (state.getEntity(id)?.get<CardComponent>() == null) continue
-            val zone = zoneOf(state, keyOf, id) ?: continue
-            val open = keyOf[id]?.let { visibility.isZoneVisibleTo(state, it, seat) } ?: true
-            lastSeen[id] = Sighting(zone, open)
+            val place = places[id] ?: continue
+            val open = zoneVisible(state, place, seat, visibility, isSpectator)
+            lastSeen[id] = Sighting(place.zone, open, reserveOwner = place.reserveOwner)
         }
     }
 
@@ -124,29 +148,50 @@ internal class SeatIdentities {
     fun toPersistent(): PersistentSeatNames = PersistentSeatNames(
         names = nameOf.entries.associate { (id, name) -> id.value to name.value },
         retired = retired.mapTo(HashSet()) { it.value },
-        lastSeen = lastSeen.entries.associate { (id, seen) -> id.value to PersistentSighting(seen.zone, seen.zoneOpen, seen.seen) },
+        lastSeen = lastSeen.entries.associate { (id, seen) ->
+            id.value to PersistentSighting(seen.zone, seen.zoneOpen, seen.seen, seen.reserveOwner)
+        },
         namesIssued = namesIssued,
     )
 
-    private fun zoneKeys(state: GameState): Map<EntityId, ZoneKey> {
-        val keyOf = HashMap<EntityId, ZoneKey>()
-        for ((key, ids) in state.zones) for (id in ids) keyOf[id] = key
-        return keyOf
+    private fun places(state: GameState): Map<EntityId, Place> {
+        val result = HashMap<EntityId, Place>()
+        for ((key, ids) in state.zones) for (id in ids) result[id] = Place(key.zoneType, key)
+        for (id in state.stack) result.putIfAbsent(id, Place(Zone.STACK))
+        for ((owner, player) in state.otaria?.players.orEmpty()) {
+            for (id in player.reserve) {
+                check(result.putIfAbsent(id, Place(Zone.SIDEBOARD, reserveOwner = owner)) == null) {
+                    "Otaria reserve card is also in a game zone: $id"
+                }
+            }
+        }
+        return result
     }
 
-    /** The zone a card is in; null once it has left the game. The stack is not in [GameState.zones]. */
-    private fun zoneOf(state: GameState, keyOf: Map<EntityId, ZoneKey>, id: EntityId): Zone? =
-        keyOf[id]?.zoneType ?: Zone.STACK.takeIf { id in state.stack }
+    private fun zoneVisible(
+        state: GameState,
+        place: Place,
+        seat: EntityId,
+        visibility: Visibility,
+        isSpectator: Boolean,
+    ): Boolean = when {
+        place.reserveOwner != null -> OtariaVisibility.canSeePrivateData(state, place.reserveOwner, seat, isSpectator)
+        place.key != null -> visibility.isZoneVisibleTo(state, place.key, seat, isSpectator)
+        else -> true
+    }
 
     private fun identified(
         state: GameState,
-        keyOf: Map<EntityId, ZoneKey>,
+        place: Place,
         id: EntityId,
-        zone: Zone,
         seat: EntityId,
         visibility: Visibility,
-    ): Boolean = keyOf[id]?.let { visibility.isCardIdentityVisibleTo(state, it, id, seat) }
-        ?: visibility.isCardIdentityVisibleTo(state, zone, id, seat)
+        isSpectator: Boolean,
+    ): Boolean = when {
+        place.reserveOwner != null -> OtariaVisibility.canSeePrivateData(state, place.reserveOwner, seat, isSpectator)
+        place.key != null -> visibility.isCardIdentityVisibleTo(state, place.key, id, seat, isSpectator)
+        else -> visibility.isCardIdentityVisibleTo(state, place.zone, id, seat, isSpectator)
+    }
 
     private fun <T> rename(value: T, serializer: KSerializer<T>, name: (String) -> String?): T =
         json.decodeFromJsonElement(serializer, rename(json.encodeToJsonElement(serializer, value), name))
@@ -164,7 +209,9 @@ internal class SeatIdentities {
                 engineIdOf[EntityId(name)] = EntityId(id)
             }
             persistent.retired.mapTo(retired) { EntityId(it) }
-            for ((id, seen) in persistent.lastSeen) lastSeen[EntityId(id)] = Sighting(seen.zone, seen.zoneOpen, seen.seen)
+            for ((id, seen) in persistent.lastSeen) {
+                lastSeen[EntityId(id)] = Sighting(seen.zone, seen.zoneOpen, seen.seen, seen.otariaReserveOwner)
+            }
             namesIssued = persistent.namesIssued
         }
 

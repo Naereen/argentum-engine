@@ -35,6 +35,17 @@ data class PassPriority(
     override val playerId: EntityId
 ) : GameAction
 
+/**
+ * Claim Explorer of Otaria's immediate Mirari victory while holding priority.
+ * The selected card is revealed; this is not a spell or activated ability.
+ */
+@Serializable
+@SerialName("ClaimOtariaMirariVictory")
+data class ClaimOtariaMirariVictory(
+    override val playerId: EntityId,
+    val mirariId: EntityId
+) : GameAction
+
 // =============================================================================
 // Spell Actions
 // =============================================================================

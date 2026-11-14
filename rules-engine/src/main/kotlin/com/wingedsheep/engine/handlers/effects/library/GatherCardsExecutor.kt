@@ -535,7 +535,14 @@ class GatherCardsExecutor(
             else -> emptySet()
         }
         val newState = if (revealAudience.isNotEmpty() && cards.isNotEmpty()) {
-            LibraryRevealUtils.markRevealed(state, cards, revealAudience)
+            val anchor = when (effect.source) {
+                is CardSource.TopOfLibrary ->
+                    com.wingedsheep.engine.state.components.identity.LibraryPositionAnchor.TOP
+                is CardSource.BottomOfLibrary ->
+                    com.wingedsheep.engine.state.components.identity.LibraryPositionAnchor.BOTTOM
+                else -> null
+            }
+            LibraryRevealUtils.markRevealed(state, cards, revealAudience, anchor)
         } else {
             state
         }

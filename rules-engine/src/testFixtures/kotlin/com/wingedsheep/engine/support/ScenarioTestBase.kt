@@ -1212,6 +1212,20 @@ abstract class ScenarioTestBase : FunSpec() {
         }
 
         /**
+         * Find a permanent with the given name controlled by the specified player.
+         */
+        fun findPermanent(playerNumber: Int, name: String): EntityId? {
+            val playerId = when (playerNumber) {
+                1 -> player1Id
+                2 -> player2Id
+                else -> throw IllegalArgumentException("Invalid player number: $playerNumber")
+            }
+            return state.controlledBattlefield(playerId).find { entityId ->
+                state.getEntity(entityId)?.get<CardComponent>()?.name == name
+            }
+        }
+
+        /**
          * Find all permanents on the battlefield with the given name (e.g. multiple
          * copies of the same token or card).
          */

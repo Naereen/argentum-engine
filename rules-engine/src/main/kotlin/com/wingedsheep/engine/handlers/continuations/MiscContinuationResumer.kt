@@ -1233,6 +1233,12 @@ class MiscContinuationResumer(
         val firstAmount = response.number.coerceIn(0, continuation.totalAmount)
         val secondAmount = continuation.totalAmount - firstAmount
 
+        val owner = if (com.wingedsheep.engine.otaria.OtariaEncounterMana.isEncounter(state, continuation.playerId)) {
+            com.wingedsheep.engine.otaria.OtariaEncounterMana.sourceOwner(
+                state, continuation.playerId, continuation.sourceId, continuation.objectReferences.origin,
+            ) ?: return ExecutionResult.error(state, "Otaria mana needs an assigned encounter creature")
+        } else null
+        val source = if (owner != null) continuation.sourceId?.let { ManaProvenanceTracker.sourceTag(state, it) } else null
         val newState = com.wingedsheep.engine.handlers.effects.mana.AddDynamicManaExecutor.addMana(
             state, continuation.playerId,
             mapOf(
@@ -1240,7 +1246,9 @@ class MiscContinuationResumer(
                 continuation.secondColor to secondAmount * continuation.unitMultiplier,
             ),
             continuation.restriction,
-            continuation.expiry
+            continuation.expiry,
+            owner,
+            source,
         ).let { ManaProvenanceTracker.markSnowProduction(state, it, continuation.sourceId, continuation.playerId) }
 
         return checkForMore(newState, emptyList())
@@ -1264,11 +1272,19 @@ class MiscContinuationResumer(
 
         val color = response.color
         val unit = continuation.unitMultiplier
+        val owner = if (com.wingedsheep.engine.otaria.OtariaEncounterMana.isEncounter(state, continuation.playerId)) {
+            com.wingedsheep.engine.otaria.OtariaEncounterMana.sourceOwner(
+                state, continuation.playerId, continuation.sourceId, continuation.objectReferences.origin,
+            ) ?: return ExecutionResult.error(state, "Otaria mana needs an assigned encounter creature")
+        } else null
+        val source = if (owner != null) continuation.sourceId?.let { ManaProvenanceTracker.sourceTag(state, it) } else null
         val newState = com.wingedsheep.engine.handlers.effects.mana.AddDynamicManaExecutor.addMana(
             state, continuation.playerId,
             mapOf(color to unit),
             continuation.restriction,
-            continuation.expiry
+            continuation.expiry,
+            owner,
+            source,
         ).let { ManaProvenanceTracker.markSnowProduction(state, it, continuation.sourceId, continuation.playerId) }
 
         val event = ManaAddedEvent(
@@ -1305,6 +1321,7 @@ class MiscContinuationResumer(
             expiry = continuation.expiry,
             unitMultiplier = unit,
             differentColors = continuation.differentColors,
+            objectReferences = continuation.objectReferences,
         )
 
         return ExecutionResult.propagatePause(

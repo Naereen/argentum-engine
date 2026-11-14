@@ -160,7 +160,7 @@ internal class NonPermanentSpellResolver(
             newState = newState.pushContinuation(finishing)
 
             val effectResult = if (fusedDefinition != null) {
-                val entries = fusedEntries(state, spellId, fusedDefinition, targetRequirements, mainAlignedTargets)
+                val entries = fusedEntries(state, spellId, spellComponent.casterId, fusedDefinition, targetRequirements, mainAlignedTargets)
                 // Each half runs as a root of its own, not as a position in the spell's effect.
                 val halves = context.copy(programOrigin = com.wingedsheep.engine.core.ProgramOrigin.BuiltBy(
                     com.wingedsheep.sdk.core.Keyword.FUSE.name, context.programOrigin))
@@ -205,13 +205,14 @@ internal class NonPermanentSpellResolver(
     private fun fusedEntries(
         state: GameState,
         spellId: EntityId,
+        casterId: EntityId,
         definition: com.wingedsheep.sdk.model.CardDefinition,
         requirements: List<TargetRequirement>,
         alignedTargets: List<ChosenTarget?>,
     ): List<PreTargetedEffectEntry> {
         var requirementIndex = 0
         var targetIndex = 0
-        val text = TextChanges.forSpell(state, spellId)
+        val text = TextChanges.forSpell(state, spellId, casterId)
         return definition.cardFaces.mapNotNull { face ->
             val bound = requirements.drop(requirementIndex).take(face.script.targetRequirements.size)
             requirementIndex += bound.size
@@ -1082,7 +1083,7 @@ internal fun resolvingSpellEffect(
         else -> cardComponent?.spellEffect
     }
     val rawSpellEffect = withAwakenAbility(spellComponent, resolvedCardDef, baseSpellEffect)
-    val textReplacement = TextChanges.forSpell(state, spellId)
+    val textReplacement = TextChanges.forSpell(state, spellId, spellComponent.casterId)
     return if (rawSpellEffect != null && textReplacement != null) {
         rawSpellEffect.applyTextReplacement(textReplacement)
     } else {

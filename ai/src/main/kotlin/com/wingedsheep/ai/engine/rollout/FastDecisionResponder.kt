@@ -1,6 +1,7 @@
 package com.wingedsheep.ai.engine.rollout
 
 import com.wingedsheep.ai.engine.CombatDamagePlanner
+import com.wingedsheep.ai.engine.OtariaCampaignPolicy
 import com.wingedsheep.ai.engine.TargetSelection
 import com.wingedsheep.ai.engine.TrivialDecisions
 import com.wingedsheep.ai.engine.evaluation.BoardPresence
@@ -64,6 +65,7 @@ import com.wingedsheep.sdk.model.EntityId
  * `GameSimulator` does and rollout scores stay comparable with the static ones they replace.
  */
 class FastDecisionResponder(private val intents: IntentCatalog = IntentCatalog.NONE) {
+    private val otariaCampaign = OtariaCampaignPolicy(intents)
 
     /**
      * @param playerId the *rollout owner*, not necessarily the decision's player: target ranking is
@@ -72,6 +74,7 @@ class FastDecisionResponder(private val intents: IntentCatalog = IntentCatalog.N
      *   engine bills the choice to either way.
      */
     fun respond(state: GameState, decision: PendingDecision, playerId: EntityId): DecisionResponse {
+        otariaCampaign.respond(state, decision)?.let { return it }
         TrivialDecisions.responseFor(decision)?.let { return it }
         return when (decision) {
             is com.wingedsheep.engine.core.FlipOntoBattlefieldDecision ->

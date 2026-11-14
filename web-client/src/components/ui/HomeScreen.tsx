@@ -452,6 +452,7 @@ export function HomeScreen({
               <button type="button" onClick={() => navigate('/llm-tournament')} className={home.labLink}>LLM Tournament</button>
               {/* Bot-vs-bot with nobody in a seat — the way to watch the engine AI play. */}
               <button type="button" onClick={() => navigate('/ai-sandbox')} className={home.labLink}>AI Sandbox</button>
+              <button type="button" onClick={() => navigate('/otaria')} className={home.labLink}>Otaria Playtest</button>
             </nav>
           )}
         </HomeFooter>

@@ -98,7 +98,10 @@ internal class CardProjector(
         // Handle face-down card masking
         // Opponents and spectators see modified stats but no card information
         // Controller sees real card info + morph cost (but not spectators)
-        if (frame.isFaceDown && (isSpectator || frame.controllerId != viewingPlayerId)) {
+        val managesEncounter = zoneKey.zoneType != Zone.EXILE &&
+            state.otaria?.encounters?.containsKey(frame.controllerId) == true &&
+            state.actorFor(frame.controllerId) == viewingPlayerId
+        if (frame.isFaceDown && (isSpectator || (frame.controllerId != viewingPlayerId && !managesEncounter))) {
             // Check if the face-down card has been revealed to the viewing player (e.g., via Spy Network)
             // Also check LookAtFaceDownCreatures (e.g., Lens of Clarity) — only for battlefield creatures,
             // not face-down spells on the stack (per ruling).

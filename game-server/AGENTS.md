@@ -13,6 +13,9 @@ just test-server
 
 Game-server has almost no unit tests. Behavior is verified through E2E tests in `e2e-scenarios/`.
 
+Spring Boot's main class is explicitly set to `GameServerApplicationKt` in `build.gradle.kts` for
+startup and packaging. The separate `otariaSimulate` task uses `OtariaSimulationMainKt`.
+
 ## Where to look
 
 - **Engine ↔ API contract** (action dispatch, state updates, masking): [`../docs/engine-server-interface.md`](../docs/engine-server-interface.md)

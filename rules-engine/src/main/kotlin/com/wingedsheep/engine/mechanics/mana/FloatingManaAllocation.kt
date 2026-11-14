@@ -68,6 +68,7 @@ private data class PoolUnits(
     val obligations: Set<String> = emptySet(),
     /** False for mana that can't pay a generic symbol (ManaRestriction.CannotPayGenericCosts). */
     val paysGeneric: Boolean = true,
+    val persistent: Boolean = false,
 )
 
 private fun ManaPool.matchFloating(
@@ -77,10 +78,10 @@ private fun ManaPool.matchFloating(
 ): FloatingManaAllocation? {
     val units = buildList {
         restrictedMana.forEachIndexed { index, entry ->
-            val eligible = entry.restriction.isEligibleForPayment(context)
+            val eligible = entry.isEligibleForPayment(context)
             if (eligible) add(PoolUnits(entry.color,
                 entry.source?.isSnow == true, 1, index, entry.obligationIds - dischargedObligations,
-                entry.restriction.paysGeneric))
+                entry.restriction.paysGeneric, entry.remainsUntilSpent))
         }
         for (color in Color.entries.map { it as Color? } + null) {
             val count = if (color == null) colorless else get(color)
@@ -134,6 +135,7 @@ private fun ManaPool.matchFloating(
             if (accepts(unit, pip)) {
                 val preference = (if (unit.restrictedIndex == null) 2 else 0) +
                     (if (unit.snow && pip.symbol != ManaSymbol.Snow) 4 else 0) +
+                    (if (unit.persistent) 8 else 0) +
                     when (val symbol = pip.symbol) {
                         is ManaSymbol.Colored -> if (unit.color == symbol.color) 0 else 1
                         is ManaSymbol.Phyrexian -> if (unit.color == symbol.color) 0 else 1

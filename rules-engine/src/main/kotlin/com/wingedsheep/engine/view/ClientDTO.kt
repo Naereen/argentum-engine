@@ -140,6 +140,9 @@ data class ClientGameState(
      * Null in an ordinary game.
      */
     val subgame: ClientSubgame? = null,
+
+    /** Viewer-specific Otaria board and supplies; null outside this variant. */
+    val otaria: ClientOtariaState? = null,
 )
 
 /**
@@ -1263,6 +1266,10 @@ sealed interface ClientCombatTarget {
     @Serializable
     @kotlinx.serialization.SerialName("Battle")
     data class Battle(val permanentId: EntityId) : ClientCombatTarget
+
+    @Serializable
+    @kotlinx.serialization.SerialName("Creature")
+    data class Creature(val permanentId: EntityId) : ClientCombatTarget
 }
 
 /**

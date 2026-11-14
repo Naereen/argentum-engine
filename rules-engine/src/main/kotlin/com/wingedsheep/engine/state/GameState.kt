@@ -514,6 +514,10 @@ data class GameState(
      */
     val format: Format = Format.Standard,
 
+    /** Explorer of Otaria's board and hidden piles; absent in ordinary Magic games. */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val otaria: com.wingedsheep.engine.otaria.OtariaState? = null,
+
     /**
      * Which opponents a creature may attack in this game (CR 802 / 803). Chosen in the lobby for
      * Free-for-All games (CR 806.2b requires exactly one of the three). Defaults to
@@ -1009,6 +1013,36 @@ data class GameState(
             getEntity(it)?.has<com.wingedsheep.engine.state.components.player.PlayerLostComponent>() != true
         }
 
+    /** Owners of per-player zones, including encounter sides without treating them as seats. */
+    val zoneOwners: List<EntityId>
+        get() {
+            val encounterOwners = otaria?.encounters.orEmpty().keys
+                .filter { it !in turnOrder && getEntity(it) != null }
+                .sortedBy { it.value }
+            return if (encounterOwners.isEmpty()) turnOrder else turnOrder + encounterOwners
+        }
+
+    /**
+     * Encounter sides receive priority without becoming seats or victory-eligible players. Place
+     * each after the explorer whose turn first introduced it, in stable order.
+     */
+    val priorityParticipants: List<EntityId>
+        get() {
+            val encounters = otaria?.encounters.orEmpty()
+            if (encounters.isEmpty()) return activePlayers
+            val living = activePlayers.toSet()
+            return buildList {
+                for (seat in turnOrder) {
+                    if (seat in living) add(seat)
+                    addAll(encounters.entries.asSequence()
+                        .filter { (_, encounter) -> encounter.explorerId == seat }
+                        .map { it.key }
+                        .filter { getEntity(it) != null }
+                        .sortedBy { it.value })
+                }
+            }
+        }
+
     /**
      * [activePlayers] rotated into **APNAP order** (CR 101.4): the active player first, then the
      * remaining players in turn order starting from the one after them. This is the order in which
@@ -1021,7 +1055,11 @@ data class GameState(
      * there is no active player (before the first turn begins).
      */
     val apnapOrder: List<EntityId>
-        get() = activePlayerId?.let { turnOrderStartingWith(it) } ?: activePlayers
+        get() {
+            val ordered = priorityParticipants
+            val index = ordered.indexOf(activePlayerId)
+            return if (index <= 0) ordered else ordered.drop(index) + ordered.take(index)
+        }
 
     /**
      * [activePlayers] rotated to start with [playerId], then the remaining players in turn order
@@ -1458,6 +1496,10 @@ data class GameState(
      * input authority to its controller for the whole game.
      */
     fun actorFor(playerId: EntityId): EntityId {
+        otaria?.encounters?.get(playerId)?.let { encounter ->
+            require(encounter.managerId in otaria.players) { "An Otaria encounter manager must be a player" }
+            return actorFor(encounter.managerId)
+        }
         val entity = getEntity(playerId) ?: return playerId
         entity.get<com.wingedsheep.engine.state.components.player.HotseatControlComponent>()
             ?.let { return it.controllerId }
@@ -1797,7 +1839,7 @@ data class GameState(
      * left the game (CR 800.4a) never receive priority, so they are excluded — checking
      * against the full [turnOrder] would deadlock a multiplayer game once a player leaves.
      */
-    fun allPlayersPassed(): Boolean = priorityPassedBy.containsAll(activePlayers)
+    fun allPlayersPassed(): Boolean = priorityPassedBy.containsAll(priorityParticipants)
 
     /**
      * Check if the engine is paused awaiting a decision.
@@ -1916,6 +1958,15 @@ data class GameState(
      * reaches here when [allPlayersPassed] is false, so a seat that still owes a pass exists.
      */
     fun nextUnpassedPriorityAfter(afterPlayer: EntityId): EntityId {
+        if (otaria?.encounters?.isNotEmpty() == true) {
+            val participants = priorityParticipants
+            val start = participants.indexOf(afterPlayer)
+            for (step in 1..participants.size) {
+                val candidate = participants[((start + step) % participants.size + participants.size) % participants.size]
+                if (candidate !in priorityPassedBy) return candidate
+            }
+            return getNextPlayer(afterPlayer)
+        }
         val size = turnOrder.size
         if (size == 0) return afterPlayer
         val start = turnOrder.indexOf(afterPlayer)
