@@ -8,6 +8,7 @@ import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.handlers.PredicateContext
 import com.wingedsheep.engine.handlers.PredicateEvaluator
 import com.wingedsheep.engine.handlers.TargetingSourceType
+import com.wingedsheep.engine.otaria.cardTextPlayerId
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.ZoneKey
 import com.wingedsheep.engine.state.components.identity.CardComponent
@@ -1081,8 +1082,17 @@ class TargetValidator(
         // OwnedByTargetPlayer matches "cards in target player's graveyard".
         // The cast's earlier targets ride in [targetContext], so `.ownedBy(player)` over a target
         // handle resolves as it did when the card was offered.
-        val predicateContext = targetContext?.copy(ownerId = target.ownerId)
-            ?: PredicateContext(controllerId = casterId, ownerId = target.ownerId, sourceId = sourceId, xValue = xValue, targetPlayerId = targetPlayerId)
+        val graveyardControllerId = state.cardTextPlayerId(casterId)
+        val predicateContext = targetContext?.copy(
+            controllerId = graveyardControllerId,
+            ownerId = target.ownerId,
+        ) ?: PredicateContext(
+            controllerId = graveyardControllerId,
+            ownerId = target.ownerId,
+            sourceId = sourceId,
+            xValue = xValue,
+            targetPlayerId = targetPlayerId,
+        )
         val matches = predicateEvaluator.matches(state, state.projectedState, target.cardId, filter.baseFilter, predicateContext)
         if (!matches) {
             return "Target does not match filter: ${filter.description}"

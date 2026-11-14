@@ -6,8 +6,8 @@ import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.handlers.effects.EffectExecutor
 import com.wingedsheep.engine.handlers.effects.ZoneEntryOptions
 import com.wingedsheep.engine.handlers.effects.ZoneTransitionService
+import com.wingedsheep.engine.otaria.cardTextZoneKey
 import com.wingedsheep.engine.state.GameState
-import com.wingedsheep.engine.state.ZoneKey
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.scripting.effects.ReturnSameNamedFromGraveyardEffect
@@ -37,8 +37,8 @@ class ReturnSameNamedFromGraveyardExecutor(private val zones: ZoneTransitionServ
 
         // "your graveyard" — only cards in the controller's graveyard sharing the target's name
         // (the target itself is one of them).
-        val graveyardKey = ZoneKey(controllerId, Zone.GRAVEYARD)
-        val toReturn = state.getGraveyard(controllerId).filter { id ->
+        val graveyardKey = state.cardTextZoneKey(controllerId, Zone.GRAVEYARD)
+        val toReturn = state.getZone(graveyardKey).filter { id ->
             state.getEntity(id)?.get<CardComponent>()?.name == targetName
         }
         if (toReturn.isEmpty()) return EffectResult.success(state)

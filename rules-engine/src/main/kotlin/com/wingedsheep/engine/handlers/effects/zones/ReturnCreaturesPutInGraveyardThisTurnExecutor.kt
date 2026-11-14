@@ -5,6 +5,7 @@ import com.wingedsheep.engine.core.ZoneChangeEvent
 import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.handlers.effects.TargetResolutionUtils
 import com.wingedsheep.engine.handlers.effects.EffectExecutor
+import com.wingedsheep.engine.otaria.cardTextZoneKey
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.ZoneKey
 import com.wingedsheep.engine.state.components.battlefield.GraveyardEntryTurnComponent
@@ -32,7 +33,7 @@ class ReturnCreaturesPutInGraveyardThisTurnExecutor : EffectExecutor<ReturnCreat
         context: EffectContext
     ): EffectResult {
         val playerId = resolvePlayer(effect.player, context, state)
-        val graveyardKey = ZoneKey(playerId, Zone.GRAVEYARD)
+        val graveyardKey = state.cardTextZoneKey(playerId, Zone.GRAVEYARD)
         val graveyardIds = state.getZone(graveyardKey)
 
         // Find creature cards put into graveyard this turn

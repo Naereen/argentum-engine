@@ -4,6 +4,8 @@ import com.wingedsheep.engine.core.GameEvent
 import com.wingedsheep.engine.handlers.PredicateContext
 import com.wingedsheep.engine.handlers.PredicateEvaluator
 import com.wingedsheep.engine.handlers.effects.ZoneTransitionService
+import com.wingedsheep.engine.otaria.cardTextPlayerId
+import com.wingedsheep.engine.otaria.cardTextZoneKey
 import com.wingedsheep.engine.legalactions.AdditionalCostData
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.ZoneKey
@@ -91,9 +93,10 @@ object GraveyardTotalExileResolver {
         excludeCardId: EntityId? = null,
         predicateEvaluator: PredicateEvaluator
     ): Candidates {
-        val inZone = state.getZone(ZoneKey(playerId, Zone.GRAVEYARD)).filter { it != excludeCardId }
+        val inZone = state.getZone(state.cardTextZoneKey(playerId, Zone.GRAVEYARD))
+            .filter { it != excludeCardId }
         val cards = if (filter == GameObjectFilter.Any) inZone else {
-            val context = PredicateContext(controllerId = playerId)
+            val context = PredicateContext(controllerId = state.cardTextPlayerId(playerId))
             val projected = state.projectedState
             inZone.filter { predicateEvaluator.matches(state, projected, it, filter, context) }
         }

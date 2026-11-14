@@ -26,8 +26,10 @@ import com.wingedsheep.engine.mechanics.cost.SacrificeCostAssignment
 import com.wingedsheep.engine.mechanics.cost.VariablePermanentsCost
 import com.wingedsheep.engine.mechanics.mana.ManaPool
 import com.wingedsheep.engine.mechanics.mana.SpellPaymentContext
+import com.wingedsheep.engine.otaria.cardTextPlayerId
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.ZoneKey
+import com.wingedsheep.engine.otaria.cardTextZoneKey
 import com.wingedsheep.engine.state.components.battlefield.*
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.identity.ControllerComponent
@@ -1823,7 +1825,10 @@ class CostHandler(private val zones: ZoneTransitionService) {
         val battlefield = findMatchingPermanentsUnified(state, controllerId, filter)
             .filter { it != sourceId }
         val graveyardCards = findMatchingCardsUnified(
-            state, state.getZone(ZoneKey(controllerId, Zone.GRAVEYARD)), filter, controllerId
+            state,
+            state.getZone(state.cardTextZoneKey(controllerId, Zone.GRAVEYARD)),
+            filter,
+            state.cardTextPlayerId(controllerId),
         )
         return battlefield + graveyardCards
     }

@@ -13,9 +13,11 @@ import com.wingedsheep.engine.handlers.PredicateEvaluator
 import com.wingedsheep.engine.handlers.effects.EffectExecutor
 import com.wingedsheep.engine.handlers.effects.TargetResolutionUtils
 import com.wingedsheep.engine.handlers.effects.BattlefieldFilterUtils
+import com.wingedsheep.engine.otaria.cardTextPlayerId
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.isPlayerControlledByEffect
 import com.wingedsheep.engine.state.ZoneKey
+import com.wingedsheep.engine.otaria.cardTextZoneKey
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.identity.OwnerComponent
 import com.wingedsheep.sdk.core.Zone
@@ -120,9 +122,14 @@ class GatherCardsExecutor(
                 val filtered = if (source.filter != GameObjectFilter.Any) {
                     filterRead = allCards
                     val predicateContext = PredicateContext.fromEffectContext(context)
+                    val filterContext = if (source.zone == Zone.GRAVEYARD) {
+                        predicateContext.copy(controllerId = state.cardTextPlayerId(context.controllerId))
+                    } else {
+                        predicateContext
+                    }
                     allCards.filter { cardId ->
                         matchesVisibleExileCard(state, cardId, source.zone, context) &&
-                            predicateEvaluator.matches(state, state.projectedState, cardId, source.filter, predicateContext)
+                            predicateEvaluator.matches(state, state.projectedState, cardId, source.filter, filterContext)
                     }
                 } else {
                     allCards
@@ -151,8 +158,13 @@ class GatherCardsExecutor(
                     filterRead = allCards.map { it.first }
                     val predicateContext = PredicateContext.fromEffectContext(context)
                     allCards.filter { (cardId, zone) ->
+                        val filterContext = if (zone == Zone.GRAVEYARD) {
+                            predicateContext.copy(controllerId = state.cardTextPlayerId(context.controllerId))
+                        } else {
+                            predicateContext
+                        }
                         matchesVisibleExileCard(state, cardId, zone, context) &&
-                            predicateEvaluator.matches(state, state.projectedState, cardId, source.filter, predicateContext)
+                            predicateEvaluator.matches(state, state.projectedState, cardId, source.filter, filterContext)
                     }.map { it.first }
                 } else {
                     allCards.map { it.first }
@@ -613,7 +625,7 @@ class GatherCardsExecutor(
      */
     private fun zoneCards(state: GameState, playerId: EntityId, zone: Zone): List<EntityId> =
         if (zone == Zone.BATTLEFIELD) state.controlledBattlefield(playerId)
-        else state.getZone(ZoneKey(playerId, zone))
+        else state.getZone(state.cardTextZoneKey(playerId, zone))
 
     private fun resolvePlayer(player: Player, context: EffectContext, state: GameState): com.wingedsheep.sdk.model.EntityId? =
         TargetResolutionUtils.resolvePlayerRef(player, context, state) ?: context.controllerId

@@ -4,12 +4,15 @@ import com.wingedsheep.engine.state.components.battlefield.chosenColor
 import com.wingedsheep.engine.handlers.PredicateContext
 import com.wingedsheep.engine.handlers.PredicateEvaluator
 import com.wingedsheep.engine.mechanics.layers.ProjectedState
+import com.wingedsheep.engine.otaria.cardTextPlayerId
+import com.wingedsheep.engine.otaria.cardTextZoneKey
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.battlefield.LinkedExileComponent
 import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.identity.CommanderRegistryComponent
 import com.wingedsheep.sdk.core.Color
+import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.targets.EffectTarget
 import com.wingedsheep.sdk.scripting.values.ManaColorSet
@@ -117,9 +120,10 @@ object ManaColorSetResolver {
         controllerId: EntityId,
         predicateEvaluator: PredicateEvaluator
     ): Set<Color> {
-        val predCtx = PredicateContext(controllerId = controllerId)
+        val graveyardControllerId = state.cardTextPlayerId(controllerId)
+        val predCtx = PredicateContext(controllerId = graveyardControllerId)
         val colors = mutableSetOf<Color>()
-        for (entityId in state.getGraveyard(controllerId)) {
+        for (entityId in state.getZone(state.cardTextZoneKey(controllerId, Zone.GRAVEYARD))) {
             if (!predicateEvaluator.matches(state, projected, entityId, colorSet.filter, predCtx)) continue
             colors.addAll(projected.colorSetOf(entityId))
         }

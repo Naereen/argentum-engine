@@ -420,7 +420,9 @@ star pile. An unopposed movement transition checks the hex distance and the one-
 ten or more controlled permanents. The turn manager asks for the chosen turn action before untap
 and enters movement, preparation, or exploration with a mandatory, serializable decision; movement
 destinations are computed by the engine and sent to the client. Opposed escapes still need encounter
-resolution.
+resolution. Encounter creatures are controlled by their synthetic encounter actor, but card-text
+references to that actor's graveyard resolve to the explorer's graveyard; this changes reads, not
+the ownership or storage zone of encounter cards.
 Starting a location exploration consumes its quota and holds the drawn card in a
 pending state. An empty exploration pile is replenished by shuffling its own discard. If both are
 empty, only the optional land can be taken; no starred quota is consumed. A noncreature spell goes

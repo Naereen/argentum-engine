@@ -1,7 +1,10 @@
 package com.wingedsheep.engine.otaria
 
 import com.wingedsheep.engine.state.ObjectRef
+import com.wingedsheep.engine.state.GameState
+import com.wingedsheep.engine.state.ZoneKey
 import com.wingedsheep.sdk.core.Color
+import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.effects.Effect
 import kotlinx.serialization.SerialName
@@ -160,3 +163,13 @@ data class OtariaState(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val encounterSupport: OtariaEncounterSupportTable = OtariaEncounterSupportTable(),
 )
+
+/**
+ * An encounter creature's "your graveyard" is the graveyard of the player who discovered it.
+ * This affects card-text reads only; encounter-owned cards still use their actual owner zone.
+ */
+internal fun GameState.cardTextPlayerId(playerId: EntityId): EntityId =
+    otaria?.encounters?.get(playerId)?.explorerId ?: playerId
+
+internal fun GameState.cardTextZoneKey(playerId: EntityId, zone: Zone): ZoneKey =
+    ZoneKey(if (zone == Zone.GRAVEYARD) cardTextPlayerId(playerId) else playerId, zone)

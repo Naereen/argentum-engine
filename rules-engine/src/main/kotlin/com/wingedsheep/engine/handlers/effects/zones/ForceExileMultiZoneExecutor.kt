@@ -6,6 +6,7 @@ import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.handlers.effects.EffectExecutor
 import com.wingedsheep.engine.handlers.effects.ZoneEntryOptions
 import com.wingedsheep.engine.handlers.effects.ZoneTransitionService
+import com.wingedsheep.engine.otaria.cardTextZoneKey
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.ZoneKey
 import com.wingedsheep.engine.state.components.identity.CardComponent
@@ -113,7 +114,7 @@ class ForceExileMultiZoneExecutor(
             options.addAll(state.getZone(handZone))
 
             // Cards in graveyard
-            val graveyardZone = ZoneKey(playerId, Zone.GRAVEYARD)
+            val graveyardZone = state.cardTextZoneKey(playerId, Zone.GRAVEYARD)
             options.addAll(state.getZone(graveyardZone))
 
             return options

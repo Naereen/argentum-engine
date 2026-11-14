@@ -52,6 +52,7 @@ import com.wingedsheep.sdk.scripting.filters.unified.Scope
 import com.wingedsheep.engine.handlers.DynamicAmountEvaluator
 import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.handlers.PredicateEvaluator
+import com.wingedsheep.engine.otaria.cardTextZoneKey
 import com.wingedsheep.sdk.scripting.values.DynamicAmount
 import com.wingedsheep.engine.state.components.stack.ChosenTarget
 import com.wingedsheep.engine.handlers.PredicateContext
@@ -814,7 +815,7 @@ class CostCalculator(
      * `Conditions.Delirium` over the same zone.
      */
     private fun countGraveyardCardTypes(state: GameState, playerId: EntityId): Int =
-        state.getGraveyard(playerId)
+        state.getZone(state.cardTextZoneKey(playerId, Zone.GRAVEYARD))
             .mapNotNull { state.getEntity(it)?.get<CardComponent>()?.typeLine?.cardTypes }
             .flatMapTo(mutableSetOf()) { it }
             .size
@@ -1571,7 +1572,7 @@ class CostCalculator(
      * Graveyard cards use base state (no continuous effects apply in graveyard).
      */
     private fun countGraveyardCardsMatchingFilter(state: GameState, playerId: EntityId, filter: GameObjectFilter): Int {
-        return state.getGraveyard(playerId).count { entityId ->
+        return state.getZone(state.cardTextZoneKey(playerId, Zone.GRAVEYARD)).count { entityId ->
             val card = state.getEntity(entityId)?.get<CardComponent>() ?: return@count false
             val cardDef = cardRegistry.getCard(card.cardDefinitionId) ?: return@count false
             filter.cardPredicates.all { predicate ->

@@ -2,6 +2,7 @@ package com.wingedsheep.engine.view.projection
 
 import com.wingedsheep.engine.handlers.ConditionEvaluator
 import com.wingedsheep.engine.handlers.EffectContext
+import com.wingedsheep.engine.otaria.cardTextZoneKey
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.components.identity.CardComponent
@@ -10,6 +11,7 @@ import com.wingedsheep.engine.state.components.identity.FaceDownComponent
 import com.wingedsheep.engine.view.ClientCardEffect
 import com.wingedsheep.engine.view.ClientDeliriumInfo
 import com.wingedsheep.engine.view.ClientThresholdInfo
+import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.model.CardDefinition
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.conditions.AllConditions
@@ -32,7 +34,7 @@ internal class ConditionBadgeProjector(
      */
     fun thresholdInfo(state: GameState, cardDef: CardDefinition?, controllerId: EntityId): ClientThresholdInfo? =
         cardDef?.graveyardThreshold?.let { required ->
-            val current = state.getGraveyard(controllerId).size
+            val current = state.getZone(state.cardTextZoneKey(controllerId, Zone.GRAVEYARD)).size
             ClientThresholdInfo(
                 current = current,
                 required = required,
@@ -63,7 +65,7 @@ internal class ConditionBadgeProjector(
      * zone, so base card types are correct here (no projection needed).
      */
     private fun distinctGraveyardCardTypes(state: GameState, playerId: EntityId): Int =
-        state.getGraveyard(playerId)
+        state.getZone(state.cardTextZoneKey(playerId, Zone.GRAVEYARD))
             .flatMapTo(mutableSetOf()) { entityId ->
                 state.getEntity(entityId)?.get<CardComponent>()?.typeLine?.cardTypes?.map { it.name } ?: emptyList()
             }

@@ -4,6 +4,7 @@ import com.wingedsheep.engine.core.ForagedEvent
 import com.wingedsheep.engine.core.GameEvent
 import com.wingedsheep.engine.core.PermanentsSacrificedEvent
 import com.wingedsheep.engine.handlers.effects.ZoneTransitionService
+import com.wingedsheep.engine.otaria.cardTextZoneKey
 import com.wingedsheep.engine.legalactions.AdditionalCostData
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.ZoneKey
@@ -65,7 +66,8 @@ object ForageCostResolver {
      */
     fun candidates(state: GameState, playerId: EntityId, excludeCardId: EntityId? = null): Candidates {
         val projected = state.projectedState
-        val exileCards = state.getZone(ZoneKey(playerId, Zone.GRAVEYARD)).filter { it != excludeCardId }
+        val exileCards = state.getZone(state.cardTextZoneKey(playerId, Zone.GRAVEYARD))
+            .filter { it != excludeCardId }
         val foods = state.getBattlefield().filter { permId ->
             state.getEntity(permId) ?: return@filter false
             projected.getController(permId) == playerId &&

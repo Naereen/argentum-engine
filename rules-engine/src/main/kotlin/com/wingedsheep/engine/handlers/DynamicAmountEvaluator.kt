@@ -8,6 +8,8 @@ import com.wingedsheep.engine.handlers.effects.lkiSnapshotFor
 import com.wingedsheep.engine.mechanics.ControllerGrants
 import com.wingedsheep.engine.mechanics.ManaValues
 import com.wingedsheep.engine.mechanics.layers.ProjectedState
+import com.wingedsheep.engine.otaria.cardTextPlayerId
+import com.wingedsheep.engine.otaria.cardTextZoneKey
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.ZoneKey
 import com.wingedsheep.engine.state.components.battlefield.AttachmentsComponent
@@ -1458,7 +1460,13 @@ class DynamicAmountEvaluator(
     ): Int {
         val playerIds = resolveUnifiedPlayerIds(state, player, context, explicitProjection)
         val zoneType = resolveUnifiedZone(zone)
-        val predicateContext = PredicateContext.fromEffectContext(context)
+        val predicateContext = PredicateContext.fromEffectContext(context).let {
+            if (zoneType == Zone.GRAVEYARD) {
+                it.copy(controllerId = state.cardTextPlayerId(context.controllerId))
+            } else {
+                it
+            }
+        }
 
         // Projection only matters for battlefield reads (type/subtype/color/keyword/P/T mutated
         // by continuous effects). Non-battlefield zones use base CardComponent via an empty
@@ -1474,7 +1482,7 @@ class DynamicAmountEvaluator(
             val entities = if (zoneType == Zone.BATTLEFIELD) {
                 state.getBattlefield().filter { controllerOf(state, projection, it) == playerId }
             } else {
-                state.getZone(ZoneKey(playerId, zoneType))
+                state.getZone(state.cardTextZoneKey(playerId, zoneType))
             }
             entities.count { predicateEvaluator.matches(state, projection, it, filter, predicateContext) }
         }
@@ -1633,13 +1641,19 @@ class DynamicAmountEvaluator(
         explicitProjection: ProjectedState?
     ): Int {
         val playerIds = resolveUnifiedPlayerIds(state, amount.player, context, explicitProjection)
-        val predicateContext = PredicateContext.fromEffectContext(context)
+        val predicateContext = PredicateContext.fromEffectContext(context).let {
+            if (amount.zone == Zone.GRAVEYARD) {
+                it.copy(controllerId = state.cardTextPlayerId(context.controllerId))
+            } else {
+                it
+            }
+        }
 
         // Non-battlefield zone: avoid reaching for [defaultProjection] entirely. The predicate
         // evaluator falls back to base CardComponent for entries missing from the projection.
         val projection: ProjectedState = explicitProjection ?: ProjectedState(state, emptyMap())
         val matchingEntities = playerIds.flatMap { playerId ->
-            state.getZone(ZoneKey(playerId, amount.zone))
+            state.getZone(state.cardTextZoneKey(playerId, amount.zone))
                 .filter { entityId ->
                     predicateEvaluator.matches(state, projection, entityId, amount.filter, predicateContext)
                 }

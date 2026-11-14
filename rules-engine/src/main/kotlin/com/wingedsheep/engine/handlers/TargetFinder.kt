@@ -12,6 +12,7 @@ import com.wingedsheep.engine.state.components.identity.CardComponent
 import com.wingedsheep.engine.state.components.identity.ControllerComponent
 import com.wingedsheep.engine.mechanics.ControllerGrants
 import com.wingedsheep.engine.mechanics.layers.ProjectedState
+import com.wingedsheep.engine.otaria.cardTextPlayerId
 import com.wingedsheep.engine.mechanics.targeting.ControllerHexproof
 import com.wingedsheep.engine.mechanics.targeting.ControllerShroud
 import com.wingedsheep.engine.mechanics.targeting.SourceKindProtection
@@ -549,7 +550,12 @@ class TargetFinder(
 
             for (cardId in graveyard) {
                 if (filter.excludeSelf && cardId == sourceId) continue
-                val predicateContext = targetingContext(controllerId, sourceId, ownerId = playerId, pipelineContext = pipelineContext)
+                val predicateContext = targetingContext(
+                    state.cardTextPlayerId(controllerId),
+                    sourceId,
+                    ownerId = playerId,
+                    pipelineContext = pipelineContext,
+                )
                 if (predicateEvaluator.matches(state, state.projectedState, cardId, filter.baseFilter, predicateContext)) {
                     targets.add(cardId)
                 }
