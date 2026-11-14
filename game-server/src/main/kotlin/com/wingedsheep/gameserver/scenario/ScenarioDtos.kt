@@ -21,7 +21,10 @@ enum class ScenarioMode {
     AI,
 
     /** Two human seats; both tokens returned for hand-off / two-tab play. */
-    TWO_PLAYER
+    TWO_PLAYER,
+
+    /** Multiple human seats, with any remaining seats controlled by the engine AI. */
+    MULTIPLAYER
 }
 
 /** One seat of an N-player scenario ([ScenarioRequest.players]). */
@@ -37,9 +40,8 @@ data class ScenarioRequest(
     val player2: PlayerConfig? = null,
     /**
      * N-player seats (3-4 player Free-for-All pods), in turn order. When set, it
-     * overrides the legacy `player1*`/`player2*` fields. Pods of more than two seats
-     * support [ScenarioMode.SELF] (single-client hotseat) only — AI and TWO_PLAYER
-     * stay two-seat.
+     * overrides the legacy `player1*`/`player2*` fields. Multiplayer pods support
+     * [ScenarioMode.SELF], [ScenarioMode.MULTIPLAYER], and AI-filled seats.
      */
     val players: List<ScenarioSeat>? = null,
     /**

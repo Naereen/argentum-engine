@@ -24,9 +24,15 @@ const options: OtariaPlaytestOptions = {
 function render(overrides: Partial<Parameters<typeof OtariaPlaytestContents>[0]> = {}) {
   return renderToStaticMarkup(<MemoryRouter><OtariaPlaytestContents
     options={options} name="Explorer" onName={() => {}} opponents={2} onOpponents={() => {}}
+    hostSeat={overrides.hostSeat ?? 0} onHostSeat={overrides.onHostSeat ?? (() => {})}
     color={Color.GREEN} onColor={() => {}} starting={false} onStart={() => {}} {...overrides}
     boosterId={overrides.boosterId ?? 'J22:Elves (1)'} onBoosterId={overrides.onBoosterId ?? (() => {})}
     fullAi={overrides.fullAi ?? false} onFullAi={overrides.onFullAi ?? (() => {})}
+    online={overrides.online ?? false} onOnline={overrides.onOnline ?? (() => {})}
+    lobby={overrides.lobby ?? null} invitePreview={overrides.invitePreview ?? null}
+    inviteUrl={overrides.inviteUrl ?? null} inviteSeat={overrides.inviteSeat ?? null}
+    onInviteSeat={overrides.onInviteSeat ?? (() => {})} onJoinLobby={overrides.onJoinLobby ?? (() => {})}
+    onReady={overrides.onReady ?? (() => {})} onStartLobby={overrides.onStartLobby ?? (() => {})}
   /></MemoryRouter>)
 }
 
@@ -75,12 +81,36 @@ describe('Otaria playtest launch panel', () => {
   it('disables launch when AI is unavailable or the name is blank', () => {
     expect(render({ options: { ...options, aiEnabled: false } })).toContain('game.ai.enabled=true')
     expect(render({ options: { ...options, aiEnabled: false } })).toMatch(/disabled=""[^>]*>Start playtest/)
+    expect(render({ options: { ...options, aiEnabled: false }, online: true })).not.toMatch(/disabled=""[^>]*>Create invite lobby/)
     expect(render({ name: ' ' })).toMatch(/disabled=""[^>]*>Start playtest/)
   })
 
   it('shows the chosen size and prevents duplicate launch while preparing', () => {
     expect(render({ opponents: 4 })).toContain('Start playtest vs 4 AI')
     expect(render({ starting: true })).toMatch(/disabled=""[^>]*>Preparing the table/)
+  })
+
+  it('offers an invite lobby with human-selected seats and AI filling vacancies', () => {
+    const html = render({ online: true })
+    expect(html).toContain('Online lobby')
+    expect(html).toContain('Total table size')
+    expect(html).toContain('Your seat')
+    expect(html).toContain('Create invite lobby')
+    expect(html).toContain('Jumpstart 2022')
+
+    const lobbyHtml = render({
+      lobby: {
+        lobbyId: 'room-12345678', tableSize: 4,
+        players: [{ seatIndex: 0, name: 'Explorer', host: true, ready: true, you: true }],
+        openSeats: [1, 2, 3], aiSeatsOnStart: 3, started: false, memberToken: 'member-token',
+      },
+      inviteUrl: 'http://localhost/otaria?lobby=room-12345678',
+    })
+    expect(lobbyHtml).toContain('Seat 1')
+    expect(lobbyHtml).toContain('Open — AI fills at start')
+    expect(lobbyHtml).toContain('Cancel ready')
+    expect(lobbyHtml).toContain('Start game')
+    expect(lobbyHtml).toContain('http://localhost/otaria?lobby=room-12345678')
   })
 
   it('offers fast autonomous tables without a human seat', () => {

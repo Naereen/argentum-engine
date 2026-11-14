@@ -51,6 +51,7 @@ class ScenarioSessionFactory(
         includeDevUrls: Boolean = false,
         allAi: Boolean = false,
         aiThinkingDelayMs: Long? = null,
+        humanSeatTokens: Map<Int, String> = emptyMap(),
     ): ScenarioResponse {
         val mode = request.effectiveMode
         require(!allAi || mode == ScenarioMode.AI) { "All-AI sessions require AI mode" }
@@ -62,6 +63,20 @@ class ScenarioSessionFactory(
         if (mode == ScenarioMode.AI) {
             require(aiGameManager.aiEnabledToggle) { "AI is not enabled. Set game.ai.enabled=true." }
             require((request.aiPlayer ?: 2) in 1..2) { "AI seat must be 1 or 2" }
+        }
+        if (mode == ScenarioMode.MULTIPLAYER) {
+            require(!allAi) { "Multiplayer sessions need at least one human seat" }
+            require(humanSeatTokens.isNotEmpty()) { "Multiplayer sessions need at least one human seat" }
+            require(humanSeatTokens.keys.all { it in seatNames.indices }) { "Human seat index is out of range" }
+            require(humanSeatTokens.values.all { it.isNotBlank() }) { "Human seat tokens must not be blank" }
+            require(humanSeatTokens.values.distinct().size == humanSeatTokens.size) {
+                "Each human seat must have a unique token"
+            }
+            require(seatNames.size - humanSeatTokens.size == 0 || aiGameManager.aiEnabledToggle) {
+                "AI is not enabled. Set game.ai.enabled=true."
+            }
+        } else {
+            require(humanSeatTokens.isEmpty()) { "Human seat tokens are only valid for multiplayer sessions" }
         }
         val p1Name = seatNames[0]
         val p2Name = seatNames.getOrElse(1) { "Player2" }
@@ -179,6 +194,50 @@ class ScenarioSessionFactory(
                     players = if (seatIds.size > 2) seatIds.mapIndexed { index, id ->
                         PlayerInfo(seatNames[index], if (id == humanId) requireNotNull(humanToken) else "(AI)", id.value)
                     } else null,
+                )
+            }
+
+            ScenarioMode.MULTIPLAYER -> {
+                val humanIds = humanSeatTokens.keys.map { seatIds[it] }.toSet()
+                humanSeatTokens.forEach { (seatIndex, token) ->
+                    preRegister(token, seatIds[seatIndex], seatNames[seatIndex])
+                }
+
+                seatIds.forEachIndexed { index, aiSeatId ->
+                    if (aiSeatId in humanIds) return@forEachIndexed
+                    aiGameManager.wireAiForDevScenario(
+                        gameSession = gameSession,
+                        aiPlayerId = aiSeatId,
+                        playerName = seatNames[index],
+                        onActionReady = { id, action, interactionEpoch ->
+                            gamePlayHandler.handleAiAction(gameSession, id, action, interactionEpoch)
+                        },
+                        onMulliganKeep = { id -> gamePlayHandler.handleAiMulliganKeep(gameSession, id) },
+                        onMulliganTake = { id -> gamePlayHandler.handleAiMulliganTake(gameSession, id) },
+                        onBottomCards = { id, cardIds -> gamePlayHandler.handleAiBottomCards(gameSession, id, cardIds) },
+                    )
+                    if (aiThinkingDelayMs != null) aiGameManager.setThinkingDelay(aiSeatId, aiThinkingDelayMs)
+                }
+                gamePlayHandler.broadcastStateUpdate(gameSession, emptyList())
+                logger.info(
+                    "Created mixed multiplayer scenario session ${gameSession.sessionId} " +
+                        "(${humanIds.size} human, ${seatIds.size - humanIds.size} AI seats)",
+                )
+
+                val roster = seatIds.mapIndexed { index, id ->
+                    PlayerInfo(
+                        seatNames[index],
+                        humanSeatTokens[index] ?: "(AI)",
+                        id.value,
+                    )
+                }
+                ScenarioResponse(
+                    sessionId = gameSession.sessionId,
+                    player1 = roster[0],
+                    player2 = roster.getOrElse(1) { roster[0] },
+                    message = "Multiplayer scenario created with ${humanIds.size} human player(s).",
+                    mode = mode,
+                    players = roster,
                 )
             }
 

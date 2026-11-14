@@ -30,6 +30,13 @@ export interface Announcement {
 
 export const ANNOUNCEMENTS: readonly Announcement[] = [
   {
+    id: 'feature-otaria-human-lobbies',
+    date: '2026-11-15',
+    kind: 'feature',
+    title: 'Invite friends to explore Otaria',
+    body: 'The Otaria playtest now supports private multiplayer lobbies. Share an invite link, let each player choose a seat and Jumpstart booster, and start when everyone is ready; AI explorers fill any seats left open.',
+  },
+  {
     id: 'feature-otaria-ai-takeover',
     date: '2026-11-14',
     kind: 'feature',

@@ -23,6 +23,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.boolean
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
@@ -51,12 +52,14 @@ class OtariaPlaytestTest(
     val http = HttpClient.newHttpClient()
     val json = Json { ignoreUnknownKeys = true }
 
-    fun post(body: String): HttpResponse<String> = http.send(
-        HttpRequest.newBuilder(URI.create("http://localhost:$port/api/dev/otaria"))
+    fun call(method: String, path: String, body: String = ""): HttpResponse<String> = http.send(
+        HttpRequest.newBuilder(URI.create("http://localhost:$port$path"))
             .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(body)).build(),
+            .method(method, HttpRequest.BodyPublishers.ofString(body)).build(),
         HttpResponse.BodyHandlers.ofString(),
     )
+
+    fun post(body: String): HttpResponse<String> = call("POST", "/api/dev/otaria", body)
 
     test("all published J22 and J25 variants are offered unchanged with the correct categories") {
         val options = playtest.options()
@@ -188,6 +191,63 @@ class OtariaPlaytestTest(
             val response = post(body)
             response.statusCode() shouldBe 400
             json.parseToJsonElement(response.body()).jsonObject.getValue("errors").jsonArray.isNotEmpty() shouldBe true
+        }
+    }
+
+    test("Otaria invite lobby seats multiple humans, requires readiness, and fills vacant seats with AI") {
+        val create = call(
+            "POST",
+            "/api/dev/otaria/lobbies",
+            """{"playerName":"Host explorer","tableSize":4,"seatIndex":2,"color":"GREEN","seed":41}""",
+        )
+        create.statusCode() shouldBe 200
+        val host = json.parseToJsonElement(create.body()).jsonObject
+        val lobbyId = host.getValue("lobbyId").jsonPrimitive.content
+        val hostToken = host.getValue("memberToken").jsonPrimitive.content
+        host.getValue("openSeats").jsonArray.map { it.jsonPrimitive.content } shouldBe listOf("0", "1", "3")
+        host.getValue("players").jsonArray.first().jsonObject.getValue("host").jsonPrimitive.boolean shouldBe true
+        host.getValue("players").jsonArray.first().jsonObject.getValue("you").jsonPrimitive.boolean shouldBe true
+
+        val join = call(
+            "POST",
+            "/api/dev/otaria/lobbies/$lobbyId/join",
+            """{"playerName":"Guest explorer","seatIndex":0,"color":"BLUE"}""",
+        )
+        join.statusCode() shouldBe 200
+        val guest = json.parseToJsonElement(join.body()).jsonObject
+        val guestToken = guest.getValue("memberToken").jsonPrimitive.content
+        guest.getValue("players").jsonArray.first { it.jsonObject.getValue("you").jsonPrimitive.boolean }
+            .jsonObject.getValue("name").jsonPrimitive.content shouldBe "Guest explorer"
+        guest.getValue("players").jsonArray.map { it.jsonObject.getValue("seatIndex").jsonPrimitive.content } shouldBe
+            listOf("0", "2")
+
+        call("PUT", "/api/dev/otaria/lobbies/$lobbyId/ready", """{"memberToken":"$hostToken","ready":true}""")
+            .statusCode() shouldBe 200
+        call("POST", "/api/dev/otaria/lobbies/$lobbyId/start", """{"memberToken":"$hostToken"}""")
+            .statusCode() shouldBe 400
+        call("PUT", "/api/dev/otaria/lobbies/$lobbyId/ready", """{"memberToken":"$guestToken","ready":true}""")
+            .statusCode() shouldBe 200
+        val start = call("POST", "/api/dev/otaria/lobbies/$lobbyId/start", """{"memberToken":"$hostToken"}""")
+        start.statusCode() shouldBe 200
+        val started = json.parseToJsonElement(start.body()).jsonObject
+        val gameId = started.getValue("gameSessionId").jsonPrimitive.content
+        try {
+            started.getValue("started").jsonPrimitive.content shouldBe "true"
+            started.getValue("gameToken").jsonPrimitive.content shouldBe hostToken
+            val guestState = call(
+                "GET",
+                "/api/dev/otaria/lobbies/$lobbyId?memberToken=$guestToken",
+            )
+            guestState.statusCode() shouldBe 200
+            val guestView = json.parseToJsonElement(guestState.body()).jsonObject
+            guestView.getValue("gameToken").jsonPrimitive.content shouldBe guestToken
+
+            val game = games.findById(gameId).shouldNotBeNull()
+            game.maxPlayers shouldBe 4
+            game.getPlayers().size shouldBe 2
+            game.getStateSnapshot().shouldNotBeNull().turnOrder.count(ai::isAiPlayer) shouldBe 2
+        } finally {
+            ai.cleanupGame(gameId)
         }
     }
 

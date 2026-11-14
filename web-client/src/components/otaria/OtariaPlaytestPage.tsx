@@ -18,6 +18,26 @@ interface StartingDeck {
   startingLandSource: 'DECK' | 'SEPARATE_STOCK'
 }
 
+interface OtariaLobbyPlayer {
+  seatIndex: number
+  name: string
+  host: boolean
+  ready: boolean
+  you: boolean
+}
+
+interface OtariaLobby {
+  lobbyId: string
+  tableSize: number
+  players: OtariaLobbyPlayer[]
+  openSeats: number[]
+  aiSeatsOnStart: number
+  started: boolean
+  memberToken?: string | null
+  gameSessionId?: string | null
+  gameToken?: string | null
+}
+
 export interface OtariaPlaytestOptions {
   aiEnabled: boolean
   decks: StartingDeck[]
@@ -67,11 +87,20 @@ export function OtariaPlaytestPage() {
   const [starting, setStarting] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const launching = useRef(false)
+  const redirected = useRef(false)
   const [name, setName] = useState(() => localStorage.getItem('argentum-player-name') || 'Explorer')
   const [opponents, setOpponents] = useState(2)
+  const [hostSeat, setHostSeat] = useState(0)
   const [color, setColor] = useState<StartingColor | null>(null)
   const [boosterId, setBoosterId] = useState('')
   const [fullAi, setFullAi] = useState(false)
+  const [online, setOnline] = useState(() => new URLSearchParams(window.location.search).has('lobby'))
+  const [lobby, setLobby] = useState<OtariaLobby | null>(null)
+  const [inviteLobbyId, setInviteLobbyId] = useState(() =>
+    new URLSearchParams(window.location.search).get('lobby') || '',
+  )
+  const [invitePreview, setInvitePreview] = useState<OtariaLobby | null>(null)
+  const [inviteSeat, setInviteSeat] = useState<number | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -91,21 +120,97 @@ export function OtariaPlaytestPage() {
     return () => controller.abort()
   }, [attempt])
 
+  useEffect(() => {
+    if (!inviteLobbyId || lobby) return
+    const controller = new AbortController()
+    const memberToken = sessionStorage.getItem(`otaria-lobby-${inviteLobbyId}`)
+    const memberQuery = memberToken ? `?memberToken=${encodeURIComponent(memberToken)}` : ''
+    void fetch(`${API}/lobbies/${encodeURIComponent(inviteLobbyId)}${memberQuery}`, { signal: controller.signal })
+      .then(readOtariaResponse)
+      .then((data) => {
+        if (!controller.signal.aborted) {
+          const room = data as OtariaLobby
+          if (room.memberToken) {
+            setLobby(room)
+            setOnline(true)
+          } else {
+            setInvitePreview(room)
+            setInviteSeat(room.openSeats[0] ?? null)
+          }
+        }
+      })
+      .catch((cause) => {
+        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Could not load this Otaria lobby.')
+      })
+    return () => controller.abort()
+  }, [inviteLobbyId, lobby])
+
+  const redirectWhenStarted = (session: OtariaLobby) => {
+    if (redirected.current || !session.started || !session.gameToken) return
+    redirected.current = true
+    localStorage.setItem('argentum-player-name', name.trim())
+    window.location.assign(`/?token=${encodeURIComponent(session.gameToken)}`)
+  }
+
+  useEffect(() => {
+    if (!lobby?.memberToken) return
+    const controller = new AbortController()
+    const refresh = async () => {
+      try {
+        const response = await fetch(
+          `${API}/lobbies/${encodeURIComponent(lobby.lobbyId)}?memberToken=${encodeURIComponent(lobby.memberToken!)}`,
+          { signal: controller.signal },
+        )
+        const updated = await readOtariaResponse(response) as OtariaLobby
+        if (!controller.signal.aborted) {
+          setLobby(updated)
+          redirectWhenStarted(updated)
+        }
+      } catch (cause) {
+        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Could not refresh the Otaria lobby.')
+      }
+    }
+    void refresh()
+    const timer = window.setInterval(() => void refresh(), 2000)
+    return () => {
+      controller.abort()
+      window.clearInterval(timer)
+    }
+  }, [lobby?.lobbyId, lobby?.memberToken])
+
   const start = async () => {
-    if (launching.current || !options?.aiEnabled || !name.trim()) return
+    if (launching.current || (!online && !options?.aiEnabled) || !name.trim()) return
     launching.current = true
     setStarting(true)
     setError(null)
     try {
-      const response = await fetch(API, {
+      const response = await fetch(online ? `${API}/lobbies` : API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerName: name.trim(), aiOpponents: opponents, fullAi,
-          color: fullAi ? null : color, boosterId: fullAi ? null : boosterId || null,
-        }),
+        body: JSON.stringify(online
+          ? {
+              playerName: name.trim(), tableSize: opponents + 1, seatIndex: hostSeat,
+              color, boosterId: boosterId || null,
+            }
+          : {
+              playerName: name.trim(), aiOpponents: opponents, fullAi,
+              color: fullAi ? null : color, boosterId: fullAi ? null : boosterId || null,
+            }),
       })
-      const session = await readOtariaResponse(response) as ScenarioCreateResponse
+      const result = await readOtariaResponse(response)
+      if (online) {
+        const session = result as OtariaLobby
+        if (!session.memberToken) throw new Error('The server did not return your lobby membership token.')
+        sessionStorage.setItem(`otaria-lobby-${session.lobbyId}`, session.memberToken)
+        setLobby(session)
+        setInvitePreview(null)
+        setInviteLobbyId(session.lobbyId)
+        window.history.replaceState(null, '', `/otaria?lobby=${encodeURIComponent(session.lobbyId)}`)
+        launching.current = false
+        setStarting(false)
+        return
+      }
+      const session = result as ScenarioCreateResponse
       if (fullAi) {
         if (!session.sessionId || session.player1.token !== '(AI)' || session.player2.token !== '(AI)') {
           throw new Error('The server did not return an all-AI table. Check the server log before trying again.')
@@ -125,11 +230,76 @@ export function OtariaPlaytestPage() {
     }
   }
 
+  const joinLobby = async () => {
+    if (!invitePreview || inviteSeat === null || !name.trim() || launching.current) return
+    launching.current = true
+    setStarting(true)
+    setError(null)
+    try {
+      const response = await fetch(`${API}/lobbies/${encodeURIComponent(invitePreview.lobbyId)}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerName: name.trim(), seatIndex: inviteSeat, color, boosterId: boosterId || null,
+        }),
+      })
+      const joined = await readOtariaResponse(response) as OtariaLobby
+      if (!joined.memberToken) throw new Error('The server did not return your lobby membership token.')
+      sessionStorage.setItem(`otaria-lobby-${joined.lobbyId}`, joined.memberToken)
+      setLobby(joined)
+      setInvitePreview(null)
+      launching.current = false
+      setStarting(false)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not join this Otaria lobby.')
+      launching.current = false
+      setStarting(false)
+    }
+  }
+
+  const setReady = async (ready: boolean) => {
+    if (!lobby?.memberToken) return
+    try {
+      const response = await fetch(`${API}/lobbies/${encodeURIComponent(lobby.lobbyId)}/ready`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberToken: lobby.memberToken, ready }),
+      })
+      setLobby(await readOtariaResponse(response) as OtariaLobby)
+      setError(null)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not update your ready status.')
+    }
+  }
+
+  const startLobby = async () => {
+    if (!lobby?.memberToken) return
+    setStarting(true)
+    try {
+      const response = await fetch(`${API}/lobbies/${encodeURIComponent(lobby.lobbyId)}/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberToken: lobby.memberToken }),
+      })
+      const started = await readOtariaResponse(response) as OtariaLobby
+      setLobby(started)
+      redirectWhenStarted(started)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not start the Otaria game.')
+      setStarting(false)
+    }
+  }
+
+  const inviteLobby = lobby?.lobbyId ?? invitePreview?.lobbyId
+  const inviteUrl = inviteLobby
+    ? `${window.location.origin}/otaria?lobby=${encodeURIComponent(inviteLobby)}`
+    : null
+
   return (
     <DevPage
       section="Otaria playtest"
       title="Explorer of: Otaria"
-      subtitle="Play against AI explorers, or watch a fast, fully autonomous table. A local work-in-progress, not a finished campaign."
+      subtitle="Play against AI explorers, invite human explorers, or watch a fast, fully autonomous table. A local work-in-progress, not a finished campaign."
       dev
     >
       {loading && <p role="status">Loading starting decks and playtest status...</p>}
@@ -142,36 +312,62 @@ export function OtariaPlaytestPage() {
         name={name}
         onName={setName}
         opponents={opponents}
-        onOpponents={setOpponents}
+        onOpponents={(value) => { setOpponents(value); setHostSeat((seat) => Math.min(seat, value)) }}
+        hostSeat={hostSeat}
+        onHostSeat={setHostSeat}
         color={color}
         onColor={(value) => { setColor(value); setBoosterId('') }}
         boosterId={boosterId}
         onBoosterId={setBoosterId}
         fullAi={fullAi}
-        onFullAi={setFullAi}
+        onFullAi={(value) => { setFullAi(value); if (value) setOnline(false) }}
+        online={online}
+        onOnline={(value) => { setOnline(value); if (value) setFullAi(false) }}
         starting={starting}
         onStart={() => void start()}
+        lobby={lobby}
+        invitePreview={invitePreview}
+        inviteUrl={inviteUrl}
+        inviteSeat={inviteSeat}
+        onInviteSeat={setInviteSeat}
+        onJoinLobby={() => void joinLobby()}
+        onReady={(ready) => void setReady(ready)}
+        onStartLobby={() => void startLobby()}
       />}
     </DevPage>
   )
 }
 
 export function OtariaPlaytestContents({
-  options, name, onName, opponents, onOpponents, color, onColor, boosterId, onBoosterId, fullAi, onFullAi, starting, onStart,
+  options, name, onName, opponents, onOpponents, hostSeat, onHostSeat, color, onColor, boosterId, onBoosterId,
+  fullAi, onFullAi, online, onOnline, starting, onStart, lobby, invitePreview, inviteUrl, inviteSeat,
+  onInviteSeat, onJoinLobby, onReady, onStartLobby,
 }: {
   options: OtariaPlaytestOptions
   name: string
   onName: (value: string) => void
   opponents: number
   onOpponents: (value: number) => void
+  hostSeat: number
+  onHostSeat: (value: number) => void
   color: StartingColor | null
   onColor: (value: StartingColor | null) => void
   boosterId: string
   onBoosterId: (value: string) => void
   fullAi: boolean
   onFullAi: (value: boolean) => void
+  online: boolean
+  onOnline: (value: boolean) => void
   starting: boolean
   onStart: () => void
+  lobby: OtariaLobby | null
+  invitePreview: OtariaLobby | null
+  inviteUrl: string | null
+  inviteSeat: number | null
+  onInviteSeat: (value: number | null) => void
+  onJoinLobby: () => void
+  onReady: (ready: boolean) => void
+  onStartLobby: () => void
 }) {
   const availableDecks = options.decks.filter((candidate) => color === null || candidate.color === color)
   const deck = availableDecks.find((candidate) => candidate.id === boosterId)
@@ -182,28 +378,35 @@ export function OtariaPlaytestContents({
         <p className={styles.eyebrow}>Local playtest</p>
         <h2 id="otaria-setup">Set out for Otaria</h2>
         <p className={pageStyles.muted}>Start with one published 20-card Jumpstart booster from Jumpstart 2022 or Foundations Jumpstart. No deck import or API key needed.</p>
-        <fieldset className={styles.fieldset} disabled={starting}>
+        {!lobby && <fieldset className={styles.fieldset} disabled={starting}>
           <legend>Play mode</legend>
           <div className={styles.colors}>
-            <button type="button" className={styles.choice} aria-pressed={!fullAi} onClick={() => onFullAi(false)}>Play vs AI</button>
+            <button type="button" className={styles.choice} aria-pressed={!fullAi && !online} onClick={() => { onFullAi(false); onOnline(false) }}>Play vs AI</button>
+            <button type="button" className={styles.choice} aria-pressed={online} onClick={() => onOnline(true)}>Online lobby</button>
             <button type="button" className={styles.choice} aria-pressed={fullAi} onClick={() => onFullAi(true)}>Full AI (fast)</button>
           </div>
-        </fieldset>
+        </fieldset>}
+        {!lobby && !invitePreview && online && <label className={styles.field}>
+          Your seat
+          <select className={pageStyles.input} value={hostSeat} onChange={(event) => onHostSeat(Number(event.target.value))} disabled={starting}>
+            {Array.from({ length: opponents + 1 }, (_, seat) => <option key={seat} value={seat}>Seat {seat + 1}</option>)}
+          </select>
+        </label>}
         {fullAi && <p className={pageStyles.muted}>Every explorer is AI-controlled. Watch as a spectator with a 100 ms action delay; no input is needed. Experimental encounters and unsupported events can still stop a run.</p>}
-        <label className={styles.field}>
+        {!lobby && <label className={styles.field}>
           {fullAi ? 'First AI explorer name' : 'Your name'}
           <input className={pageStyles.input} value={name} onChange={(event) => onName(event.target.value)} maxLength={40} disabled={starting} />
-        </label>
-        <fieldset className={styles.fieldset} disabled={starting}>
-          <legend>{fullAi ? 'AI table size' : 'AI opponents'}</legend>
+        </label>}
+        {!lobby && <fieldset className={styles.fieldset} disabled={starting}>
+          <legend>{fullAi ? 'AI table size' : online ? 'Total table size' : 'AI opponents'}</legend>
           <div className={styles.choices}>
             {[2, 3, 4].map((count) => <button
               type="button" key={count} aria-pressed={opponents === count}
               className={styles.choice} onClick={() => onOpponents(count)}
-            >{fullAi ? count + 1 : count} AI <small>{count + 1} players total</small></button>)}
+            >{fullAi ? count + 1 : online ? count + 1 : count} {online ? 'seats' : 'AI'} <small>{count + 1} players total</small></button>)}
           </div>
-        </fieldset>
-        {fullAi ? <p className={pageStyles.muted}>Every AI independently rolls a random color category, including Other, then a random Jumpstart booster in that category. Colors and themes can repeat.</p> : <fieldset className={styles.fieldset} disabled={starting}>
+        </fieldset>}
+        {!lobby && (fullAi ? <p className={pageStyles.muted}>Every AI independently rolls a random color category, including Other, then a random Jumpstart booster in that category. Colors and themes can repeat.</p> : <fieldset className={styles.fieldset} disabled={starting}>
           <legend>Your starting booster</legend>
           <div className={styles.colors}>
             <button type="button" className={styles.choice} aria-pressed={color === null} onClick={() => onColor(null)}>Any color (random)</button>
@@ -225,17 +428,65 @@ export function OtariaPlaytestContents({
             </select>
           </label>
           <p className={pageStyles.muted}>{availableDecks.length} published boosters available. Other includes Urza&apos;s (colorless) and Chaos (multicolor).</p>
-        </fieldset>}
-        <div className={styles.startingFacts}>
+        </fieldset>)}
+        {!lobby && <div className={styles.startingFacts}>
           <span><strong>15</strong> life</span><span><strong>5</strong> cards in hand</span>
           <span><strong>2</strong> lands in play</span><span>No mulligan</span>
-        </div>
-        {!options.aiEnabled && <p role="alert" className={styles.error}>AI opponents are disabled. Start the server with game.ai.enabled=true.</p>}
-        <button type="button" className={`${pageStyles.buttonPrimary} ${styles.launch}`}
-          disabled={starting || !options.aiEnabled || !name.trim() || (!fullAi && !validSelection)}
+        </div>}
+        {!options.aiEnabled && <p role="alert" className={styles.error}>
+          {online
+            ? 'AI opponents are disabled. An online lobby can still start when every seat is filled by a ready human.'
+            : 'AI opponents are disabled. Start the server with game.ai.enabled=true.'}
+        </p>}
+        {!lobby && !invitePreview && <button type="button" className={`${pageStyles.buttonPrimary} ${styles.launch}`}
+          disabled={starting || (!online && !options.aiEnabled) || !name.trim() || (!fullAi && !validSelection)}
           onClick={onStart}
-        >{starting ? 'Preparing the table...' : fullAi ? `Watch ${opponents + 1} AI explorers` : `Start playtest vs ${opponents} AI`}</button>
-        <p className={pageStyles.muted}>Private, unranked test. Starting locations and the first player are random.</p>
+        >{starting ? 'Preparing the table...' : fullAi ? `Watch ${opponents + 1} AI explorers` : online ? 'Create invite lobby' : `Start playtest vs ${opponents} AI`}</button>}
+        {lobby && <div className={styles.lobby}>
+          <h3>Lobby {lobby.lobbyId.slice(0, 8)}</h3>
+          <p>Share this invite link. The game starts with {lobby.tableSize} seats; {lobby.aiSeatsOnStart} open seat(s) {options.aiEnabled ? 'will be filled by AI' : 'must be filled by humans because AI is disabled'}.</p>
+          <label className={styles.field}>
+            Invite link
+            <input className={pageStyles.input} readOnly value={inviteUrl || ''} onFocus={(event) => event.currentTarget.select()} />
+          </label>
+          <ul className={styles.players}>
+            {Array.from({ length: lobby.tableSize }, (_, seatIndex) => {
+              const player = lobby.players.find((candidate) => candidate.seatIndex === seatIndex)
+              return <li key={seatIndex}>
+                <strong>Seat {seatIndex + 1}</strong>
+                <span>{player ? `${player.name}${player.you ? ' (you)' : ''}${player.host ? ' · host' : ''}` : 'Open — AI fills at start'}</span>
+                {player && <span>{player.ready ? 'Ready' : 'Not ready'}</span>}
+              </li>
+            })}
+          </ul>
+          {!lobby.started && <div className={styles.colors}>
+            <button type="button" className={styles.choice} disabled={starting}
+              onClick={() => onReady(!lobby.players.find((player) => player.you)?.ready)}>
+              {lobby.players.find((player) => player.you)?.ready ? 'Cancel ready' : 'Ready to start'}
+            </button>
+            {lobby.players.find((player) => player.you)?.host &&
+              <button type="button" className={styles.choice} disabled={starting || lobby.players.some((player) => !player.ready)}
+                onClick={onStartLobby}>Start game</button>}
+          </div>}
+          <p className={pageStyles.muted}>This private local playtest lobby expires after six hours. Starting locations and the first player are random.</p>
+        </div>}
+        {invitePreview && <div className={styles.lobby}>
+          <h3>Join Otaria lobby</h3>
+          <p>{invitePreview.players.length} of {invitePreview.tableSize} seats occupied. {invitePreview.aiSeatsOnStart} open seat(s) will be filled by AI.</p>
+          <label className={styles.field}>
+            Choose a seat
+            <select className={pageStyles.input} value={inviteSeat ?? ''} onChange={(event) => onInviteSeat(event.target.value ? Number(event.target.value) : null)}>
+              {invitePreview.openSeats.map((seat) => <option key={seat} value={seat}>Seat {seat + 1}</option>)}
+            </select>
+          </label>
+          <ul className={styles.players}>
+            {invitePreview.players.map((player) => <li key={player.seatIndex}><strong>Seat {player.seatIndex + 1}</strong><span>{player.name}{player.host ? ' · host' : ''}</span><span>{player.ready ? 'Ready' : 'Not ready'}</span></li>)}
+          </ul>
+          <button type="button" className={`${pageStyles.buttonPrimary} ${styles.launch}`}
+            disabled={starting || inviteSeat === null || !name.trim() || !validSelection}
+            onClick={onJoinLobby}>{starting ? 'Joining lobby...' : 'Join lobby'}</button>
+        </div>}
+        {!lobby && !invitePreview && <p className={pageStyles.muted}>Private, unranked test. Starting locations and the first player are random.</p>}
       </section>
       <div className={styles.details}>
         <section className={`${pageStyles.panel} ${styles.notice}`} aria-labelledby="otaria-limits">
