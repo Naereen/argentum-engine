@@ -136,3 +136,10 @@
   .layout { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 16px; }
   .mapFrame svg { max-height: 45vh; }
 }
+.eventImage {
+  display: block;
+  width: min(100%, 280px);
+  height: auto;
+  margin: 8px auto;
+  border-radius: 6px;
+}

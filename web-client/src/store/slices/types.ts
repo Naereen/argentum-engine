@@ -883,6 +883,8 @@ export interface LogEntry {
   playerId: EntityId | null
   timestamp: number
   type: 'action' | 'turn' | 'combat' | 'system'
+  cardName?: string | null
+  imageUri?: string | null
 }
 
 /**

@@ -141,6 +141,7 @@ class OtariaClientProjectionTest : FunSpec({
             pending.card shouldBe null
             json.encodeToString(pending) shouldNotContain "Hidden Morph A"
         }
+
         val manager = requireNotNull(transformer.transform(state, p2).otaria?.pendingExploration)
         manager.faceDown shouldBe true
         manager.card?.name shouldBe "Hidden Morph A"
@@ -148,6 +149,20 @@ class OtariaClientProjectionTest : FunSpec({
         val hotseat = state.updateEntity(p2) { it.with(HotseatControlComponent(p1)) }
         transformer.transform(hotseat, p1).otaria?.pendingExploration?.card?.name shouldBe "Hidden Morph A"
         transformer.transform(hotseat, p1, isSpectator = true).otaria?.pendingExploration?.card shouldBe null
+    }
+
+    test("a pending event includes its supplied proxy artwork for players and spectators") {
+        val initial = state()
+        val mode = requireNotNull(initial.otaria)
+        val pending = requireNotNull(mode.pendingExploration)
+        val event = initial.copy(otaria = mode.copy(
+            pendingExploration = pending.copy(card = OtariaPileCard("Ev. Naturalisation", OtariaCardKind.EVENT)),
+        ))
+        for ((viewer, spectator) in listOf(p1 to false, p2 to false, p3 to true)) {
+            val projected = requireNotNull(transformer.transform(event, viewer, spectator).otaria?.pendingExploration)
+            projected.faceDown shouldBe false
+            projected.card?.imageUri shouldBe "/images/otaria/events/naturalisation.png"
+        }
     }
 
     test("an encounter manager sees its face-down permanent without controlling the other seats") {

@@ -283,6 +283,9 @@ export function OtariaBoardContents({ gameState, board }: { gameState: ClientGam
                 ? (pendingName ? `Face-down creature: ${pendingName} (private)` : 'Face-down creature')
                 : (pendingName ?? 'Exploration')}
             </p>
+            {pending.card?.kind === 'EVENT' && pending.card.imageUri && (
+              <img className={styles.eventImage} src={pending.card.imageUri} alt={pending.card.name} />
+            )}
             {pending.stage === 'CHOOSING_LOCATION' && <p className={styles.muted}>Choosing whether to take a location.</p>}
           </section>
         )}

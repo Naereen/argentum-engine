@@ -7,6 +7,20 @@ import { OtariaBoardButton, OtariaBoardContents, OtariaMap } from './OtariaBoard
 import styles from './OtariaBoard.module.css'
 
 describe('Otaria board', () => {
+  it('shows the supplied event artwork while the exploration is pending', () => {
+    const original = otariaBoard()
+    const board: ClientOtariaState = {
+      ...original,
+      pendingExploration: {
+        explorerId: otariaViewer, managerId: otariaManager,
+        source: { type: 'Terrain', color: Color.GREEN }, stage: 'DRAWN', faceDown: false,
+        card: { name: 'Ev. Naturalisation', kind: 'EVENT', imageUri: '/images/otaria/events/naturalisation.png' },
+      },
+    }
+    const html = renderToStaticMarkup(<OtariaBoardContents gameState={otariaGameState(board)} board={board} />)
+    expect(html).toContain('src="/images/otaria/events/naturalisation.png"')
+    expect(html).toContain('alt="Ev. Naturalisation"')
+  })
   it('can zoom around the available moves and active player without changing the selection', () => {
     const board = otariaBoard()
     const props = {

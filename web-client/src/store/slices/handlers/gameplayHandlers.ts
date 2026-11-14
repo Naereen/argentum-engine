@@ -30,8 +30,9 @@ import type {
 /**
  * Extract the relevant player ID from an event for log coloring.
  */
-function getEventPlayerId(event: { type: string; playerId?: string; casterId?: string; controllerId?: string; attackingPlayerId?: string; viewingPlayerId?: string; revealingPlayerId?: string; activePlayerId?: string; newControllerId?: string; startingPlayerId?: string; newHolderId?: string; newOwnerId?: string }): EntityId | null {
+function getEventPlayerId(event: { type: string; playerId?: string; casterId?: string; controllerId?: string; attackingPlayerId?: string; viewingPlayerId?: string; revealingPlayerId?: string; activePlayerId?: string; newControllerId?: string; startingPlayerId?: string; newHolderId?: string; newOwnerId?: string; explorerId?: EntityId | null }): EntityId | null {
   switch (event.type) {
+    case 'otariaNotice': return event.explorerId ?? null
     case 'lifeChanged': return event.playerId as EntityId
     case 'cardDrawn': return event.playerId as EntityId
     case 'cardDiscarded': return event.playerId as EntityId
@@ -95,12 +96,13 @@ function appendGameLogTail(
   const entries: LogEntry[] = reusable > 0 ? existing.slice(0, reusable) : []
   const now = Date.now()
   for (let i = reusable; i < log.length; i++) {
-    const e = log[i] as { type: string; description: string; playerId?: string; casterId?: string; controllerId?: string; attackingPlayerId?: string; viewingPlayerId?: string; revealingPlayerId?: string; activePlayerId?: string; newControllerId?: string; startingPlayerId?: string; newHolderId?: string }
+    const e = log[i]!
     entries.push({
       description: e.description,
       playerId: getEventPlayerId(e),
       timestamp: now,
       type: getEventLogType(e.type),
+      ...(e.type === 'otariaNotice' ? { cardName: e.cardName ?? null, imageUri: e.imageUri ?? null } : {}),
     })
   }
   return entries

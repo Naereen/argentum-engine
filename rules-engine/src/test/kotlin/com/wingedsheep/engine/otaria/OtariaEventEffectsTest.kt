@@ -180,6 +180,8 @@ class OtariaEventEffectsTest : FunSpec({
         decision.options.shouldContainExactlyInAnyOrder(first, second)
         decision.useTargetingUI shouldBe true
         pending.events.filterIsInstance<CardsRevealedEvent>().single().cardNames shouldBe listOf(name)
+        pending.events.filterIsInstance<CardsRevealedEvent>().single().imageUris shouldBe
+            listOf("/images/otaria/events/naturalisation.png")
         pending.state.otaria?.colorPiles?.get(Color.GREEN)?.discard shouldBe emptyList()
 
         val restored = json.decodeFromString<ExecutionResult>(json.encodeToString(pending))
@@ -226,6 +228,29 @@ class OtariaEventEffectsTest : FunSpec({
     test("a choice event with no eligible permanent finishes without asking") {
         val name = "Ev. Naturalisation"
         assertFinished(explore(game(name)), name)
+    }
+
+    test("an unsupported merchant is revealed with its own proxy but skipped without applying effects") {
+        val name = "Ev. Marchant itinérant G3"
+        val result = explore(game(name))
+        result.error shouldBe null
+        result.state.otaria?.pendingExploration shouldBe null
+        result.state.otaria?.turn?.explorationFinished shouldBe true
+        result.state.otaria?.colorPiles?.getValue(Color.GREEN)?.discard?.single()?.name shouldBe name
+        val reveal = result.events.filterIsInstance<CardsRevealedEvent>().single()
+        reveal.cardNames shouldBe listOf(name)
+        reveal.imageUris shouldBe listOf("/images/otaria/events/merchant-g3.png")
+        result.state.getEntity(reveal.cardIds.single()) shouldBe null
+        result.events.filterIsInstance<OtariaCardSkippedEvent>().single().cardName shouldBe name
+        result.events.filterIsInstance<OtariaEventFinishedEvent>() shouldBe emptyList()
+    }
+
+    test("an unsupported event without artwork is skipped without an unusable reveal") {
+        val result = explore(game("Ev. Unknown"))
+        result.error shouldBe null
+        result.state.otaria?.pendingExploration shouldBe null
+        result.events.filterIsInstance<CardsRevealedEvent>() shouldBe emptyList()
+        result.events.filterIsInstance<OtariaCardSkippedEvent>().single().cardName shouldBe "Ev. Unknown"
     }
 
     test("infestation affects creatures in range until end of turn") {

@@ -29,6 +29,8 @@ sealed interface ClientEvent {
         val initiativeOutcome: String? = null,
         val explorerId: EntityId? = null,
         val initiativeRolls: String? = null,
+        val cardName: String? = null,
+        val imageUri: String? = null,
     ) : ClientEvent
 
     // =========================================================================
@@ -1623,14 +1625,38 @@ object ClientEventTransformer {
             is OtariaEncounterJoinedEvent,
             is OtariaStartingLandsPlacedEvent,
             is OtariaPlayerMovedEvent, is OtariaPreparedEvent,
-            is OtariaExplorationStartedEvent,
             is OtariaExplorationEmptyEvent, is OtariaExplorationPileShuffledEvent, is OtariaCardAddedToReserveEvent,
             is OtariaDiscoveryTreasureResolvedEvent,
-            is OtariaDiscoveryFinishedEvent, is OtariaEventCopiesCreatedEvent,
-            is OtariaEventCopyFinishedEvent, is OtariaEventFinishedEvent -> null
+            is OtariaDiscoveryFinishedEvent -> null
+
+            is OtariaExplorationStartedEvent -> if (event.card.kind == com.wingedsheep.engine.otaria.OtariaCardKind.EVENT) {
+                ClientEvent.OtariaNotice(
+                    description = "${event.card.name} was drawn. Resolve the event before continuing exploration.",
+                    explorerId = event.explorerId,
+                    cardName = event.card.name,
+                    imageUri = com.wingedsheep.engine.otaria.OtariaEventArtwork.forName(event.card.name),
+                )
+            } else null
+            is OtariaEventCopiesCreatedEvent -> ClientEvent.OtariaNotice(
+                description = "${event.cardName}: ${event.copySourceIds.size} event copies were created. Copies resolve before the original.",
+                explorerId = event.explorerId,
+            )
+            is OtariaEventCopyFinishedEvent -> ClientEvent.OtariaNotice(
+                description = "An Otaria event copy finished resolving.",
+                explorerId = event.explorerId,
+            )
+            is OtariaEventFinishedEvent -> ClientEvent.OtariaNotice(
+                description = "${event.cardName} finished resolving and was discarded to its exploration pile.",
+                explorerId = event.explorerId,
+                cardName = event.cardName,
+                imageUri = com.wingedsheep.engine.otaria.OtariaEventArtwork.forName(event.cardName),
+            )
 
             is OtariaCardSkippedEvent -> ClientEvent.OtariaNotice(
-                "${event.cardName} is not scripted yet: it was discarded and the exploration ends."
+                description = "${event.cardName} is not scripted yet: it was discarded without resolving and the exploration ends.",
+                explorerId = event.explorerId,
+                cardName = event.cardName,
+                imageUri = com.wingedsheep.engine.otaria.OtariaEventArtwork.forName(event.cardName),
             )
             is OtariaEncounterStartedEvent -> ClientEvent.OtariaNotice("An Otaria creature encounter has begun.")
             is OtariaInitiativeDeterminedEvent -> {

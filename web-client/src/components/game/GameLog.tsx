@@ -10,6 +10,7 @@ import React, { useState, useRef, useEffect } from 'react'
 export function GameLog() {
   const eventLog = useGameStore((state) => state.eventLog)
   const playerId = useGameStore((state) => state.playerId)
+  const isOtaria = useGameStore((state) => !!state.gameState?.otaria)
   // Multiplayer: log entries take the actor's seat color ("who did that?" is the
   // dominant question in a pod). 2-player keeps the classic cyan/orange split.
   const players = useGameStore((state) => state.gameState?.players)
@@ -48,14 +49,14 @@ export function GameLog() {
   }
 
   return (
-    <div style={styles.panel}>
+    <div style={{ ...styles.panel, ...(isOtaria ? { bottom: 48, maxHeight: 'min(640px, calc(100dvh - 80px))' } : {}) }}>
       <div style={styles.header}>
         <span style={styles.headerTitle}>Game Log</span>
         <button onClick={() => setExpanded(false)} style={styles.closeButton}>
           &times;
         </button>
       </div>
-      <div ref={scrollRef} style={styles.entries}>
+      <div ref={scrollRef} style={{ ...styles.entries, ...(isOtaria ? { maxHeight: 'min(600px, calc(100dvh - 120px))' } : {}) }}>
         {eventLog.length === 0 && (
           <div style={styles.empty}>No events yet</div>
         )}
@@ -72,7 +73,7 @@ export function GameLog() {
   )
 }
 
-function LogEntryRow({ entry, isPlayer, seatColor }: { entry: LogEntry; isPlayer: boolean; seatColor: string | null }) {
+export function LogEntryRow({ entry, isPlayer, seatColor }: { entry: LogEntry; isPlayer: boolean; seatColor: string | null }) {
   if (entry.type === 'turn') {
     return (
       <div style={styles.turnSeparator}>
@@ -94,6 +95,12 @@ function LogEntryRow({ entry, isPlayer, seatColor }: { entry: LogEntry; isPlayer
   return (
     <div style={{ ...styles.entry, color }}>
       {entry.description}
+      {entry.cardName && entry.imageUri && (
+        <details style={styles.eventCard}>
+          <summary style={styles.eventSummary}>View card: {entry.cardName}</summary>
+          <img src={entry.imageUri} alt={entry.cardName} style={styles.eventImage} />
+        </details>
+      )}
     </div>
   )
 }
@@ -171,6 +178,20 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '2px 0',
     lineHeight: 1.4,
     borderBottom: '1px solid rgba(255,255,255,0.04)',
+  },
+  eventCard: {
+    margin: '4px 0',
+  },
+  eventSummary: {
+    cursor: 'pointer',
+    color: 'var(--chrome-text)',
+  },
+  eventImage: {
+    display: 'block',
+    width: '100%',
+    height: 'auto',
+    marginTop: 6,
+    borderRadius: 6,
   },
   turnSeparator: {
     fontSize: 11,

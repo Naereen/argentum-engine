@@ -146,7 +146,13 @@ export function RevealedCardsUI() {
   // Calculate card size that fits all cards
   const availableWidth = responsive.viewportWidth - responsive.containerPadding * 2 - 64
   const gap = responsive.isMobile ? 8 : 12
-  const maxCardWidth = responsive.isMobile ? 120 : 180
+  const isOtariaEvent = cards.length === 1 && cards[0]?.imageUri?.startsWith('/images/otaria/events/')
+  const maxCardWidth = isOtariaEvent
+    ? Math.max(80, Math.min(
+        responsive.isMobile ? 220 : 300,
+        Math.floor((responsive.viewportHeight - (responsive.isMobile ? 220 : 280)) / 1.4),
+      ))
+    : (responsive.isMobile ? 120 : 180)
   const cardWidth = calculateFittingCardWidth(
     Math.min(cards.length || 1, 6),
     availableWidth,
@@ -181,7 +187,8 @@ export function RevealedCardsUI() {
 
   // Source card image (the card that triggered the reveal)
   const sourceCardName = !isHandReveal ? revealedCardsInfo!.source : null
-  const sourceCardImageUrl = sourceCardName ? getCardImageUrl(sourceCardName) : null
+  const sourceCardImageUrl = sourceCardName && sourceCardName !== 'Explorer of Otaria'
+    ? getCardImageUrl(sourceCardName) : null
 
   return (
     <div className={styles.overlay}>

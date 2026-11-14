@@ -101,4 +101,4 @@ data class ClientOtariaExploration(
 )
 
 @Serializable
-data class ClientOtariaExploredCard(val name: String, val kind: OtariaCardKind)
+data class ClientOtariaExploredCard(val name: String, val kind: OtariaCardKind, val imageUri: String? = null)

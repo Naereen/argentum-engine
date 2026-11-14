@@ -89,6 +89,7 @@ export interface ClientOtariaState {
     readonly card?: {
       readonly name: string
       readonly kind: 'CREATURE' | 'NONCREATURE' | 'EVENT' | 'DISCOVERY' | 'BOSS'
+      readonly imageUri?: string | null
     } | null
   } | null
 }

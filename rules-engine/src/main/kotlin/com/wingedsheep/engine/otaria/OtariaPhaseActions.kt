@@ -182,7 +182,7 @@ internal class OtariaPhaseActions(
         if (started.outcome !is Outcome.Done) return started
         val pending = started.state.otaria?.pendingExploration
         if (pending == null) return finishExploration(started.state, started.events)
-        if (!isScripted(pending.card)) {
+        if (!isScripted(pending.card) && pending.card.kind != OtariaCardKind.EVENT) {
             val skipped = OtariaRules.skipUnscriptedCard(started.state, playerId)
             if (skipped.outcome !is Outcome.Done) return skipped.copy(state = state)
             return finishExploration(skipped.state, started.events + skipped.events)
@@ -225,22 +225,33 @@ internal class OtariaPhaseActions(
         started: ExecutionResult,
         pending: OtariaPendingExploration,
     ): ExecutionResult {
-        if (pending.card.eventEffect == null) {
-            return ExecutionResult.error(original, "Otaria event is not implemented: ${pending.card.name}")
-        }
-        val copyCount = when (pending.card.eventCopyRule) {
-            null -> 0
-            OtariaEventCopyRule.EACH_SPELL_CAST_THIS_TURN -> started.state.spellsCastThisTurn
-        }
-        if (copyCount < 0) return ExecutionResult.error(original, "The spell count cannot be negative")
         val (sourceId, allocated) = started.state.newEntity()
         val source = CardComponent(
             cardDefinitionId = "otaria-event:${pending.card.name}",
             name = pending.card.name,
             manaCost = ManaCost.ZERO,
             typeLine = TypeLine(cardTypes = emptySet()),
+            imageUri = OtariaEventArtwork.forName(pending.card.name),
         )
         var staged = allocated.withEntity(sourceId, ComponentContainer.of(source))
+        val reveal = CardsRevealedEvent(
+            revealingPlayerId = pending.managerId,
+            cardIds = listOf(sourceId),
+            cardNames = listOf(pending.card.name),
+            imageUris = listOf(source.imageUri),
+            source = "Explorer of Otaria",
+        )
+        if (pending.card.eventEffect == null) {
+            val skipped = OtariaRules.skipUnscriptedCard(staged.removeEntity(sourceId), pending.explorerId)
+            if (skipped.outcome !is Outcome.Done) return skipped.copy(state = original)
+            val revealEvents = if (source.imageUri != null) listOf(reveal) else emptyList()
+            return finishExploration(skipped.state, started.events + revealEvents + skipped.events)
+        }
+        val copyCount = when (pending.card.eventCopyRule) {
+            null -> 0
+            OtariaEventCopyRule.EACH_SPELL_CAST_THIS_TURN -> started.state.spellsCastThisTurn
+        }
+        if (copyCount < 0) return ExecutionResult.error(original, "The spell count cannot be negative")
         val copies = mutableListOf<EntityId>()
         repeat(copyCount) {
             val (copyId, next) = staged.newEntity()
@@ -248,12 +259,6 @@ internal class OtariaPhaseActions(
             copies.add(copyId)
         }
         staged = staged.pushContinuation(FinishOtariaEventContinuation(pending.explorerId, sourceId))
-        val reveal = CardsRevealedEvent(
-            revealingPlayerId = pending.managerId,
-            cardIds = listOf(sourceId),
-            cardNames = listOf(pending.card.name),
-            source = "Explorer of Otaria",
-        )
         val copyEvents = if (copies.isEmpty()) emptyList() else listOf(
             OtariaEventCopiesCreatedEvent(pending.explorerId, sourceId, pending.card.name, copies.toList()),
         )

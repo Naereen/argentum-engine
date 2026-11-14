@@ -74,7 +74,12 @@ internal class OtariaProjector(private val cardRegistry: CardRegistry) {
                 stage = exploration.stage,
                 faceDown = faceDown,
                 card = exploration.card.takeIf { mayIdentify }?.let {
-                    ClientOtariaExploredCard(it.name, it.kind)
+                    ClientOtariaExploredCard(
+                        it.name, it.kind,
+                        if (it.kind == OtariaCardKind.EVENT) {
+                            com.wingedsheep.engine.otaria.OtariaEventArtwork.forName(it.name)
+                        } else null,
+                    )
                 },
             )
         }

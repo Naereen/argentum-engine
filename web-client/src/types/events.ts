@@ -72,6 +72,8 @@ export interface OtariaNoticeEvent {
   readonly initiativeOutcome?: 'explorerWon' | 'encounterWon' | null
   readonly explorerId?: EntityId | null
   readonly initiativeRolls?: string | null
+  readonly cardName?: string | null
+  readonly imageUri?: string | null
 }
 
 // ============================================================================
