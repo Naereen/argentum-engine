@@ -1,21 +1,14 @@
 package com.wingedsheep.engine.otaria
 
-import com.wingedsheep.engine.core.doesntUntapDuringUntapStep
-import com.wingedsheep.engine.core.untapLimitChoices
-import com.wingedsheep.engine.handlers.PredicateContext
 import com.wingedsheep.engine.handlers.PredicateEvaluator
+import com.wingedsheep.engine.mechanics.combat.GeneralBlockRestrictions
 import com.wingedsheep.engine.mechanics.layers.ProjectedState
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
-import com.wingedsheep.engine.state.components.battlefield.CountersComponent
-import com.wingedsheep.engine.state.components.battlefield.ExertedComponent
-import com.wingedsheep.engine.state.components.battlefield.HasBecomeTappedComponent
-import com.wingedsheep.engine.state.components.battlefield.TappedComponent
 import com.wingedsheep.engine.state.components.combat.AttackingComponent
 import com.wingedsheep.engine.state.components.combat.BeingAttackedComponent
 import com.wingedsheep.engine.state.components.combat.BlockedComponent
-import com.wingedsheep.engine.state.components.player.SkipUntapComponent
-import com.wingedsheep.sdk.core.CounterType
+import com.wingedsheep.engine.state.components.combat.BlockingComponent
 import com.wingedsheep.sdk.core.Keyword
 import com.wingedsheep.sdk.model.EntityId
 
@@ -52,21 +45,15 @@ internal object OtariaEncounterCombat {
         predicateEvaluator: PredicateEvaluator,
         cardRegistry: CardRegistry,
     ): Boolean {
-        val creature = state.getEntity(creatureId) ?: return false
-        if (creature.get<HasBecomeTappedComponent>()?.lastBecameTappedTurn == state.turnNumber) return false
-        if (!creature.has<TappedComponent>()) return true
-        if ((creature.get<CountersComponent>()?.getCount(CounterType.STUN) ?: 0) > 0 ||
-            creature.has<ExertedComponent>() || projected.doesntUntapDuringUntapStep(creatureId)
-        ) return false
-        if (untapLimitChoices(state, cardRegistry, predicateEvaluator, listOf(creatureId)).any { it.max == 0 }) {
-            return false
-        }
+        if (projected.cantBlock(creatureId)) return false
         val controller = projected.getController(creatureId) ?: return false
-        val skip = state.getEntity(controller)?.get<SkipUntapComponent>() ?: return true
-        if (state.objectRef(creatureId) in skip.objects) return false
-        return skip.permanents.none {
-            predicateEvaluator.matches(state, projected, creatureId, it, PredicateContext(controllerId = controller))
-        }
+        val restrictions = GeneralBlockRestrictions(cardRegistry, predicateEvaluator)
+        if (restrictions.conditionalError(state, projected, creatureId, controller) != null) return false
+        val team = state.sharedTurnTeam(controller)
+        val blockers = state.findEntitiesWith<BlockingComponent>().mapNotNull { (id, _) ->
+            id.takeIf { projected.getController(it) in team }
+        }.toSet()
+        return restrictions.coBlockerError(state, projected, creatureId, blockers) == null
     }
 
     fun retaliatingCreatures(

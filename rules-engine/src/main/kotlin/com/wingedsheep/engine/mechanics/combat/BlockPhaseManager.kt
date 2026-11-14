@@ -64,6 +64,7 @@ internal class BlockPhaseManager(
     private val predicateEvaluator: PredicateEvaluator
 ) {
     private val conditionEvaluator = predicateEvaluator.conditions
+    private val generalBlockRestrictions = GeneralBlockRestrictions(cardRegistry, predicateEvaluator)
 
     private fun publicName(state: GameState, entityId: EntityId): String =
         nameVisibleToAll(state, entityId, state.getEntity(entityId)?.get<CardComponent>()?.name ?: "Creature")
@@ -1186,26 +1187,7 @@ internal class BlockPhaseManager(
         restrictionBlockerIds: Set<EntityId> = blockerIds,
     ): String? {
         for (blockerId in restrictionBlockerIds) {
-            val cardComponent = state.getEntity(blockerId)?.get<CardComponent>() ?: continue
-            if (state.getEntity(blockerId)?.has<FaceDownComponent>() == true || projected.hasLostAllAbilities(blockerId)) continue
-            val printed = cardRegistry.getCard(cardComponent.cardDefinitionId)
-                ?.staticAbilities.orEmpty()
-            val granted = state.grantedStaticAbilities
-                .filter { it.entityId == blockerId }
-                .map { it.ability }
-            val restrictions = (printed + granted)
-                .filterIsInstance<CantBlockUnlessCoBlocker>()
-                .filter { it.filter.scope is Scope.Self }
-            for (restriction in restrictions) {
-                val context = PredicateContext(controllerId = projected.getController(blockerId) ?: blockerId)
-                val satisfied = blockerIds.any { otherId ->
-                    otherId != blockerId &&
-                        predicateEvaluator.matches(state, projected, otherId, restriction.coBlockerFilter, context)
-                }
-                if (!satisfied) {
-                    return "${publicName(state, blockerId)} ${restriction.description}"
-                }
-            }
+            generalBlockRestrictions.coBlockerError(state, projected, blockerId, blockerIds)?.let { return it }
         }
         return null
     }
@@ -1583,32 +1565,9 @@ internal class BlockPhaseManager(
         blockingPlayer: EntityId,
         projected: ProjectedState
     ): String? {
-        val container = state.getEntity(blockerId) ?: return null
-        // A face-down creature has no printed abilities (CR 708.2a); one that lost all abilities
-        // no longer has this one either (CR 604.2).
-        if (container.has<FaceDownComponent>() || projected.hasLostAllAbilities(blockerId)) return null
-        val cardComponent = container.get<CardComponent>() ?: return null
-        val cardDef = cardRegistry.getCard(cardComponent.cardDefinitionId) ?: return null
-
-        val restriction = cardDef.staticAbilities
-            .filterIsInstance<CantBlockUnless>()
-            .firstOrNull { it.filter.scope is com.wingedsheep.sdk.scripting.filters.unified.Scope.Self } ?: return null
-
-        val attackers = state.entities.filter { (_, c) -> c.has<AttackingComponent>() }
-        if (attackers.isEmpty()) return null
-
-        val anyAttacker = attackers.keys.first()
-        val attackingPlayer = projected.getController(anyAttacker) ?: return null
-
-        val effectContext = EffectContext(
-            sourceId = blockerId,
-            controllerId = projected.getController(blockerId) ?: blockingPlayer,
+        return generalBlockRestrictions.conditionalError(
+            state, projected, blockerId, projected.getController(blockerId) ?: blockingPlayer,
         )
-        if (!conditionEvaluator.evaluate(state, restriction.condition, effectContext)) {
-            return "${publicName(state, blockerId)} ${restriction.description}"
-        }
-
-        return null
     }
 
     /**
@@ -1620,26 +1579,7 @@ internal class BlockPhaseManager(
         blockingPlayer: EntityId,
         projected: ProjectedState
     ): Boolean {
-        val container = state.getEntity(blockerId) ?: return false
-        if (container.has<FaceDownComponent>() || projected.hasLostAllAbilities(blockerId)) return false
-        val cardComponent = container.get<CardComponent>() ?: return false
-        val cardDef = cardRegistry.getCard(cardComponent.cardDefinitionId) ?: return false
-
-        val restriction = cardDef.staticAbilities
-            .filterIsInstance<CantBlockUnless>()
-            .firstOrNull { it.filter.scope is com.wingedsheep.sdk.scripting.filters.unified.Scope.Self } ?: return false
-
-        val attackers = state.entities.filter { (_, c) -> c.has<AttackingComponent>() }
-        if (attackers.isEmpty()) return false
-
-        val anyAttacker = attackers.keys.first()
-        val attackingPlayer = projected.getController(anyAttacker) ?: return false
-
-        val effectContext = EffectContext(
-            sourceId = blockerId,
-            controllerId = projected.getController(blockerId) ?: blockingPlayer,
-        )
-        return !conditionEvaluator.evaluate(state, restriction.condition, effectContext)
+        return validateCantBlockUnless(state, blockerId, blockingPlayer, projected) != null
     }
 
     // =========================================================================

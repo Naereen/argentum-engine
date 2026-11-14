@@ -17,7 +17,10 @@ import com.wingedsheep.engine.core.ResolutionTargetKind
 import com.wingedsheep.engine.core.SubmitDecision
 import com.wingedsheep.engine.core.engineSerializersModule
 import com.wingedsheep.engine.core.tap
+import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.mechanics.combat.CombatDefenders
+import com.wingedsheep.engine.mechanics.layers.StaticAbilityHandler
+import com.wingedsheep.engine.mechanics.layers.ContinuousEffectSourceComponent
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.ComponentContainer
 import com.wingedsheep.engine.state.GameState
@@ -33,6 +36,7 @@ import com.wingedsheep.engine.state.components.identity.FaceDownComponent
 import com.wingedsheep.engine.state.components.identity.FaceDownModeComponent
 import com.wingedsheep.engine.state.components.identity.PlayerComponent
 import com.wingedsheep.engine.state.components.player.ManaPoolComponent
+import com.wingedsheep.engine.state.components.stack.ChosenTarget
 import com.wingedsheep.engine.handlers.PredicateEvaluator
 import com.wingedsheep.engine.view.ClientCombatTarget
 import com.wingedsheep.engine.view.ClientStateTransformer
@@ -49,9 +53,15 @@ import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.model.CardDefinition
 import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.dsl.card
+import com.wingedsheep.sdk.dsl.Conditions
+import com.wingedsheep.sdk.dsl.Effects
+import com.wingedsheep.sdk.scripting.CantBlock
+import com.wingedsheep.sdk.scripting.CantBlockUnless
+import com.wingedsheep.sdk.scripting.CantBlockUnlessCoBlocker
 import com.wingedsheep.sdk.scripting.GameObjectFilter
 import com.wingedsheep.sdk.scripting.UntapLimitPerStep
 import com.wingedsheep.sdk.scripting.effects.FaceDownMode
+import com.wingedsheep.sdk.scripting.targets.EffectTarget
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -81,15 +91,29 @@ class OtariaEncounterCombatTest : FunSpec({
     val firstStrikeDefender = creature("First strike encounter", 3, 7, Keyword.FIRST_STRIKE)
     val doubleStrikeDefender = creature("Double strike encounter", 3, 7, Keyword.DOUBLE_STRIKE)
     val blocker = creature("Encounter reinforcement", 1, 1)
+    val unableToBlock = card("Unable to block encounter") {
+        typeLine = "Creature"; power = 3; toughness = 7
+        staticAbility { ability = CantBlock() }
+    }
+    val unableWhileTapped = card("Encounter unable to block while tapped") {
+        typeLine = "Creature"; power = 3; toughness = 7
+        staticAbility { ability = CantBlockUnless(Conditions.SourceMatches(GameObjectFilter.Any.untapped())) }
+    }
+    val needsCoBlocker = card("Encounter needing a co-blocker") {
+        typeLine = "Creature"; power = 3; toughness = 7
+        staticAbility { ability = CantBlockUnlessCoBlocker(GameObjectFilter.Creature) }
+    }
     val noCreatureUntaps = card("No creature untaps") {
         typeLine = "Artifact"
         staticAbility { ability = UntapLimitPerStep(GameObjectFilter.Creature, 0) }
     }
     val registry = CardRegistry().also {
         listOf(ground, reach, trample, plainDefender, flyingDefender, firstStrikeDefender,
-            doubleStrikeDefender, blocker, noCreatureUntaps).forEach(it::register)
+            doubleStrikeDefender, blocker, noCreatureUntaps, unableToBlock, unableWhileTapped,
+            needsCoBlocker).forEach(it::register)
     }
     val services = EngineServices(registry)
+    val staticAbilityHandler = StaticAbilityHandler(registry)
     val processor = ActionProcessor(services)
     val json = Json { serializersModule = engineSerializersModule; allowStructuredMapKeys = true }
 
@@ -126,7 +150,10 @@ class OtariaEncounterCombatTest : FunSpec({
             otaria = mode,
         )
         fun add(id: EntityId, owner: EntityId, definition: CardDefinition) {
-            result = result.withEntity(id, CardEntityFactory.create(definition, owner))
+            val entity = staticAbilityHandler.addContinuousEffectComponent(
+                CardEntityFactory.create(definition, owner), definition,
+            )
+            result = result.withEntity(id, entity)
                 .addToZone(ZoneKey(owner, Zone.BATTLEFIELD), id)
         }
         add(first, explorer, attacker)
@@ -267,12 +294,12 @@ class OtariaEncounterCombatTest : FunSpec({
         answered.state.priorityPlayerId shouldBe explorer
     }
 
-    test("a recently tapped or stun-locked encounter creature cannot retaliate") {
+    test("tapping or a stun counter alone does not prevent retaliation") {
         val declared = declare(state())
         val newlyTapped = tap(declared, defender).state
         val recent = services.combatManager.applyCombatDamage(newlyTapped)
         damage(recent.state, defender) shouldBe 2
-        damage(recent.state, first) shouldBe 0
+        damage(recent.state, first) shouldBe 3
 
         val oldTap = declared.updateEntity(defender) {
             it.with(TappedComponent).with(HasBecomeTappedComponent(lastBecameTappedTurn = 0, timesThisTurn = 1))
@@ -281,10 +308,10 @@ class OtariaEncounterCombatTest : FunSpec({
         val stunned = oldTap.updateEntity(defender) {
             it.with(CountersComponent().withAdded(CounterType.STUN, 1))
         }
-        damage(services.combatManager.applyCombatDamage(stunned).state, first) shouldBe 0
+        damage(services.combatManager.applyCombatDamage(stunned).state, first) shouldBe 3
     }
 
-    test("a zero untap limit prevents a previously tapped encounter creature from retaliating") {
+    test("an untap restriction alone does not prevent retaliation") {
         val capId = EntityId("untap-cap")
         val initial = state()
             .withEntity(capId, CardEntityFactory.create(noCreatureUntaps, explorer))
@@ -294,8 +321,66 @@ class OtariaEncounterCombatTest : FunSpec({
         }
         val result = services.combatManager.applyCombatDamage(declared)
         result.error shouldBe null
+        damage(result.state, first) shouldBe 3
+        damage(result.state, defender) shouldBe 2
+    }
+
+    test("an encounter creature that cannot block does not retaliate or ask to divide damage") {
+        val declared = declare(state(encountered = unableToBlock, secondAttacker = ground), listOf(first, second))
+        declared.projectedState.cantBlock(defender) shouldBe true
+        val result = services.combatManager.applyCombatDamage(declared)
+        result.error shouldBe null
+        result.state.pendingDecision shouldBe null
+        damage(result.state, first) shouldBe 0
+        damage(result.state, second) shouldBe 0
+        damage(result.state, defender) shouldBe 4
+        result.events.filterIsInstance<DamageDealtEvent>().any { it.sourceId == defender } shouldBe false
+    }
+
+    test("a temporary can't-block effect suppresses retaliation even when the creature is tapped") {
+        val declared = declare(state())
+        val effect = services.effectExecutorRegistry.execute(
+            declared,
+            Effects.CantBlock(EffectTarget.ContextTarget(0)),
+            EffectContext(sourceId = first, controllerId = explorer, targets = listOf(ChosenTarget.Permanent(defender))),
+        )
+        effect.error shouldBe null
+        val result = services.combatManager.applyCombatDamage(tap(effect.state, defender).state)
         damage(result.state, first) shouldBe 0
         damage(result.state, defender) shouldBe 2
+    }
+
+    test("a restriction specifically preventing blocking while tapped suppresses retaliation only while tapped") {
+        val declared = declare(state(encountered = unableWhileTapped))
+        damage(services.combatManager.applyCombatDamage(declared).state, first) shouldBe 3
+        val tapped = services.combatManager.applyCombatDamage(tap(declared, defender).state)
+        damage(tapped.state, first) shouldBe 0
+        damage(tapped.state, defender) shouldBe 2
+    }
+
+    test("a creature that cannot block alone needs another declared blocker to retaliate") {
+        val declared = declare(state(attacker = trample, encountered = needsCoBlocker, withSupport = true))
+        OtariaEncounterCombat.canRetaliate(declared, declared.projectedState, defender, PredicateEvaluator(registry), registry) shouldBe false
+        val blocked = services.combatManager.declareBlockers(declared, actor, mapOf(support to listOf(first)))
+        blocked.error shouldBe null
+        OtariaEncounterCombat.canRetaliate(blocked.state, blocked.state.projectedState, defender, PredicateEvaluator(registry), registry) shouldBe true
+    }
+
+    test("a face-down encounter does not retain its printed can't-block ability") {
+        val initial = state(encountered = unableToBlock)
+            .updateEntity(defender) {
+                it.with(FaceDownComponent).with(FaceDownModeComponent(FaceDownMode.MORPH))
+                    .without<ContinuousEffectSourceComponent>()
+            }
+        val result = services.combatManager.applyCombatDamage(declare(initial))
+        damage(result.state, first) shouldBe 2
+    }
+
+    test("attacker evasion does not prevent an otherwise eligible encounter from retaliating") {
+        val flying = creature("Flying attacker", 2, 6, Keyword.FLYING)
+        registry.register(flying)
+        val result = services.combatManager.applyCombatDamage(declare(state(attacker = flying)))
+        damage(result.state, first) shouldBe 3
     }
 
     test("another player joins an encounter only after a valid attack declaration") {

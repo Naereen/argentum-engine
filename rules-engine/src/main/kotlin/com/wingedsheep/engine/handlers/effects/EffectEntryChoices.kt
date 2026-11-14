@@ -213,7 +213,7 @@ object EffectEntryChoices {
     ): EffectContext? {
         val decoded = PermanentEntryReplacements.decodeEntersChoice(state, question, response)
         if (decoded == null) {
-            return if (PermanentEntryReplacements.isDeclinedEntersChoice(question.choiceType, response)) {
+            return if (PermanentEntryReplacements.isDeclinedEntersChoice(question, response)) {
                 declined(context, entityId, question.choiceType)
             } else null
         }
