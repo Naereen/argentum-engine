@@ -86,6 +86,8 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    // Le point initial autorise tous les sous-domaines (*.trycloudflare.com)
+    allowedHosts: ['.trycloudflare.com'],
   },
   // `vite preview` serves the real production bundle. Without the same proxy it can't reach the
   // game server, so the only way to exercise a build the way a player meets it — minified, no
@@ -103,6 +105,8 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    // Le point initial autorise tous les sous-domaines (*.trycloudflare.com)
+    allowedHosts: ['.trycloudflare.com'],
   },
   build: {
     sourcemap: true,
