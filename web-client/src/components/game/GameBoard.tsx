@@ -1,5 +1,5 @@
 import { PlayerActionBar } from './overlay/PlayerActionBar'
-import { OtariaBoardButton } from './overlay/OtariaBoard'
+import { OtariaBoardButton, OtariaReserveButton } from './overlay/OtariaBoard'
 import { Fragment, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useGameStore } from '@/store/gameStore'
 import { useInteraction } from '@/hooks/useInteraction'
@@ -1393,7 +1393,10 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
         <AnteIndicator />
         {/* A subgame in progress (CR 729) — what started it and what's waiting outside it. */}
         <SubgameBadge gameState={gameState} />
-        {gameState.otaria && <OtariaBoardButton gameState={gameState} />}
+        {gameState.otaria && <>
+          <OtariaBoardButton gameState={gameState} />
+          <OtariaReserveButton gameState={gameState} />
+        </>}
         <StepStrip
           phase={gameState.currentPhase}
           step={gameState.currentStep}

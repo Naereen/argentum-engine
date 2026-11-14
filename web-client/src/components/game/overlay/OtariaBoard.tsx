@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Color } from '@/types'
-import type { ClientGameState, ClientOtariaState, EntityId, OtariaLocation, OtariaPosition } from '@/types'
+import type { ClientGameState, ClientOtariaReserveCard, ClientOtariaState, EntityId, OtariaLocation, OtariaPosition } from '@/types'
 import styles from './OtariaBoard.module.css'
 
 const locationNames: Record<OtariaLocation, string> = {
@@ -25,6 +25,21 @@ const terrainColors: Record<Color, string> = {
 const seatColors = ['#ffe19a', '#b6dafe', '#f9b4a8', '#bde7b2', '#dcc0ff']
 const terrainOrder = [Color.GREEN, Color.RED, Color.BLACK, Color.BLUE, Color.WHITE]
 const turnActions = { MOVE: 'Move', EXPLORE: 'Explore', PREPARE: 'Prepare', COMBAT: 'Combat' }
+
+function ReserveCards({ cards }: { cards: readonly ClientOtariaReserveCard[] }) {
+  return (
+    <>
+      {cards.length === 0 && <p className={styles.muted}>No cards in reserve.</p>}
+      {cards.map((card) => (
+        <details key={card.id} className={styles.reserveCard}>
+          <summary><span>{card.name}</span><span>{card.manaCost}</span></summary>
+          <p className={styles.muted}>{card.typeLine}</p>
+          {card.oracleText && <p>{card.oracleText}</p>}
+        </details>
+      ))}
+    </>
+  )
+}
 
 function samePosition(a: OtariaPosition, b: OtariaPosition): boolean {
   return a.column === b.column && a.row === b.row
@@ -232,6 +247,81 @@ export function OtariaBoardButton({ gameState, miniature = false }: { gameState:
   )
 }
 
+export function OtariaReserveButton({ gameState }: { gameState: ClientGameState }) {
+  const [open, setOpen] = useState(false)
+  const button = useRef<HTMLButtonElement>(null)
+  const dialog = useRef<HTMLDivElement>(null)
+  const player = gameState.otaria?.players.find((candidate) => candidate.playerId === gameState.viewingPlayerId)
+  const reserve = player?.privateData?.reserve
+
+  useEffect(() => {
+    if (!open) return
+    dialog.current?.querySelector<HTMLButtonElement>('button')?.focus()
+    return () => button.current?.focus()
+  }, [open])
+
+  if (!reserve) return null
+
+  return (
+    <>
+      <button
+        ref={button}
+        type="button"
+        className={styles.badge}
+        aria-label={`Open your reserve, ${reserve.length} ${reserve.length === 1 ? 'card' : 'cards'}`}
+        onClick={() => setOpen(true)}
+      >
+        Reserve · {reserve.length}
+      </button>
+      {open && createPortal(
+        <div className={styles.backdrop} onPointerDown={(event) => {
+          if (event.target === event.currentTarget) setOpen(false)
+        }}>
+          <div
+            ref={dialog}
+            className={styles.dialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="otaria-reserve-title"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault()
+                setOpen(false)
+              }
+              if (event.key === 'Tab') {
+                const controls = dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled), summary')
+                if (!controls?.length) return
+                const first = controls[0]!
+                const last = controls[controls.length - 1]!
+                if (event.shiftKey && document.activeElement === first) {
+                  event.preventDefault()
+                  last.focus()
+                } else if (!event.shiftKey && document.activeElement === last) {
+                  event.preventDefault()
+                  first.focus()
+                }
+              }
+            }}
+          >
+            <header className={styles.header}>
+              <div>
+                <p className={styles.eyebrow}>Explorer of Otaria</p>
+                <h2 id="otaria-reserve-title">Your reserve</h2>
+                <p>{reserve.length} {reserve.length === 1 ? 'card' : 'cards'} available to prepare.</p>
+              </div>
+              <button type="button" className={styles.close} aria-label="Close reserve" onClick={() => setOpen(false)}>×</button>
+            </header>
+            <div className={styles.reserveList}>
+              <ReserveCards cards={reserve} />
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+    </>
+  )
+}
+
 export function OtariaBoardContents({ gameState, board }: { gameState: ClientGameState; board: ClientOtariaState }) {
   const orderedPlayers = [...board.players].sort((a, b) =>
     gameState.players.findIndex((player) => player.playerId === a.playerId) -
@@ -334,14 +424,7 @@ export function OtariaBoardContents({ gameState, board }: { gameState: ClientGam
           return (
             <section key={player.playerId} className={styles.section}>
               <h3>{player.playerId === gameState.viewingPlayerId ? 'Your private reserve' : `${seatName(gameState, player.playerId)}'s private reserve`}</h3>
-              {privateData.reserve.length === 0 && <p className={styles.muted}>No cards in reserve.</p>}
-              {privateData.reserve.map((card) => (
-                <details key={card.id} className={styles.reserveCard}>
-                  <summary><span>{card.name}</span><span>{card.manaCost}</span></summary>
-                  <p className={styles.muted}>{card.typeLine}</p>
-                  {card.oracleText && <p>{card.oracleText}</p>}
-                </details>
-              ))}
+              <ReserveCards cards={privateData.reserve} />
               {privateData.locationCards.length > 0 && (
                 <p><strong>Location cards:</strong> {privateData.locationCards.map((location) => locationNames[location]).join(', ')}</p>
               )}

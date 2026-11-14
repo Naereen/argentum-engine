@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { otariaBoard, otariaGameState, otariaViewer, otariaManager } from '@/test/otariaFixtures'
 import { Color, entityId } from '@/types'
 import type { ClientOtariaState } from '@/types'
-import { OtariaBoardButton, OtariaBoardContents, OtariaMap } from './OtariaBoard'
+import { OtariaBoardButton, OtariaBoardContents, OtariaMap, OtariaReserveButton } from './OtariaBoard'
 import styles from './OtariaBoard.module.css'
 
 describe('Otaria board', () => {
@@ -143,6 +143,24 @@ describe('Otaria board', () => {
     expect(html).toContain('viewBox="-8 -8 390 512"')
     expect(html).toContain('<circle')
     expect(renderToStaticMarkup(<OtariaBoardButton gameState={otariaGameState(null)} miniature />)).toBe('')
+  })
+
+  it('offers the viewing player direct access to their private reserve from the game HUD', () => {
+    const state = otariaGameState()
+    const html = renderToStaticMarkup(<OtariaReserveButton gameState={state} />)
+
+    expect(html).toContain('aria-label="Open your reserve, 1 card"')
+    expect(html).toContain('Reserve · 1')
+    expect(renderToStaticMarkup(<OtariaReserveButton gameState={otariaGameState(null)} />)).toBe('')
+
+    const hiddenFromViewer = {
+      ...state,
+      otaria: {
+        ...state.otaria!,
+        players: state.otaria!.players.map((player) => ({ ...player, privateData: null })),
+      },
+    }
+    expect(renderToStaticMarkup(<OtariaReserveButton gameState={hiddenFromViewer} />)).toBe('')
   })
 
   it('shows public positions and counts and only the private reserve provided by the server', () => {
