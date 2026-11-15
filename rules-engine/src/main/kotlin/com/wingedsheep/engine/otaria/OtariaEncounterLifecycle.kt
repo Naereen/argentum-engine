@@ -125,7 +125,7 @@ internal object OtariaEncounterLifecycle {
         return ExecutionResult.success(current, emitted)
     }
 
-    /** A departed side is finished, but its final turn/stack must still be able to complete. */
+    /** A side with no active opponents returns its drawn card; its final turn/stack can still finish. */
     fun finishEmpty(state: GameState, zones: ZoneTransitionService): ExecutionResult {
         val mode = state.otaria ?: return ExecutionResult.success(state)
         if (state.pendingDecision != null || state.stack.isNotEmpty() || state.pendingTriggers.isNotEmpty() ||
@@ -133,7 +133,24 @@ internal object OtariaEncounterLifecycle {
         ) return ExecutionResult.success(state)
         var current = state
         val events = mutableListOf<GameEvent>()
-        for ((actor, encounter) in mode.encounters) {
+        for ((actor, _) in mode.encounters) {
+            val encounter = current.otaria?.encounters?.get(actor) ?: continue
+            val participants = encounter.participants.filterTo(mutableSetOf()) { it in current.activePlayers }
+            if (participants != encounter.participants) {
+                val currentMode = requireNotNull(current.otaria)
+                current = current.copy(otaria = currentMode.copy(
+                    encounters = currentMode.encounters + (actor to encounter.copy(participants = participants)),
+                ))
+            }
+            if (participants.isEmpty()) {
+                val returned = returnToPile(current, encounter)
+                current = returned.state
+                events.addAll(returned.events)
+                val cleared = clear(current, actor, zones, preserveActiveActor = actor == current.activePlayerId)
+                current = cleared.state
+                events.addAll(cleared.events)
+                continue
+            }
             if (actor == current.activePlayerId) continue
             if (encounter.members.any {
                     current.objectRef(it.entityId) == it && it.entityId in current.getBattlefield()
@@ -165,7 +182,12 @@ internal object OtariaEncounterLifecycle {
         ))
     }
 
-    private fun clear(state: GameState, actorId: EntityId, zones: ZoneTransitionService): ExecutionResult {
+    private fun clear(
+        state: GameState,
+        actorId: EntityId,
+        zones: ZoneTransitionService,
+        preserveActiveActor: Boolean = false,
+    ): ExecutionResult {
         var current = state
         val events = mutableListOf<GameEvent>()
         for (id in current.getBattlefield().filter { current.logicalZone(it)?.ownerId == actorId }) {
@@ -176,6 +198,18 @@ internal object OtariaEncounterLifecycle {
         val owned = current.zones.filterKeys { it.ownerId == actorId }.values.flatten().distinct()
         for (id in owned) current = current.removeEntity(id)
         val mode = requireNotNull(current.otaria)
+        if (preserveActiveActor) {
+            val encounter = mode.encounters.getValue(actorId)
+            // Keep the active actor in turn order, but remove its board and drawn card now.
+            return ExecutionResult.success(current.copy(otaria = mode.copy(
+                encounters = mode.encounters + (actorId to encounter.copy(
+                    members = emptySet(),
+                    participants = emptySet(),
+                    manaSources = emptyList(),
+                    pileCard = null,
+                )),
+            )), events)
+        }
         current = current.removeEntity(actorId).copy(
             otaria = mode.copy(encounters = mode.encounters - actorId),
             priorityPassedBy = current.priorityPassedBy - actorId,
