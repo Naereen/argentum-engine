@@ -28,6 +28,8 @@ function render(overrides: Partial<Parameters<typeof OtariaPlaytestContents>[0]>
     color={Color.GREEN} onColor={() => {}} starting={false} onStart={() => {}} {...overrides}
     boosterId={overrides.boosterId ?? 'J22:Elves (1)'} onBoosterId={overrides.onBoosterId ?? (() => {})}
     fullAi={overrides.fullAi ?? false} onFullAi={overrides.onFullAi ?? (() => {})}
+    aiThinkingDelayMs={overrides.aiThinkingDelayMs ?? 100}
+    onAiThinkingDelayMs={overrides.onAiThinkingDelayMs ?? (() => {})}
     online={overrides.online ?? false} onOnline={overrides.onOnline ?? (() => {})}
     lobby={overrides.lobby ?? null} invitePreview={overrides.invitePreview ?? null}
     inviteUrl={overrides.inviteUrl ?? null} inviteSeat={overrides.inviteSeat ?? null}
@@ -120,8 +122,11 @@ describe('Otaria playtest launch panel', () => {
     expect(html).toContain('First AI explorer name')
     expect(html).toContain('Every AI independently rolls a random color category')
     expect(html).not.toContain('Theme and booster variant')
-    expect(html).toContain('100 ms action delay')
     expect(html).toContain('no input is needed')
+    expect(html).toContain('Delay between AI actions:')
+    expect(html).toContain('value="100"')
+    expect(html).toContain('max="5000"')
+    expect(render({ fullAi: true, aiThinkingDelayMs: 800 })).toContain('value="800"')
     expect(render({ fullAi: true, opponents: 4 })).toContain('Watch 5 AI explorers')
     expect(render({ fullAi: true, starting: true })).toMatch(/disabled=""[^>]*>Preparing the table/)
   })

@@ -55,6 +55,7 @@ const COLOR_NAMES: Record<StartingColor, string> = {
 }
 
 const API = '/api/dev/otaria'
+const DEFAULT_AI_ACTION_DELAY_MS = 100
 
 export async function readOtariaResponse(response: Response): Promise<unknown> {
   if (!response.ok && response.status === 404) {
@@ -94,6 +95,7 @@ export function OtariaPlaytestPage() {
   const [color, setColor] = useState<StartingColor | null>(null)
   const [boosterId, setBoosterId] = useState('')
   const [fullAi, setFullAi] = useState(false)
+  const [aiThinkingDelayMs, setAiThinkingDelayMs] = useState(DEFAULT_AI_ACTION_DELAY_MS)
   const [online, setOnline] = useState(() => new URLSearchParams(window.location.search).has('lobby'))
   const [lobby, setLobby] = useState<OtariaLobby | null>(null)
   const [inviteLobbyId, setInviteLobbyId] = useState(() =>
@@ -194,6 +196,7 @@ export function OtariaPlaytestPage() {
             }
           : {
               playerName: name.trim(), aiOpponents: opponents, fullAi,
+              ...(fullAi ? { aiThinkingDelayMs } : {}),
               color: fullAi ? null : color, boosterId: fullAi ? null : boosterId || null,
             }),
       })
@@ -321,6 +324,8 @@ export function OtariaPlaytestPage() {
         onBoosterId={setBoosterId}
         fullAi={fullAi}
         onFullAi={(value) => { setFullAi(value); if (value) setOnline(false) }}
+        aiThinkingDelayMs={aiThinkingDelayMs}
+        onAiThinkingDelayMs={setAiThinkingDelayMs}
         online={online}
         onOnline={(value) => { setOnline(value); if (value) setFullAi(false) }}
         starting={starting}
@@ -340,7 +345,7 @@ export function OtariaPlaytestPage() {
 
 export function OtariaPlaytestContents({
   options, name, onName, opponents, onOpponents, hostSeat, onHostSeat, color, onColor, boosterId, onBoosterId,
-  fullAi, onFullAi, online, onOnline, starting, onStart, lobby, invitePreview, inviteUrl, inviteSeat,
+  fullAi, onFullAi, aiThinkingDelayMs, onAiThinkingDelayMs, online, onOnline, starting, onStart, lobby, invitePreview, inviteUrl, inviteSeat,
   onInviteSeat, onJoinLobby, onReady, onStartLobby,
 }: {
   options: OtariaPlaytestOptions
@@ -356,6 +361,8 @@ export function OtariaPlaytestContents({
   onBoosterId: (value: string) => void
   fullAi: boolean
   onFullAi: (value: boolean) => void
+  aiThinkingDelayMs: number
+  onAiThinkingDelayMs: (value: number) => void
   online: boolean
   onOnline: (value: boolean) => void
   starting: boolean
@@ -392,7 +399,26 @@ export function OtariaPlaytestContents({
             {Array.from({ length: opponents + 1 }, (_, seat) => <option key={seat} value={seat}>Seat {seat + 1}</option>)}
           </select>
         </label>}
-        {fullAi && <p className={pageStyles.muted}>Every explorer is AI-controlled. Watch as a spectator with a 100 ms action delay; no input is needed. Experimental encounters and unsupported events can still stop a run.</p>}
+        {fullAi && <>
+          <p className={pageStyles.muted}>Every explorer is AI-controlled. Watch as a spectator; no input is needed. Experimental encounters and unsupported events can still stop a run.</p>
+          <label className={styles.field} htmlFor="otaria-ai-action-delay">
+            <span>Delay between AI actions: <output>{aiThinkingDelayMs} ms</output></span>
+            <input
+              id="otaria-ai-action-delay"
+              className={pageStyles.input}
+              type="range"
+              aria-label="Delay between AI actions"
+              aria-describedby="otaria-ai-action-delay-description"
+              min={0}
+              max={5000}
+              step={100}
+              value={aiThinkingDelayMs}
+              onChange={(event) => onAiThinkingDelayMs(Number(event.target.value))}
+              disabled={starting}
+            />
+            <span id="otaria-ai-action-delay-description" className={pageStyles.muted}>Choose 0–5000 ms. The default is 100 ms.</span>
+          </label>
+        </>}
         {!lobby && <label className={styles.field}>
           {fullAi ? 'First AI explorer name' : 'Your name'}
           <input className={pageStyles.input} value={name} onChange={(event) => onName(event.target.value)} maxLength={40} disabled={starting} />

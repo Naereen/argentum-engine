@@ -187,6 +187,8 @@ class OtariaPlaytestTest(
             """{"playerName":"${"x".repeat(41)}"}""",
             """{"boosterId":"does-not-exist"}""",
             """{"color":"GREEN","boosterId":"J22:Urza's"}""",
+            """{"fullAi":true,"aiThinkingDelayMs":-1}""",
+            """{"fullAi":true,"aiThinkingDelayMs":5001}""",
         )) {
             val response = post(body)
             response.statusCode() shouldBe 400
@@ -253,7 +255,11 @@ class OtariaPlaytestTest(
 
     test("full AI controls every seat at fast speed and progresses without a human connection") {
         for (count in 2..4) {
-            val response = post("""{"playerName":"AI explorer","aiOpponents":$count,"color":"GREEN","seed":41,"fullAi":true}""")
+            val requestedDelayMs = if (count == 3) 800 else 100
+            val delayJson = if (count == 3) ""","aiThinkingDelayMs":$requestedDelayMs""" else ""
+            val response = post(
+                """{"playerName":"AI explorer","aiOpponents":$count,"color":"GREEN","seed":41,"fullAi":true$delayJson}""",
+            )
             response.statusCode() shouldBe 200
             val body = json.parseToJsonElement(response.body()).jsonObject
             val gameId = body.getValue("sessionId").jsonPrimitive.content
@@ -267,7 +273,7 @@ class OtariaPlaytestTest(
                     ai.isAiPlayer(EntityId(seat.getValue("playerId").jsonPrimitive.content)) shouldBe true
                 }
                 game.getPlayers().forEach { player ->
-                    (player.webSocketSession as AiWebSocketSession).thinkingDelayMs shouldBe 100L
+                    (player.webSocketSession as AiWebSocketSession).thinkingDelayMs shouldBe requestedDelayMs.toLong()
                 }
                 game.buildSpectatorState().shouldNotBeNull()
                 eventually(60.seconds) {

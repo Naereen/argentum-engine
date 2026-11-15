@@ -24,6 +24,9 @@ import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
 
+private const val DEFAULT_AI_ACTION_DELAY_MS = 100L
+private const val MAX_AI_ACTION_DELAY_MS = 5_000L
+
 data class OtariaPlaytestRequest(
     val playerName: String? = null,
     val aiOpponents: Int? = null,
@@ -31,6 +34,7 @@ data class OtariaPlaytestRequest(
     val boosterId: String? = null,
     val seed: Long? = null,
     val fullAi: Boolean? = null,
+    val aiThinkingDelayMs: Long? = null,
 )
 
 data class OtariaLobbyCreateRequest(
@@ -122,6 +126,12 @@ class OtariaPlaytestService(
 
     fun start(request: OtariaPlaytestRequest): com.wingedsheep.gameserver.scenario.ScenarioResponse {
         require(ai.aiEnabledToggle) { "AI is not enabled. Set game.ai.enabled=true." }
+        val aiThinkingDelayMs = request.aiThinkingDelayMs ?: DEFAULT_AI_ACTION_DELAY_MS
+        if (request.fullAi == true) {
+            require(aiThinkingDelayMs in 0L..MAX_AI_ACTION_DELAY_MS) {
+                "AI action delay must be between 0 and $MAX_AI_ACTION_DELAY_MS ms."
+            }
+        }
         val initialized = initialize(request)
         val names = initialized.playerIds.map { id ->
             requireNotNull(initialized.state.getEntity(id)?.get<com.wingedsheep.engine.state.components.identity.PlayerComponent>()).name
@@ -138,7 +148,7 @@ class OtariaPlaytestService(
                 aiPlayer = 2,
             ),
             allAi = request.fullAi == true,
-            aiThinkingDelayMs = if (request.fullAi == true) 100L else null,
+            aiThinkingDelayMs = if (request.fullAi == true) aiThinkingDelayMs else null,
         )
     }
 
