@@ -20,6 +20,11 @@ import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.Callable
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.ExecutorCompletionService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 /** No sessions, sockets or shared per-game AI caches: every match owns its engine and bots. */
@@ -28,6 +33,7 @@ class OtariaBatchRunner(
     private val printings: PrintingRegistry? = null,
     private val chooseAction: ((GameState, GameAction) -> GameAction)? = null,
     private val console: PrintStream = System.out,
+    private val nanoTime: () -> Long = System::nanoTime,
 ) {
     fun run(config: OtariaSimulationConfig): Path {
         config.validate()
@@ -38,23 +44,46 @@ class OtariaBatchRunner(
         val reports = directory.resolve("batch-$batchId-matches")
         Files.createDirectory(reports)
         val statistics = OtariaBatchStatistics(batchId, file.fileName.toString())
-        progress(config, "Batch: ${config.matches} matches, ${config.players} AI players; JSONL: ${file.toAbsolutePath()}")
+        val parallelism = config.parallelism.coerceAtMost(config.matches)
+        val executor = Executors.newFixedThreadPool(parallelism)
+        val completions = ExecutorCompletionService<Pair<Int, OtariaMatchLog>>(executor)
+        progress(
+            config,
+            "Batch: ${config.matches} matches, ${config.players} AI players, $parallelism parallel matches; " +
+                "JSONL: ${file.toAbsolutePath()}",
+        )
         progress(config, "English match reports: ${reports.toAbsolutePath()}")
-        Files.newBufferedWriter(file, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE).use { writer ->
-            repeat(config.matches) { index ->
-                val log = simulate(config, config.seed + index, "$batchId-${index + 1}", "${index + 1}/${config.matches}")
-                writer.write(json.encodeToString(log))
-                writer.newLine()
-                writer.flush()
-                Files.writeString(
-                    reports.resolve("match-${index + 1}.md"), OtariaMarkdownReports.match(log),
-                    StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE,
-                )
-                statistics.add(log)
-                progress(config, "Batch progress: ${index + 1}/${config.matches} " +
-                    "(${(index + 1) * 100L / config.matches}%) written")
-                logger.info("Otaria match {}: {} ({})", log.metadata.matchId, log.outcome.status, log.outcome.reason)
+        var nextToSubmit = 0
+        fun submit(index: Int) {
+            completions.submit(Callable {
+                index to simulate(config, config.seed + index, "$batchId-${index + 1}", "${index + 1}/${config.matches}")
+            })
+        }
+        try {
+            while (nextToSubmit < parallelism) submit(nextToSubmit++)
+            Files.newBufferedWriter(file, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE).use { writer ->
+                repeat(config.matches) { completed ->
+                    val (matchIndex, log) = try {
+                        completions.take().get()
+                    } catch (exception: ExecutionException) {
+                        throw exception.cause ?: exception
+                    }
+                    writer.write(json.encodeToString(log))
+                    writer.newLine()
+                    writer.flush()
+                    Files.writeString(
+                        reports.resolve("match-${matchIndex + 1}.md"), OtariaMarkdownReports.match(log),
+                        StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE,
+                    )
+                    statistics.add(log)
+                    progress(config, "Batch progress: ${completed + 1}/${config.matches} " +
+                        "(${(completed + 1) * 100L / config.matches}%) written")
+                    logger.info("Otaria match {}: {} ({})", log.metadata.matchId, log.outcome.status, log.outcome.reason)
+                    if (nextToSubmit < config.matches) submit(nextToSubmit++)
+                }
             }
+        } finally {
+            executor.shutdownNow()
         }
         val summary = statistics.summarize()
         val summaryMarkdown = OtariaMarkdownReports.summary(summary, reports.fileName.toString())
@@ -80,9 +109,13 @@ class OtariaBatchRunner(
         var attempted: GameAction? = null
         var initialSeats = emptyList<OtariaInitialSeat>()
         val timestamp = Instant.now().toString()
+        val startedNanos = nanoTime()
+        val timeoutNanos = TimeUnit.MINUTES.toNanos(config.timeoutMinutes.toLong())
+        fun deadlineExceeded() = nanoTime() - startedNanos >= timeoutNanos
         var failure: OtariaSimulationFailure? = null
         var status = "FAILED"
         var reason = "INITIALIZATION_FAILED"
+        var timedOut = false
         progress(config, "Match $label starting: seed=$seed, players=${config.players}")
         try {
             val random = Random(seed)
@@ -161,7 +194,14 @@ class OtariaBatchRunner(
             var current = started.state
             var reportedTurn: Int? = null
             reason = "SIMULATION_FAILED"
-            while (!current.gameOver && telemetry.actionCount < config.maxActions && current.turnNumber <= config.maxTurns) {
+            while (
+                !current.gameOver && telemetry.actionCount < config.maxActions &&
+                current.turnNumber <= config.maxTurns && !timedOut
+            ) {
+                if (deadlineExceeded()) {
+                    timedOut = true
+                    break
+                }
                 if (reportedTurn != current.turnNumber) {
                     reportedTurn = current.turnNumber
                     progress(config, "Match $label | Turn ${current.turnNumber} | active=${current.activePlayerId} | " +
@@ -183,6 +223,10 @@ class OtariaBatchRunner(
                     bot(current, seat).chooseAction(current)
                 }
                 attempted = chooseAction?.invoke(current, attempted) ?: attempted
+                if (deadlineExceeded()) {
+                    timedOut = true
+                    break
+                }
                 val result = processor.process(current, attempted).result
                 check(result.outcome !is Outcome.Rejected) { "Action rejected: ${result.outcome}" }
                 state = result.state
@@ -191,9 +235,11 @@ class OtariaBatchRunner(
                     progress(config, "Match $label | Turn ${current.turnNumber} | ${it.playerId} chose ${it.action}")
                 }
                 current = result.state
+                if (deadlineExceeded()) timedOut = true
             }
-            status = if (current.gameOver) "COMPLETED" else "TRUNCATED"
+            status = if (!timedOut && current.gameOver) "COMPLETED" else "TRUNCATED"
             reason = when {
+                timedOut -> "TIME_LIMIT"
                 current.otaria?.mirariVictoryClaimed == true -> "MIRARI_RETURNED_TO_STELLAR_LOCATION"
                 current.gameOver -> requireNotNull(telemetry.end) { "Game ended without a GameEndedEvent" }.reason.name
                 telemetry.actionCount >= config.maxActions -> "ACTION_LIMIT"
@@ -217,6 +263,7 @@ class OtariaBatchRunner(
                 matchId, timestamp, seed, config.players,
                 mapTiles = OtariaBoard.tiles.values.map { OtariaMapTile(it.position, it.color.name, it.location) },
                 seats = initialSeats, maxTurns = config.maxTurns, maxActions = config.maxActions,
+                timeoutMinutes = config.timeoutMinutes,
             ),
             requestedSetup = config,
             turns = turns,

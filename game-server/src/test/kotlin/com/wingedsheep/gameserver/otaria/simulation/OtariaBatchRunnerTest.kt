@@ -14,6 +14,9 @@ import kotlinx.serialization.decodeFromString
 import java.nio.file.Files
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 class OtariaBatchRunnerTest : FunSpec({
     val cards by lazy { GameBeansConfig(GameProperties()).cardRegistry() }
@@ -86,7 +89,11 @@ class OtariaBatchRunnerTest : FunSpec({
                     }
                     action
                 }, console = console)
-                file = runner.run(config(matches = 2, maxActions = 5).copy(output = directory.toString(), verbose = false))
+                file = runner.run(
+                    config(matches = 2, maxActions = 5).copy(
+                        output = directory.toString(), verbose = false, parallelism = 1,
+                    ),
+                )
             }
             val output = terminal.toString(Charsets.UTF_8)
             output.contains("# Explorer of: Otaria - Batch statistics") shouldBe true
@@ -184,7 +191,57 @@ class OtariaBatchRunnerTest : FunSpec({
         shouldThrow<IllegalArgumentException> { config().copy(players = 2).validate() }
         shouldThrow<IllegalArgumentException> { config().copy(matches = 0).validate() }
         shouldThrow<IllegalArgumentException> { config().copy(maxTurns = 0).validate() }
+        shouldThrow<IllegalArgumentException> { config().copy(timeoutMinutes = 0).validate() }
+        shouldThrow<IllegalArgumentException> { config().copy(parallelism = 0).validate() }
         shouldThrow<IllegalArgumentException> { config().copy(ai = OtariaSimulationAi("missing")).validate() }
+    }
+
+    test("matches run concurrently up to the configured parallelism") {
+        val directory = Files.createTempDirectory("otaria-parallel-test-")
+        val started = CountDownLatch(2)
+        val active = AtomicInteger()
+        val maximumActive = AtomicInteger()
+        try {
+            val runner = OtariaBatchRunner(cards, chooseAction = { _, action ->
+                val nowActive = active.incrementAndGet()
+                maximumActive.getAndUpdate { maxOf(it, nowActive) }
+                try {
+                    started.countDown()
+                    check(started.await(15, TimeUnit.SECONDS)) { "Matches did not overlap" }
+                    action
+                } finally {
+                    active.decrementAndGet()
+                }
+            })
+            val file = runner.run(
+                config(matches = 2, maxActions = 1).copy(
+                    output = directory.toString(), verbose = false, parallelism = 2,
+                ),
+            )
+            maximumActive.get() shouldBe 2
+            Files.readAllLines(file).size shouldBe 2
+        } finally {
+            Files.walk(directory).use { paths ->
+                paths.sorted(Comparator.reverseOrder()).forEach { Files.deleteIfExists(it) }
+            }
+        }
+    }
+
+    test("match timeout stops before processing an action after the deadline") {
+        val timeoutNanos = TimeUnit.MINUTES.toNanos(1)
+        var now = 0L
+        val log = OtariaBatchRunner(
+            cards,
+            chooseAction = { _, action ->
+                now = timeoutNanos
+                action
+            },
+            nanoTime = { now },
+        ).simulate(config().copy(timeoutMinutes = 1), 41, "timed-out")
+        log.outcome.status shouldBe "TRUNCATED"
+        log.outcome.reason shouldBe "TIME_LIMIT"
+        log.outcome.totalActions shouldBe 0
+        log.metadata.timeoutMinutes shouldBe 1
     }
 
     test("terminal progress is verbose by default, follows each turn and chosen action, and supports quiet mode") {

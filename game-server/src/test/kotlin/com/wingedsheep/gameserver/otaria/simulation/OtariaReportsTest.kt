@@ -46,7 +46,7 @@ class OtariaReportsTest : FunSpec({
                     listOf("Plains", "Plains"), "JUMPSTART", "DECK",
                     OtariaLocation.CABAL_CITY, before.position, OtariaSimulationAi("current"), "current",
                 )),
-                maxTurns = 500, maxActions = 1000,
+                maxTurns = 500, maxActions = 1000, timeoutMinutes = 30,
             ),
             requestedSetup = OtariaSimulationConfig(),
             turns = turns, finalPlayers = mapOf(bot to after),

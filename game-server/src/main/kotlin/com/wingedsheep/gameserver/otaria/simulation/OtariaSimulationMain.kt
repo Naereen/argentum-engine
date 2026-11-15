@@ -9,7 +9,7 @@ import java.nio.file.Path
 fun main(args: Array<String>) {
     if (args.contentEquals(arrayOf("--help"))) {
         println("just otaria-simulate [--config FILE] [--matches N] [--players 3..5] [--seed N] " +
-            "[--max-turns N] [--max-actions N] [--output DIR] [--quiet]")
+            "[--max-turns N] [--max-actions N] [--timeout-minutes N] [--parallelism N] [--output DIR] [--quiet]")
         return
     }
     val quiet = "--quiet" in args
@@ -17,7 +17,10 @@ fun main(args: Array<String>) {
     val valuedArgs = args.filterNot { it == "--quiet" }
     require(valuedArgs.size % 2 == 0) { "Every option except --quiet needs a value; use --help" }
     val options = valuedArgs.chunked(2).associate { it[0] to it[1] }
-    val allowed = setOf("--config", "--matches", "--players", "--seed", "--max-turns", "--max-actions", "--output")
+    val allowed = setOf(
+        "--config", "--matches", "--players", "--seed", "--max-turns", "--max-actions",
+        "--timeout-minutes", "--parallelism", "--output",
+    )
     require(options.keys.all { it in allowed }) { "Unknown options: ${options.keys - allowed}" }
     require(options.size * 2 == valuedArgs.size) { "Duplicate options are not allowed" }
     val base = options["--config"]?.let {
@@ -29,6 +32,8 @@ fun main(args: Array<String>) {
         seed = options["--seed"]?.toLong() ?: base.seed,
         maxTurns = options["--max-turns"]?.toInt() ?: base.maxTurns,
         maxActions = options["--max-actions"]?.toInt() ?: base.maxActions,
+        timeoutMinutes = options["--timeout-minutes"]?.toInt() ?: base.timeoutMinutes,
+        parallelism = options["--parallelism"]?.toInt() ?: base.parallelism,
         output = options["--output"] ?: base.output,
         verbose = if (quiet) false else base.verbose,
     )

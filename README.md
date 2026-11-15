@@ -83,7 +83,7 @@ The client runs at `http://localhost:5173` and connects to the server at `http:/
 |---------|-------------|
 | `just server` | Start the game server (port 8080) |
 | `just gym-server` | Start the gym HTTP server (port 8081) — for RL/MCTS training |
-| `just otaria-simulate --matches 100 --seed 41` | Run headless full-AI Otaria matches with [JSONL telemetry, English Markdown reports and batch statistics](docs/otaria-simulation.md) |
+| `just otaria-simulate --matches 100 --seed 41` | Run headless full-AI Otaria matches concurrently with a 30-minute per-match timeout; see [simulation telemetry and reports](docs/otaria-simulation.md) |
 | `just client` | Start the web client dev server |
 | `just client-install` | Install web client dependencies |
 

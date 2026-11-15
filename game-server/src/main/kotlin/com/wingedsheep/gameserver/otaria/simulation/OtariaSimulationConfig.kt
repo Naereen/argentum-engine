@@ -43,6 +43,8 @@ data class OtariaSimulationConfig(
     val seed: Long = 1,
     val maxTurns: Int = 500,
     val maxActions: Int = 100_000,
+    val timeoutMinutes: Int = 30,
+    val parallelism: Int = Runtime.getRuntime().availableProcessors().coerceAtLeast(1),
     val output: String = "simulation-results/otaria",
     val randomMapPositions: Boolean = false,
     val verbose: Boolean = true,
@@ -53,6 +55,8 @@ data class OtariaSimulationConfig(
         require(matches > 0) { "matches must be positive" }
         require(players in 3..5) { "Otaria requires 3 to 5 players" }
         require(maxTurns > 0 && maxActions > 0) { "Simulation limits must be positive" }
+        require(timeoutMinutes > 0) { "timeoutMinutes must be positive" }
+        require(parallelism > 0) { "parallelism must be positive" }
         require(output.isNotBlank()) { "output must not be blank" }
         require(seats.isEmpty() || seats.size == players) { "Provide one seat setup per player" }
         ai.resolve()

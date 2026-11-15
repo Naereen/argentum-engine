@@ -82,6 +82,7 @@ data class OtariaSimulationMetadata(
     val seats: List<OtariaInitialSeat>,
     val maxTurns: Int,
     val maxActions: Int,
+    val timeoutMinutes: Int,
 )
 
 @Serializable
@@ -110,7 +111,7 @@ data class OtariaSimulationFailure(
 
 @Serializable
 data class OtariaMatchLog(
-    val schemaVersion: Int = 1,
+    val schemaVersion: Int = 2,
     val metadata: OtariaSimulationMetadata,
     val requestedSetup: OtariaSimulationConfig,
     val turns: List<OtariaTurnTelemetry>,

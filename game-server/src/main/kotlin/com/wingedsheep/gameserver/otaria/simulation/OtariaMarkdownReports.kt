@@ -18,7 +18,10 @@ internal object OtariaMarkdownReports {
         appendLine("- Random seed: ${log.metadata.seed}")
         appendLine("- Players: ${log.metadata.playerCount} (all AI)")
         appendLine("- Map: ${text(log.metadata.mapLayout)}; setup seed: ${log.metadata.mapSeed}")
-        appendLine("- Limits: ${log.metadata.maxTurns} engine turns, ${log.metadata.maxActions} accepted actions")
+        appendLine(
+            "- Limits: ${log.metadata.maxTurns} engine turns, ${log.metadata.maxActions} accepted actions, " +
+                "${log.metadata.timeoutMinutes} minutes",
+        )
         appendLine()
         appendLine("## Outcome")
         appendLine()

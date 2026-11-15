@@ -4,15 +4,19 @@ Run real **Explorer of: Otaria** matches with every seat controlled by the local
 
 ```sh
 just otaria-simulate --matches 100 --players 3 --seed 41
+just otaria-simulate --matches 100 --parallelism 8 --timeout-minutes 30 --quiet
 just otaria-simulate --config otaria-config.json --matches 20
 just otaria-simulate --matches 100 --quiet
 just otaria-simulate --help
 ```
 
 Requires the normal JDK 25/Gradle development environment. No Spring application, HTTP server,
-browser, database, remote AI service or thinking delay is started. Matches run sequentially to keep
-CPU and memory bounded. Terminal progress is **verbose by default**: batch destination, each match's
-start and seed, every player turn with active player and resource/position snapshots, chosen Otaria
+browser, database, remote AI service or thinking delay is started. Matches run concurrently up to
+`--parallelism` (the default is the number of available processors, bounded by the batch size);
+JSONL writing, reports and statistics remain coordinated by one thread. Records are emitted in
+match-completion order, and each record carries its seed and match ID. Terminal progress is
+**verbose by default**: batch destination, each match's start and seed, every player turn with active
+player and resource/position snapshots, chosen Otaria
 actions, match results, and the number/percentage of matches written. Use `--quiet` (or JSON
 `"verbose": false`) to suppress per-turn progress; failure logging, final batch statistics and output
 paths remain available.
@@ -23,10 +27,10 @@ for playing the game. It uses the live AI profile by default.
 ## Configuration
 
 CLI options override the JSON configuration: `--matches`, `--players`, `--seed`, `--max-turns`,
-`--max-actions`, `--output`, and the valueless `--quiet` switch. Defaults are 10 matches, 3 players,
-seed 1, 500 engine turns,
-100,000 accepted engine actions per match, and `simulation-results/otaria/`. Turn limits use the
-engine's turn number, including encounter-side turns.
+`--max-actions`, `--timeout-minutes`, `--parallelism`, `--output`, and the valueless `--quiet` switch.
+Defaults are 10 matches, 3 players, seed 1, 500 engine turns, 100,000 accepted engine actions per
+match, a 30-minute per-match timeout, processor-count parallelism, and `simulation-results/otaria/`.
+Turn limits use the engine's turn number, including encounter-side turns.
 
 Example configuration (all fields are optional):
 
@@ -37,6 +41,8 @@ Example configuration (all fields are optional):
   "seed": 41,
   "maxTurns": 500,
   "maxActions": 100000,
+  "timeoutMinutes": 30,
+  "parallelism": 8,
   "output": "simulation-results/otaria",
   "randomMapPositions": false,
   "verbose": true,
@@ -80,16 +86,16 @@ Example configuration (all fields are optional):
   seat. Full decision-for-decision determinism is not promised for time-budgeted AI search or
   across code/profile versions; telemetry records the resolved profile ID.
 
-## JSONL contract (schemaVersion 1)
+## JSONL contract (schemaVersion 2)
 
 Each invocation creates a unique `batch-<UUID>.jsonl`. **One complete JSON object per match per line**,
 including failed and truncated matches. Lines are flushed after every match; output is ignored by git.
-Only one match's telemetry is retained in memory at a time. Exact statistical medians retain numeric
-observations, not full match logs.
+At most `parallelism` match logs are in flight or awaiting output. Exact statistical medians retain
+numeric observations, not full match logs.
 
 - `metadata`: unique match ID, UTC start timestamp, actual match seed, player count, `mapSeed`,
   map layout identifier and every terrain tile, effective per-seat decks/lands, starting stellar
-  homes, coordinates, requested AI settings and resolved profile IDs, and limits.
+  homes, coordinates, requested AI settings and resolved profile IDs, turn/action/time limits.
   `mapSeed` is the setup/shuffle seed; terrain itself is not randomized.
 - `requestedSetup`: complete batch configuration, retained even if initialization fails.
 - `turns`: one entry per engine turn that executed an action, with `turnNumber`, `activePlayerId`,
@@ -119,12 +125,15 @@ observations, not full match logs.
   - `COMPLETED`: winner and end reason come from the engine's game-ended event. Mirari victory is
     named `MIRARI_RETURNED_TO_STELLAR_LOCATION`; other reasons retain engine names such as
     `DECK_EMPTY`, `LIFE_ZERO`, `CONCESSION`, or `ALTERNATIVE_WIN`. Draws have no winner.
-  - `TRUNCATED`: `TURN_LIMIT` or `ACTION_LIMIT`, never a fabricated winner.
+  - `TRUNCATED`: `TURN_LIMIT`, `ACTION_LIMIT`, or `TIME_LIMIT`, never a fabricated winner.
   - `FAILED`: `INITIALIZATION_FAILED` or `SIMULATION_FAILED`, never a fabricated winner.
 - `failure`: nullable; on failure includes exception class/message/stack trace, attempted action,
   turn/step, priority holder and pending decision at the failure boundary. Rejected actions are
   failures, not silently replaced with passes.
 
+The deadline is measured from the start of each match using a monotonic clock and checked before and
+after AI decisions and engine actions. A currently executing AI/engine call is not forcibly killed;
+if one call itself runs beyond the deadline, that call must return before the runner can stop safely.
 Match-local exceptions are logged and do not terminate the remaining batch. Every match recreates
 the initializer, engine services, action processor and AI instances; only the read-only card/printing
 catalogs are shared. Invalid batch configuration and output I/O errors abort explicitly, because an
