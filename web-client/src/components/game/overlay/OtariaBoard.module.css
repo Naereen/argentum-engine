@@ -107,6 +107,7 @@
 .seats, .locationList { display: grid; gap: 7px; padding: 0; list-style: none; }
 .seats li { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
 .seats li .muted { margin-left: auto; white-space: nowrap; }
+.lostPlayer { text-decoration: line-through; }
 .seatMarker { display: inline-grid; flex: 0 0 20px; height: 20px; place-items: center; border-radius: 50%; color: #18252b; font-size: .7rem; font-weight: 800; }
 .sidebar { display: grid; align-content: start; gap: 12px; }
 .section { padding: 14px; border: 1px solid #425658; border-radius: 10px; background: #203135; }

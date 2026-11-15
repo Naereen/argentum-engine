@@ -341,7 +341,15 @@ export function OtariaBoardContents({ gameState, board }: { gameState: ClientGam
           {orderedPlayers.map((player, index) => (
             <li key={player.playerId}>
               <span className={styles.seatMarker} style={{ backgroundColor: seatColors[index % seatColors.length] }}>{index + 1}</span>
-              <span><strong>{seatName(gameState, player.playerId)}</strong> · {positionName(player.position)}</span>
+              <span
+                className={
+                  gameState.players.find((candidate) => candidate.playerId === player.playerId)?.hasLost
+                    ? styles.lostPlayer
+                    : undefined
+                }
+              >
+                <strong>{seatName(gameState, player.playerId)}</strong> · {positionName(player.position)}
+              </span>
               <span className={styles.muted}>{player.reserveCount} in reserve</span>
             </li>
           ))}
