@@ -40,6 +40,10 @@ internal class OtariaCampaignPolicy(private val intents: IntentCatalog = IntentC
                 val target = mirariDestination(state, seat, player)
                 val distances = target?.let { distancesToStars.getValue(it) }
                 val index = when {
+                    fleeing -> choice.destinations.indices.maxWith(
+                        compareBy<Int> { escapeValue(state, seat, choice.destinations[it], player.position) }
+                            .thenByDescending { distances?.getValue(choice.destinations[it]) ?: 0 },
+                    )
                     distances != null -> {
                         choice.destinations.indices.minWith(
                             compareBy<Int> { distances.getValue(choice.destinations[it]) }

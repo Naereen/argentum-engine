@@ -236,7 +236,7 @@ class OtariaCampaignPolicyTest : FunSpec({
         action(controlled.updateEntity(mirariId) { it.with(TokenComponent) }) shouldBe OtariaTurnAction.EXPLORE
     }
 
-    test("starting stars and exhausted stars are skipped while eligible stars are explored by a ready army") {
+    test("a ready army explores available or recyclable stars and pursues opponents after rewards run out") {
         val base = readyArmy(game())
         val baseMode = requireNotNull(base.otaria)
         val distant = base.copy(otaria = baseMode.copy(players = baseMode.players.mapValues { (id, p) ->
@@ -250,24 +250,26 @@ class OtariaCampaignPolicyTest : FunSpec({
             (OtariaLocation.KROSIAN_FOREST to OtariaLocation.KROSIAN_FOREST.explorationLimit(3))))) shouldBe
             OtariaTurnAction.MOVE
         val empty = mode.copy(starPile = OtariaExplorationPile(emptyList()))
-        action(eligible.copy(otaria = empty)) shouldBe OtariaTurnAction.EXPLORE
+        action(eligible.copy(otaria = empty)) shouldBe OtariaTurnAction.MOVE
         action(eligible.copy(otaria = empty.copy(starPile = OtariaExplorationPile(emptyList(),
             listOf(OtariaPileCard("Discarded reward", OtariaCardKind.NONCREATURE)))))) shouldBe OtariaTurnAction.EXPLORE
     }
 
-    test("weaker explorers avoid a contested next stop without lengthening a Mirari route") {
+    test("a stronger army can delay the Mirari route while the explorer retreats") {
         val base = player(reserve(game(), mirariId to mirari)) {
             it.copy(locationCards = listOf(OtariaLocation.BALSHAN_BAY))
         }
         val unopposed = destination(base)
+        val current = requireNotNull(base.otaria).players.getValue(bot).position
         val mode = requireNotNull(base.otaria)
         val contested = battlefield(base.copy(otaria = mode.copy(players = mode.players +
             (seats[1] to mode.players.getValue(seats[1]).copy(position = unopposed)))),
             seats[1], giantId, expensive)
         val next = destination(contested)
         (next == unopposed) shouldBe false
-        OtariaBoard.distance(next, OtariaLocation.BALSHAN_BAY.position) shouldBe
-            OtariaBoard.distance(unopposed, OtariaLocation.BALSHAN_BAY.position)
+        (OtariaBoard.distance(next, unopposed) > OtariaBoard.distance(current, unopposed)) shouldBe true
+        (OtariaBoard.distance(next, OtariaLocation.BALSHAN_BAY.position) >
+            OtariaBoard.distance(unopposed, OtariaLocation.BALSHAN_BAY.position)) shouldBe true
     }
 
     test("standard navigation avoids a stronger opponent occupying a rewarding star") {
@@ -287,6 +289,44 @@ class OtariaCampaignPolicyTest : FunSpec({
             (seats[1] to mode.players.getValue(seats[1]).copy(position = mode.players.getValue(bot).position))))
         action(state) shouldBe OtariaTurnAction.COMBAT
         policy.respond(state, ChooseColorDecision("magic", bot, "Choose mana", DecisionContext())) shouldBe null
+    }
+
+    test("a stronger nearby army triggers a retreat instead of continued exploration") {
+        val own = battlefield(game(), bot, EntityId("own-fighter"), bear)
+        val mode = requireNotNull(own.otaria)
+        val position = mode.players.getValue(bot).position
+        val contested = battlefield(
+            own.copy(otaria = mode.copy(players = mode.players +
+                (seats[1] to mode.players.getValue(seats[1]).copy(position = position)))),
+            seats[1],
+            EntityId("stronger-fighter"),
+            defender,
+        )
+
+        action(contested) shouldBe OtariaTurnAction.MOVE
+        val next = destination(contested)
+        (OtariaBoard.distance(next, position) > 0L) shouldBe true
+    }
+
+    test("fleeing from a stronger army takes priority over the Mirari route") {
+        val target = OtariaLocation.BALSHAN_BAY
+        val initial = player(
+            reserve(battlefield(game(), bot, EntityId("own-fighter"), bear), mirariId to mirari),
+        ) { it.copy(locationCards = listOf(target)) }
+        val direct = destination(initial)
+        val current = requireNotNull(initial.otaria).players.getValue(bot).position
+        val mode = requireNotNull(initial.otaria)
+        val threatened = battlefield(
+            initial.copy(otaria = mode.copy(players = mode.players +
+                (seats[1] to mode.players.getValue(seats[1]).copy(position = direct)))),
+            seats[1],
+            EntityId("stronger-fighter"),
+            defender,
+        )
+
+        val next = destination(threatened)
+        (OtariaBoard.distance(next, direct) > OtariaBoard.distance(current, direct)) shouldBe true
+        (OtariaBoard.distance(next, target.position) > OtariaBoard.distance(direct, target.position)) shouldBe true
     }
 
     test("exploration selects terrain until ready, then the star and free land independently of labels") {

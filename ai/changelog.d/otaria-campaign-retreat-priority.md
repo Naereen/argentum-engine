@@ -1,0 +1,1 @@
+- Otaria bots prioritize escaping a threatening nearby army over pursuing Mirari until they are out of striking distance.
