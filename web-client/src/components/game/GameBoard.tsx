@@ -1393,40 +1393,48 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
         <AnteIndicator />
         {/* A subgame in progress (CR 729) — what started it and what's waiting outside it. */}
         <SubgameBadge gameState={gameState} />
-        {gameState.otaria && <>
-          <OtariaBoardButton gameState={gameState} />
-          <OtariaReserveButton gameState={gameState} />
-        </>}
-        <StepStrip
-          phase={gameState.currentPhase}
-          step={gameState.currentStep}
-          otariaTurn={gameState.otaria?.turn}
-          // One number per pass around the table, not per seat — older replays predate roundNumber.
-          roundNumber={gameState.roundNumber ?? gameState.turnNumber}
-          isActivePlayer={isMyTurn}
-          hasPriority={hasPriority}
-          priorityMode={priorityMode}
-          // Name the active seat in a pod: "Opponent's Turn" says nothing at a four-seat table.
-          // While responding the strip keeps saying so — the name is on the rail's turn ring —
-          // except in a departed player's turn, which has no ring and no one to respond to.
-          activePlayerName={activeEncounter ? `Encounter (${activeSeat?.name ?? 'managed creature'})` :
-            spectatorMode || (isMulti && !isMyTurn && (priorityMode !== 'responding' || activeSeatLeft))
-            ? activeSeat?.name
-            : undefined
-          }
-          activePlayerLeft={activeSeatLeft}
-          turnQueueHint={turnQueueHint}
-          activeSide={
-            spectatorMode
-              ? (gameState.activePlayerId === effectiveViewingPlayer?.playerId ? 'bottom' : 'top')
-              : (isMyTurn || (eliminatedBottomSeat != null && gameState.activePlayerId === eliminatedBottomSeat.playerId)
-                  ? 'bottom'
-                  : 'top')
-          }
-          stopOverrides={stopOverrides}
-          onToggleStop={toggleStopOverride}
-          isSpectator={spectatorMode}
-        />
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: responsive.isMobile ? 6 : 10,
+        }}>
+          {gameState.otaria && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 4 }}>
+              <OtariaBoardButton gameState={gameState} />
+              <OtariaReserveButton gameState={gameState} />
+            </div>
+          )}
+          <StepStrip
+            phase={gameState.currentPhase}
+            step={gameState.currentStep}
+            otariaTurn={gameState.otaria?.turn}
+            // One number per pass around the table, not per seat — older replays predate roundNumber.
+            roundNumber={gameState.roundNumber ?? gameState.turnNumber}
+            isActivePlayer={isMyTurn}
+            hasPriority={hasPriority}
+            priorityMode={priorityMode}
+            // Name the active seat in a pod: "Opponent's Turn" says nothing at a four-seat table.
+            // While responding the strip keeps saying so — the name is on the rail's turn ring —
+            // except in a departed player's turn, which has no ring and no one to respond to.
+            activePlayerName={activeEncounter ? `Encounter (${activeSeat?.name ?? 'managed creature'})` :
+              spectatorMode || (isMulti && !isMyTurn && (priorityMode !== 'responding' || activeSeatLeft))
+              ? activeSeat?.name
+              : undefined
+            }
+            activePlayerLeft={activeSeatLeft}
+            turnQueueHint={turnQueueHint}
+            activeSide={
+              spectatorMode
+                ? (gameState.activePlayerId === effectiveViewingPlayer?.playerId ? 'bottom' : 'top')
+                : (isMyTurn || (eliminatedBottomSeat != null && gameState.activePlayerId === eliminatedBottomSeat.playerId)
+                    ? 'bottom'
+                    : 'top')
+            }
+            stopOverrides={stopOverrides}
+            onToggleStop={toggleStopOverride}
+            isSpectator={spectatorMode}
+          />
+        </div>
         </div>
 
         {/* Player life (right side) — the eliminated spectator's chosen bottom seat

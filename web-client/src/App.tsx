@@ -437,7 +437,7 @@ export default function App() {
           onClick={() => setAiControl(!aiControlEnabled)}
           style={{
             position: 'fixed',
-            top: 44,
+            top: 52,
             right: 12,
             zIndex: 2000,
             minHeight: 32,
