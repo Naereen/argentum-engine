@@ -163,7 +163,7 @@ export function OtariaMap({
               const markerY = y + 8 + (row - (rows - 1) / 2) * 19
               return (
                 <g key={player.playerId}>
-                  {miniature && <circle cx={markerX} cy={markerY} r="11" className={styles.miniPlayerPulse} />}
+                  <circle cx={markerX} cy={markerY} r="11" className={styles.playerPulse} />
                   <circle
                     cx={markerX}
                     cy={markerY}
