@@ -27,6 +27,8 @@ data class CardComponent(
     val baseKeywords: Set<Keyword> = emptySet(),
     val baseFlags: Set<AbilityFlag> = emptySet(),
     val colors: Set<Color> = emptySet(),
+    /** Printed color identity, including Scryfall overrides; null on synthetic components. */
+    val colorIdentity: Set<Color>? = null,
     val ownerId: EntityId? = null,
     val spellEffect: Effect? = null,
     val imageUri: String? = null,

@@ -100,9 +100,16 @@ internal class OtariaContinuationResumer(private val services: EngineServices) :
             }
             val added = OtariaEncounterMana.add(state, continuation.actorId, continuation.creature, response.color)
             if (added.outcome !is Outcome.Done) return@resumer added
-            val result = OtariaEncounterMana.chooseNext(added.state, continuation.actorId)
-                ?: services.turnManager.finishTurnStart(added.state, continuation.actorId, emptyList())
-            val events = added.events + result.events
+            val choice = OtariaEncounterMana.chooseNext(added.state, continuation.actorId)
+            if (choice != null && choice.outcome !is Outcome.Done) {
+                return@resumer choice.copy(events = added.events + choice.events)
+            }
+            val result = services.turnManager.finishTurnStart(
+                choice?.state ?: added.state,
+                continuation.actorId,
+                emptyList(),
+            )
+            val events = added.events + (choice?.events ?: emptyList()) + result.events
             if (result.outcome is Outcome.Done) checkForMore(result.state, events)
             else result.copy(events = events)
         },

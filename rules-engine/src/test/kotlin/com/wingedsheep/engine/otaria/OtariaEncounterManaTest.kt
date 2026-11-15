@@ -85,7 +85,7 @@ class OtariaEncounterManaTest : FunSpec({
     val forest = CardDefinition.basicLand("Forest", Subtype.FOREST)
     val creature = CardDefinition.creature(
         name = "Encounter Creature",
-        manaCost = ManaCost.parse("{G}"),
+        manaCost = ManaCost.ZERO,
         subtypes = setOf(Subtype.ELF),
         power = 2,
         toughness = 2,
@@ -331,6 +331,49 @@ class OtariaEncounterManaTest : FunSpec({
         pool.restrictedMana.map { it.color } shouldBe listOf(Color.GREEN, Color.BLUE)
         pool.restrictedMana.all { it.assignedPermanent == ref(second.state) && it.remainsUntilSpent } shouldBe true
         OtariaEncounterMana.needed(second.state, actor, ref(second.state)) shouldBe 0
+    }
+
+    test("mono-color encounter creatures receive their color without a decision") {
+        val monoGreen = CardDefinition.creature(
+            name = "Mono Green Encounter",
+            manaCost = ManaCost.parse("{G}"),
+            subtypes = setOf(Subtype.ELF),
+            power = 2,
+            toughness = 2,
+        )
+        val initial = state().updateEntity(creatureId) { CardEntityFactory.create(monoGreen, actor) }
+        val withLand = addLands(initial, explorer, 1)
+        val result = requireNotNull(OtariaEncounterMana.chooseNextAtEntry(withLand, actor))
+
+        result.state.pendingDecision shouldBe null
+        result.events.filterIsInstance<OtariaEncounterManaAddedEvent>()
+            .map { it.color } shouldBe listOf(Color.GREEN)
+        result.state.getEntity(actor)?.get<ManaPoolComponent>()?.restrictedMana?.map { it.color } shouldBe
+            listOf(Color.GREEN)
+
+        val turnStart = services.turnManager.passTurn(withLand)
+        turnStart.state.pendingDecision shouldBe null
+        turnStart.state.step shouldBe Step.UPKEEP
+        turnStart.state.getEntity(actor)?.get<ManaPoolComponent>()?.restrictedMana?.map { it.color } shouldBe
+            listOf(Color.GREEN)
+    }
+
+    test("a creature's most common ability color is chosen when it breaks a multicolor tie") {
+        val redAbilityCreature = card("Red Ability Encounter") {
+            manaCost = "{W}{U}"
+            typeLine = "Creature — Elf"
+            power = 2
+            toughness = 2
+            oracleText = "{T}: Add {R}{R}{R}."
+        }
+        val initial = state().updateEntity(creatureId) {
+            CardEntityFactory.create(redAbilityCreature, actor)
+        }
+        val result = requireNotNull(OtariaEncounterMana.chooseNextAtEntry(addLands(initial, explorer, 1), actor))
+
+        result.state.pendingDecision shouldBe null
+        result.events.filterIsInstance<OtariaEncounterManaAddedEvent>()
+            .map { it.color } shouldBe listOf(Color.RED)
     }
 
     test("only encounter rule mana survives boundaries and counts against its cap") {

@@ -4,15 +4,20 @@ import com.wingedsheep.ai.ActionResponse
 import com.wingedsheep.ai.AiPlayerController
 import com.wingedsheep.engine.core.GameAction
 import com.wingedsheep.engine.core.PassPriority
+import com.wingedsheep.engine.core.CastSpell
 import com.wingedsheep.engine.core.ChooseColorDecision
 import com.wingedsheep.engine.core.ColorChosenResponse
 import com.wingedsheep.engine.core.DecisionContext
 import com.wingedsheep.engine.core.SubmitDecision
 import com.wingedsheep.engine.core.SelectCardsDecision
 import com.wingedsheep.engine.view.ClientGameState
+import com.wingedsheep.engine.view.ClientOtariaEncounter
+import com.wingedsheep.engine.view.ClientOtariaPile
+import com.wingedsheep.engine.view.ClientOtariaState
 import com.wingedsheep.engine.view.LegalActionInfo
 import com.wingedsheep.engine.view.StateDelta
 import com.wingedsheep.gameserver.protocol.ServerMessage
+import com.wingedsheep.engine.otaria.OtariaPosition
 import com.wingedsheep.sdk.core.Phase
 import com.wingedsheep.sdk.core.Step
 import com.wingedsheep.sdk.core.Color
@@ -87,6 +92,133 @@ class AiWebSocketSessionFallbackTest : FunSpec({
             verify(exactly = 1) {
                 controller.chooseAction(state.copy(turnNumber = 3), actions, null, emptyList())
             }
+        } finally {
+            socket.close()
+        }
+    }
+
+    test("Otaria AI passes an opponent window immediately when no meaningful response is available") {
+        val opponent = EntityId.of("opponent")
+        val otaria = ClientOtariaState(
+            tiles = emptyList(),
+            players = emptyList(),
+            locations = emptyList(),
+            starPile = ClientOtariaPile(0, 0),
+            colorPiles = emptyMap(),
+            treasureCount = 0,
+            locationCount = 0,
+        )
+        val opponentState = state.copy(activePlayerId = opponent, otaria = otaria)
+        val controller = mockk<AiPlayerController>()
+        val submitted = mutableListOf<Pair<GameAction, String?>>()
+        val socket = AiWebSocketSession(
+            aiPlayerId = player,
+            controller = controller,
+            thinkingDelayMs = 10_000,
+            onActionReady = { _, action, epoch -> submitted.add(action to epoch) },
+            onMulliganKeep = {},
+            onMulliganTake = {},
+            onBottomCards = { _, _ -> },
+        )
+        try {
+            socket.handleServerMessage(ServerMessage.StateUpdate(
+                state = opponentState,
+                events = emptyList(),
+                legalActions = actions,
+                interactionEpoch = "otaria-opponent-window",
+            ))
+
+            submitted shouldBe listOf(pass to "otaria-opponent-window")
+            verify(exactly = 0) { controller.chooseAction(any(), any(), any(), any()) }
+        } finally {
+            socket.close()
+        }
+    }
+
+    test("an AI managing an Otaria encounter still handles that encounter's turn") {
+        val actor = EntityId.of("encounter")
+        val otaria = ClientOtariaState(
+            tiles = emptyList(),
+            players = emptyList(),
+            locations = emptyList(),
+            starPile = ClientOtariaPile(0, 0),
+            colorPiles = emptyMap(),
+            treasureCount = 0,
+            locationCount = 0,
+            encounters = listOf(ClientOtariaEncounter(
+                actorId = actor,
+                explorerId = EntityId.of("explorer"),
+                managerId = player,
+                position = OtariaPosition(6, 5),
+                participants = emptySet(),
+            )),
+        )
+        val encounterState = state.copy(activePlayerId = actor, otaria = otaria)
+        val controller = mockk<AiPlayerController>()
+        every {
+            controller.chooseAction(encounterState, actions, null, emptyList())
+        } returns ActionResponse.SubmitAction(pass)
+        val submitted = mutableListOf<Pair<GameAction, String?>>()
+        val socket = AiWebSocketSession(
+            aiPlayerId = player,
+            controller = controller,
+            thinkingDelayMs = 0,
+            onActionReady = { _, action, epoch -> submitted.add(action to epoch) },
+            onMulliganKeep = {},
+            onMulliganTake = {},
+            onBottomCards = { _, _ -> },
+        )
+        try {
+            socket.handleServerMessage(ServerMessage.StateUpdate(
+                state = encounterState,
+                events = emptyList(),
+                legalActions = actions,
+                interactionEpoch = "otaria-managed-encounter",
+            ))
+
+            submitted shouldBe listOf(pass to "otaria-managed-encounter")
+            verify(exactly = 1) { controller.chooseAction(encounterState, actions, null, emptyList()) }
+        } finally {
+            socket.close()
+        }
+    }
+
+    test("an AI still considers meaningful Otaria responses during an opponent's turn") {
+        val opponent = EntityId.of("opponent")
+        val otaria = ClientOtariaState(
+            tiles = emptyList(),
+            players = emptyList(),
+            locations = emptyList(),
+            starPile = ClientOtariaPile(0, 0),
+            colorPiles = emptyMap(),
+            treasureCount = 0,
+            locationCount = 0,
+        )
+        val opponentState = state.copy(activePlayerId = opponent, otaria = otaria)
+        val cast = CastSpell(playerId = player, cardId = EntityId.of("instant"))
+        val responseActions = actions + LegalActionInfo("CastSpell", "Cast instant", cast)
+        val controller = mockk<AiPlayerController>()
+        every {
+            controller.chooseAction(opponentState, responseActions, null, emptyList())
+        } returns ActionResponse.SubmitAction(pass)
+        val socket = AiWebSocketSession(
+            aiPlayerId = player,
+            controller = controller,
+            thinkingDelayMs = 0,
+            onActionReady = { _, _, _ -> },
+            onMulliganKeep = {},
+            onMulliganTake = {},
+            onBottomCards = { _, _ -> },
+        )
+        try {
+            socket.handleServerMessage(ServerMessage.StateUpdate(
+                state = opponentState,
+                events = emptyList(),
+                legalActions = responseActions,
+                interactionEpoch = "otaria-response-window",
+            ))
+
+            verify(exactly = 1) { controller.chooseAction(opponentState, responseActions, null, emptyList()) }
         } finally {
             socket.close()
         }

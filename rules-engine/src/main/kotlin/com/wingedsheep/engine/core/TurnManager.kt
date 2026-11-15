@@ -1427,8 +1427,11 @@ class TurnManager(
         }
         val encounterMana = OtariaEncounterMana.chooseNext(current, playerId)
         if (encounterMana != null) {
-            val result = encounterMana
-            return result.copy(events = events + result.events)
+            if (encounterMana.outcome !is Outcome.Done) {
+                return encounterMana.copy(events = events + encounterMana.events)
+            }
+            current = encounterMana.state
+            events.addAll(encounterMana.events)
         }
         val skippers = untapStepSkippers(current, playerId)
         val pendingSkips = pendingUntapSkipsToConsume(current, playerId, skippers)

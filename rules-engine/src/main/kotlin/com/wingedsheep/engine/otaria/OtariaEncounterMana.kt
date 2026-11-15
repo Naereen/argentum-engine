@@ -20,6 +20,8 @@ import com.wingedsheep.sdk.model.EntityId
 import com.wingedsheep.sdk.scripting.effects.ManaRestriction
 
 internal object OtariaEncounterMana {
+    private val manaSymbolPattern = Regex("""\{([^}]+)}""")
+
     fun isEncounter(state: GameState, actorId: EntityId): Boolean =
         state.otaria?.encounters?.containsKey(actorId) == true
 
@@ -77,17 +79,31 @@ internal object OtariaEncounterMana {
     }
 
     fun needed(state: GameState, actorId: EntityId, creature: ObjectRef): Int {
+        return needed(state, actorId, creature, maximumLandCount(state))
+    }
+
+    private fun maximumLandCount(state: GameState): Int {
+        val projected = state.projectedState
+        val landsByController = state.getBattlefield()
+            .asSequence()
+            .filter { projected.hasType(it, "LAND") }
+            .groupingBy { projected.getController(it) }
+            .eachCount()
+        return state.activePlayers.maxOfOrNull { landsByController[it] ?: 0 } ?: 0
+    }
+
+    private fun needed(
+        state: GameState,
+        actorId: EntityId,
+        creature: ObjectRef,
+        maximum: Int,
+    ): Int {
         val encounter = state.otaria?.encounters?.get(actorId) ?: return 0
         if (creature !in encounter.members || !state.isCurrentObject(creature) ||
             creature.entityId !in state.getBattlefield()
         ) return 0
         val projected = state.projectedState
         if (!projected.isCreature(creature.entityId) || projected.getController(creature.entityId) != actorId) return 0
-        val lands = state.getBattlefield()
-            .filter { projected.hasType(it, "LAND") }
-            .groupingBy { projected.getController(it) }
-            .eachCount()
-        val maximum = state.activePlayers.maxOfOrNull { lands[it] ?: 0 } ?: 0
         val pool = state.getEntity(actorId)?.get<ManaPoolComponent>()
         val lasting = pool?.restrictedMana?.count { it.assignedPermanent == creature && it.remainsUntilSpent } ?: 0
         return (maximum - lasting).coerceAtLeast(0)
@@ -101,9 +117,29 @@ internal object OtariaEncounterMana {
 
     private fun chooseNext(state: GameState, actorId: EntityId, atEntry: Boolean): ExecutionResult? {
         val encounter = state.otaria?.encounters?.get(actorId) ?: return null
-        val creature = encounter.members.sortedBy { it.entityId.value }
-            .firstOrNull { needed(state, actorId, it) > 0 } ?: return null
-        return choose(state, actorId, creature, needed(state, actorId, creature), atEntry)
+        val maximum = maximumLandCount(state)
+        val creatures = encounter.members.sortedBy { it.entityId.value }
+        var current = state
+        val events = mutableListOf<GameEvent>()
+
+        while (true) {
+            val creature = creatures.firstOrNull { needed(current, actorId, it, maximum) > 0 } ?: break
+            val remaining = needed(current, actorId, creature, maximum)
+            val defaultColor = defaultColor(current, creature)
+            if (defaultColor == null) {
+                val choice = choose(current, actorId, creature, remaining, atEntry)
+                return choice.copy(events = events + choice.events)
+            }
+
+            val added = addKnownNeeded(current, actorId, creature, defaultColor)
+            if (added.outcome !is com.wingedsheep.engine.core.Outcome.Done) {
+                return added.copy(events = events + added.events)
+            }
+            current = added.state
+            events += added.events
+        }
+
+        return if (events.isEmpty()) null else ExecutionResult.success(current, events)
     }
 
     private fun choose(
@@ -134,6 +170,33 @@ internal object OtariaEncounterMana {
         )
     }
 
+    private fun defaultColor(state: GameState, creature: ObjectRef): Color? {
+        val container = state.getEntity(creature.entityId) ?: return null
+        if (container.has<FaceDownComponent>()) return null
+        val card = container.get<CardComponent>() ?: return null
+        val identity = card.colorIdentity
+        if (identity?.size == 1) return identity.single()
+        val counts = mutableMapOf<Color, Int>()
+        fun count(colors: Iterable<Color>) {
+            colors.forEach { color ->
+                if (identity == null || color in identity) {
+                    counts[color] = (counts[color] ?: 0) + 1
+                }
+            }
+        }
+
+        count(card.colors)
+        card.manaCost.symbols.forEach { count(it.colors) }
+        for (symbol in manaSymbolPattern.findAll(card.oracleText)) {
+            count(symbol.groupValues[1].mapNotNull { Color.fromSymbol(it) })
+        }
+        identity?.forEach { counts.putIfAbsent(it, 0) }
+
+        if (counts.size == 1) return counts.keys.single()
+        val highestCount = counts.values.maxOrNull() ?: return null
+        return counts.entries.singleOrNull { it.value == highestCount }?.key
+    }
+
     fun add(state: GameState, actorId: EntityId, creature: ObjectRef, color: Color): ExecutionResult {
         if (actorId !in state.otaria?.encounters.orEmpty()) {
             return ExecutionResult.error(state, "The Otaria encounter is no longer active")
@@ -141,6 +204,15 @@ internal object OtariaEncounterMana {
         if (needed(state, actorId, creature) <= 0) {
             return ExecutionResult.error(state, "The encounter has reached its rule-mana limit")
         }
+        return addKnownNeeded(state, actorId, creature, color)
+    }
+
+    private fun addKnownNeeded(
+        state: GameState,
+        actorId: EntityId,
+        creature: ObjectRef,
+        color: Color,
+    ): ExecutionResult {
         val pool = state.getEntity(actorId)?.get<ManaPoolComponent>()
             ?: return ExecutionResult.error(state, "The Otaria encounter has no mana pool")
         val unit = RestrictedManaEntry(

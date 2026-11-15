@@ -69,6 +69,7 @@ object CardEntityFactory {
                 baseKeywords = cardDef.keywords,
                 baseFlags = cardDef.flags,
                 colors = cardDef.colors,
+                colorIdentity = cardDef.colorIdentity,
                 ownerId = ownerId,
                 spellEffect = cardDef.spellEffect,
                 imageUri = printing?.imageUri ?: cardDef.metadata.imageUri,

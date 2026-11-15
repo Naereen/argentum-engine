@@ -8,12 +8,15 @@ import com.wingedsheep.ai.llm.CardSummary
 import com.wingedsheep.ai.llm.MulliganInfo
 import com.wingedsheep.engine.core.DeclareBlockers
 import com.wingedsheep.engine.core.GameAction
+import com.wingedsheep.engine.core.PassPriority
 import com.wingedsheep.engine.core.PendingDecision
 import com.wingedsheep.engine.core.SubmitDecision
 import com.wingedsheep.engine.core.engineSerializersModule
+import com.wingedsheep.engine.legalactions.MeaningfulActionFilter
 import com.wingedsheep.engine.view.ClientGameState
 import com.wingedsheep.engine.view.StateDelta
 import com.wingedsheep.engine.view.LegalActionInfo
+import com.wingedsheep.engine.view.asPriorityAction
 import com.wingedsheep.gameserver.protocol.ServerMessage
 import com.wingedsheep.sdk.model.EntityId
 import kotlinx.coroutines.*
@@ -128,7 +131,7 @@ class AiWebSocketSession(
     internal suspend fun handleServerMessage(message: ServerMessage) {
         when (message) {
             is ServerMessage.StateUpdate -> {
-                logger.info("AI received StateUpdate: phase={}, step={}, priority={}, legalActions={}, pendingDecision={}",
+                logger.debug("AI received StateUpdate: phase={}, step={}, priority={}, legalActions={}, pendingDecision={}",
                     message.state.currentPhase, message.state.currentStep,
                     if (message.state.priorityPlayerId == aiPlayerId) "AI" else "opponent",
                     message.legalActions.size,
@@ -139,7 +142,7 @@ class AiWebSocketSession(
             }
 
             is ServerMessage.StateDeltaUpdate -> {
-                logger.info("AI received StateDeltaUpdate: legalActions={}, pendingDecision={}, hasCachedState={}",
+                logger.debug("AI received StateDeltaUpdate: legalActions={}, pendingDecision={}, hasCachedState={}",
                     message.legalActions.size,
                     message.pendingDecision?.let { it::class.simpleName },
                     lastFullState != null)
@@ -306,12 +309,24 @@ class AiWebSocketSession(
         // `priorityPlayerId` is kept current by applyDelta, so it is safe to read here.
         val actingSeat = legalActions.firstOrNull()?.action?.playerId
         if (!isOurDecision && actingSeat != null && actingSeat != state.priorityPlayerId) {
-            logger.info("AI skipping — team priority window belongs to the baton holder {}", state.priorityPlayerId)
+            logger.debug("AI skipping — team priority window belongs to the baton holder {}", state.priorityPlayerId)
             return
         }
 
+        if (!isOurDecision && state.otaria != null && !controlsOtariaTurn(state) &&
+            legalActions.none { MeaningfulActionFilter.isMeaningful(it.asPriorityAction()) }
+        ) {
+            val pass = legalActions.firstOrNull { it.action is PassPriority }
+            if (pass != null) {
+                logger.debug("AI passing an Otaria opponent-turn window with no meaningful response")
+                submitResponse(ActionResponse.SubmitAction(pass.action), interactionEpoch)
+                return
+            }
+            logger.warn("AI has no meaningful Otaria response but no PassPriority action to submit")
+        }
+
         if (legalActions.isNotEmpty()) {
-            logger.info("AI has {} legal actions: {}", legalActions.size,
+            logger.debug("AI has {} legal actions: {}", legalActions.size,
                 legalActions.joinToString(", ") { "${it.actionType}${if (it.description.isNotBlank()) "(${it.description})" else ""}" })
         }
         if (pendingDecision != null) {
@@ -321,7 +336,7 @@ class AiWebSocketSession(
         delay(thinkingDelayMs)
 
         val response = controller.chooseAction(state, legalActions, pendingDecision, getRecentGameLog())
-        logger.info("AI chose response: {}", when (response) {
+        logger.debug("AI chose response: {}", when (response) {
             is ActionResponse.SubmitAction -> "Action(${response.action::class.simpleName})"
             is ActionResponse.SubmitDecision -> "Decision(${response.response::class.simpleName})"
         })
@@ -342,6 +357,11 @@ class AiWebSocketSession(
         // here would authorize a response chosen from an obsolete interaction.
         submitResponse(gated, interactionEpoch)
     }
+
+    private fun controlsOtariaTurn(state: ClientGameState): Boolean =
+        state.activePlayerId == aiPlayerId || state.otaria?.encounters?.any {
+            it.actorId == state.activePlayerId && it.managerId == aiPlayerId
+        } == true
 
     /**
      * Fallback when we have legal actions / pending decision but no cached state.
