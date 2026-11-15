@@ -1,0 +1,1 @@
+- Otaria bots flee stronger nearby armies, pursue favorable opponents after building a capable army, and take favorable combats before routine exploration or preparation.

@@ -36,15 +36,23 @@ internal class OtariaCampaignPolicy(private val intents: IntentCatalog = IntentC
             is OtariaMovementChoiceContinuation -> {
                 if (choice.playerId != seat || decision !is ChooseOptionDecision) return null
                 check(choice.destinations.size == decision.options.size && choice.destinations.isNotEmpty())
+                val fleeing = strongerThreats(state, seat, player.position).isNotEmpty()
                 val target = mirariDestination(state, seat, player)
                 val distances = target?.let { distancesToStars.getValue(it) }
-                val index = if (distances != null) {
-                    choice.destinations.indices.minWith(
-                        compareBy<Int> { distances.getValue(choice.destinations[it]) }
-                            .thenBy { danger(state, seat, choice.destinations[it]) },
-                    )
-                } else {
-                    choice.destinations.indices.maxBy {
+                val index = when {
+                    distances != null -> {
+                        choice.destinations.indices.minWith(
+                            compareBy<Int> { distances.getValue(choice.destinations[it]) }
+                                .thenBy {
+                                    if (fleeing) -escapeValue(state, seat, choice.destinations[it], player.position)
+                                    else danger(state, seat, choice.destinations[it])
+                                },
+                        )
+                    }
+                    fleeing -> choice.destinations.indices.maxBy {
+                        escapeValue(state, seat, choice.destinations[it], player.position)
+                    }
+                    else -> choice.destinations.indices.maxBy {
                         navigationValue(state, seat, player, choice.destinations[it])
                     }
                 }
@@ -89,6 +97,12 @@ internal class OtariaCampaignPolicy(private val intents: IntentCatalog = IntentC
         if (state.getZone(seat, Zone.LIBRARY).size <= DECK_OUT_LIMIT && player.reserve.isNotEmpty()) {
             return OtariaTurnAction.PREPARE
         }
+        val ownStrength = strength(state, seat)
+        if (strongerThreats(state, seat, player.position).isNotEmpty()) return OtariaTurnAction.MOVE
+        if (state.getZone(seat, Zone.LIBRARY).size > DECK_OUT_LIMIT &&
+            hasFavorableCombat(state, seat, player.position, ownStrength)
+        ) return OtariaTurnAction.COMBAT
+
         val target = mirariDestination(state, seat, player)
         if (target != null && target != player.position) return OtariaTurnAction.MOVE
 
@@ -105,24 +119,96 @@ internal class OtariaCampaignPolicy(private val intents: IntentCatalog = IntentC
         ) {
             return OtariaTurnAction.EXPLORE
         }
-        val strength = strength(state, seat)
-        val mode = requireNotNull(state.otaria)
-        val favorablePlayerCombat = mode.players.any { (other, opponent) ->
-                other != seat && other in state.activePlayers &&
-                    OtariaBoard.distance(player.position, opponent.position) <= movementRange(state, seat) &&
-                    strength > strength(state, other) * 1.5
-            }
-        val favorableEncounterCombat = mode.encounters.any { (actor, encounter) ->
-            OtariaBoard.distance(player.position, encounter.position) <= 1 &&
-                strength > strength(state, actor) * 1.5
+        if (state.getZone(seat, Zone.LIBRARY).size > DECK_OUT_LIMIT && readyForStar &&
+            favorableOpponent(state, seat, player.position, ownStrength) != null
+        ) {
+            return OtariaTurnAction.MOVE
         }
-        if (state.getZone(seat, Zone.LIBRARY).size > DECK_OUT_LIMIT &&
-            strength > 0 && (favorablePlayerCombat || favorableEncounterCombat)
-        ) return OtariaTurnAction.COMBAT
         if (readyForStar && OtariaLocation.entries.any { locationValue(state, player, it.position) > 0 }) {
             return OtariaTurnAction.MOVE
         }
         return OtariaTurnAction.EXPLORE
+    }
+
+    private data class CampaignThreat(
+        val position: OtariaPosition,
+        val strength: Double,
+    )
+
+    private fun strongerThreats(state: GameState, seat: EntityId, position: OtariaPosition): List<CampaignThreat> {
+        val ownStrength = strength(state, seat)
+        val mode = requireNotNull(state.otaria)
+        val players = mode.players.entries.mapNotNull { (other, player) ->
+            if (other == seat || other !in state.activePlayers) return@mapNotNull null
+            val opponentStrength = strength(state, other)
+            if (opponentStrength <= ownStrength * THREAT_STRENGTH_RATIO ||
+                OtariaBoard.distance(position, player.position) > movementRange(state, other)
+            ) return@mapNotNull null
+            CampaignThreat(player.position, opponentStrength)
+        }
+        val encounters = mode.encounters.entries.mapNotNull { (actor, encounter) ->
+            if (seat !in encounter.participants) return@mapNotNull null
+            val encounterStrength = strength(state, actor)
+            if (encounterStrength <= ownStrength * THREAT_STRENGTH_RATIO ||
+                OtariaBoard.distance(position, encounter.position) > 1
+            ) return@mapNotNull null
+            CampaignThreat(encounter.position, encounterStrength)
+        }
+        return players + encounters
+    }
+
+    private fun hasFavorableCombat(
+        state: GameState,
+        seat: EntityId,
+        position: OtariaPosition,
+        ownStrength: Double,
+    ): Boolean {
+        val mode = requireNotNull(state.otaria)
+        val favorablePlayer = mode.players.any { (other, opponent) ->
+            other != seat && other in state.activePlayers &&
+                OtariaBoard.distance(position, opponent.position) <= 1 &&
+                ownStrength > strength(state, other) * COMBAT_STRENGTH_RATIO
+        }
+        val favorableEncounter = mode.encounters.any { (actor, encounter) ->
+            seat in encounter.participants && encounter.members.any {
+                state.objectRef(it.entityId) == it && it.entityId in state.getBattlefield()
+            } && OtariaBoard.distance(position, encounter.position) <= 1 &&
+                ownStrength > strength(state, actor) * COMBAT_STRENGTH_RATIO
+        }
+        return ownStrength > 0 && (favorablePlayer || favorableEncounter)
+    }
+
+    private fun favorableOpponent(
+        state: GameState,
+        seat: EntityId,
+        position: OtariaPosition,
+        ownStrength: Double,
+    ): Pair<EntityId, OtariaPosition>? {
+        if (ownStrength <= 0) return null
+        return requireNotNull(state.otaria).players.entries.asSequence()
+            .filter { (other, _) -> other != seat && other in state.activePlayers }
+            .map { (other, player) -> Triple(other, player.position, strength(state, other)) }
+            .filter { (_, _, opponentStrength) -> ownStrength > opponentStrength * COMBAT_STRENGTH_RATIO }
+            .minWithOrNull(
+                compareBy<Triple<EntityId, OtariaPosition, Double>> {
+                    (OtariaBoard.distance(position, it.second) - 1).coerceAtLeast(0)
+                }.thenBy { it.third },
+            )
+            ?.let { it.first to it.second }
+    }
+
+    private fun escapeValue(
+        state: GameState,
+        seat: EntityId,
+        destination: OtariaPosition,
+        currentPosition: OtariaPosition,
+    ): Double {
+        val threats = strongerThreats(state, seat, currentPosition)
+        val distanceFromThreats = threats.sumOf { threat ->
+            OtariaBoard.distance(destination, threat.position).coerceAtMost(MAX_ESCAPE_DISTANCE) *
+                (1.0 + threat.strength / ESCAPE_STRENGTH_SCALE)
+        }
+        return distanceFromThreats - danger(state, seat, destination)
     }
 
     private fun readyForStar(state: GameState, seat: EntityId): Boolean {
@@ -193,7 +279,15 @@ internal class OtariaCampaignPolicy(private val intents: IntentCatalog = IntentC
             val distance = distancesToStars.getValue(location.position).getValue(position)
             if (value == 0.0) 0.0 else value / (1 + (distance + range - 1) / range)
         }
-        return goal + terrainValue(state, seat, position) - danger(state, seat, position)
+        val combatGoal = if (state.getZone(seat, Zone.LIBRARY).size > DECK_OUT_LIMIT &&
+            readyForStar(state, seat)
+        ) {
+            favorableOpponent(state, seat, position, strength(state, seat))?.let { (_, target) ->
+                val remaining = (OtariaBoard.distance(position, target) - 1).coerceAtLeast(0)
+                COMBAT_GOAL_VALUE / (1 + (remaining + range - 1) / range)
+            } ?: 0.0
+        } else 0.0
+        return goal + combatGoal + terrainValue(state, seat, position) - danger(state, seat, position)
     }
 
     private fun terrainValue(state: GameState, seat: EntityId, position: OtariaPosition): Double {
@@ -211,9 +305,13 @@ internal class OtariaCampaignPolicy(private val intents: IntentCatalog = IntentC
         return mode.players.entries.sumOf { (other, player) ->
             if (other == seat || other !in state.activePlayers || strength(state, other) <= own ||
                 OtariaBoard.distance(position, player.position) > movementRange(state, other)
-            ) 0.0 else if (position == player.position) 12.0 else 6.0
+            ) 0.0 else when (OtariaBoard.distance(position, player.position)) {
+                0L -> 14.0
+                1L -> 10.0
+                else -> 6.0
+            }
         } + mode.encounters.entries.sumOf { (actor, encounter) ->
-            if (encounter.position == position && strength(state, actor) > own) 12.0 else 0.0
+            if (encounter.position == position && strength(state, actor) > own) 14.0 else 0.0
         }
     }
 
@@ -261,6 +359,11 @@ internal class OtariaCampaignPolicy(private val intents: IntentCatalog = IntentC
         const val MIN_STAR_POWER = 12
         const val MIN_STAR_TOUGHNESS = 15
         const val MIN_AERIAL_TOUGHNESS = 6
+        const val THREAT_STRENGTH_RATIO = 1.25
+        const val COMBAT_STRENGTH_RATIO = 1.5
+        const val COMBAT_GOAL_VALUE = 10.0
+        const val MAX_ESCAPE_DISTANCE = 5L
+        const val ESCAPE_STRENGTH_SCALE = 20.0
 
         val distancesToStars by lazy {
             OtariaLocation.entries.associate { it.position to distancesFrom(it.position) }
