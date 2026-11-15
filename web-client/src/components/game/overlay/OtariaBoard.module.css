@@ -53,7 +53,7 @@
   justify-content: center;
   width: 100%;
   height: 100%;
-  max-width: 180px;
+  max-width: 280px;
   max-height: 100%;
   padding: 0;
   border: 0;
@@ -93,6 +93,23 @@
   animation: destinationGlow 1.8s ease-in-out infinite alternate;
 }
 
+.miniPlayerPulse {
+  fill: none;
+  stroke: #fff3bd;
+  stroke-width: 2px;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: miniPlayerPulse 1.8s ease-out infinite;
+}
+
+.miniPlayerMarker { filter: drop-shadow(0 0 3px #fff3bd); }
+.miniMarker { fill: #17242c; font-size: 14px; font-weight: 800; pointer-events: none; }
+
+@keyframes miniPlayerPulse {
+  from { opacity: .8; transform: scale(.85); }
+  to { opacity: 0; transform: scale(1.8); }
+}
+
 @keyframes destinationGlow {
   from { filter: drop-shadow(0 0 2px #ffd338) drop-shadow(0 0 4px #ffb900); }
   to { filter: drop-shadow(0 0 5px #ffe66b) drop-shadow(0 0 9px #ffbf00); }
@@ -100,6 +117,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .selectedDestination { animation: none; }
+  .miniPlayerPulse { animation: none; }
 }
 
 .star { fill: #fff2c2; font-size: 15px; paint-order: stroke; stroke: #342d24; stroke-width: 1.6px; }

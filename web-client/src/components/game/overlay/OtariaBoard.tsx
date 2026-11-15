@@ -69,6 +69,7 @@ export function OtariaMap({
   board,
   choices = [],
   zoomed = false,
+  miniature = false,
   selectedIndex,
   onChoose,
 }: {
@@ -76,6 +77,7 @@ export function OtariaMap({
   board: ClientOtariaState
   choices?: readonly OtariaMapChoice[]
   zoomed?: boolean
+  miniature?: boolean
   selectedIndex?: number | null
   onChoose?: (index: number) => void
 }) {
@@ -161,8 +163,17 @@ export function OtariaMap({
               const markerY = y + 8 + (row - (rows - 1) / 2) * 19
               return (
                 <g key={player.playerId}>
-                  <circle cx={markerX} cy={markerY} r="9" fill={seatColors[number % seatColors.length]} stroke="#17242c" strokeWidth="1.5" />
-                  <text x={markerX} y={markerY} textAnchor="middle" dominantBaseline="central" className={styles.marker}>{number + 1}</text>
+                  {miniature && <circle cx={markerX} cy={markerY} r="11" className={styles.miniPlayerPulse} />}
+                  <circle
+                    cx={markerX}
+                    cy={markerY}
+                    r={miniature ? '10' : '9'}
+                    fill={seatColors[number % seatColors.length]}
+                    stroke={miniature ? '#fff' : '#17242c'}
+                    strokeWidth={miniature ? '2' : '1.5'}
+                    className={miniature ? styles.miniPlayerMarker : undefined}
+                  />
+                  <text x={markerX} y={markerY} textAnchor="middle" dominantBaseline="central" className={miniature ? styles.miniMarker : styles.marker}>{number + 1}</text>
                 </g>
               )
             })
@@ -197,7 +208,7 @@ export function OtariaBoardButton({ gameState, miniature = false }: { gameState:
         onClick={() => setOpen(true)}
       >
         {miniature
-          ? <span aria-hidden="true"><OtariaMap gameState={gameState} board={gameState.otaria} /></span>
+          ? <span aria-hidden="true"><OtariaMap gameState={gameState} board={gameState.otaria} miniature /></span>
           : <><span aria-hidden>✦</span> Otaria map</>}
       </button>
       {open && createPortal(

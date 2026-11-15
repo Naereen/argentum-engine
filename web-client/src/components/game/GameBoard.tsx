@@ -62,7 +62,7 @@ function OtariaOverviewMapSlot({ gameState }: { gameState: ClientGameState }) {
     <div
       data-otaria-overview-map
       style={{
-        flex: '0 0 18%',
+        flex: '0 0 20%',
         minWidth: 0,
         minHeight: 0,
         display: 'flex',
