@@ -117,10 +117,7 @@ export default function App() {
   const connectionStatus = useGameStore((state) => state.connectionStatus)
   const gameState = useGameStore((state) => state.gameState)
   const gameOverState = useGameStore((state) => state.gameOverState)
-  const sessionId = useGameStore((state) => state.sessionId)
   const aiControlEnabled = useGameStore((state) => state.aiControlEnabled)
-  const aiControlPending = useGameStore((state) => state.aiControlPending)
-  const setAiControl = useGameStore((state) => state.setAiControl)
   const mulliganState = useGameStore((state) => state.mulliganState)
   const waitingForOpponentMulligan = useGameStore((state) => state.waitingForOpponentMulligan)
   const legalActions = useGameStore((state) => state.legalActions)
@@ -425,37 +422,6 @@ export default function App() {
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       {/* Main game board (2D) */}
       {showGame && <GameBoard />}
-      {sessionId && gameState?.otaria && !spectatingState && !gameState.isGameOver && !gameOverState && (
-        <button
-          type="button"
-          aria-pressed={aiControlEnabled}
-          aria-label={aiControlEnabled ? 'Take back control from AI' : 'Let AI play for you'}
-          title={aiControlEnabled
-            ? 'The AI is playing your seat. Select to take back control.'
-            : 'Let the AI play your seat while you are away.'}
-          disabled={aiControlPending}
-          onClick={() => setAiControl(!aiControlEnabled)}
-          style={{
-            position: 'fixed',
-            top: 52,
-            right: 12,
-            zIndex: 2000,
-            minHeight: 32,
-            padding: '0 12px',
-            borderRadius: 999,
-            border: `1px solid ${aiControlEnabled ? '#64d8a2' : '#71839b'}`,
-            background: aiControlEnabled ? 'rgba(20, 75, 58, 0.96)' : 'rgba(15, 23, 36, 0.96)',
-            color: '#f4f7fb',
-            fontSize: 12,
-            fontWeight: 700,
-            boxShadow: '0 2px 12px rgba(0, 0, 0, 0.35)',
-            cursor: aiControlPending ? 'wait' : 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {aiControlPending ? 'Switching…' : aiControlEnabled ? 'AI playing · Take control' : 'Let AI play'}
-        </button>
-      )}
 
       {/* Opponent decision indicator (shown during game when opponent is deciding) */}
       {showGame && <OpponentDecisionIndicator />}

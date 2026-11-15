@@ -91,6 +91,9 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
   const playerId = useGameStore((state) => state.playerId)
   const submitAction = useGameStore((state) => state.submitAction)
   const interactionEpoch = useGameStore((state) => state.interactionEpoch)
+  const gameOverState = useGameStore((state) => state.gameOverState)
+  const aiControlPending = useGameStore((state) => state.aiControlPending)
+  const setAiControl = useGameStore((state) => state.setAiControl)
   const combatState = useGameStore((state) => state.combatState)
   const confirmCombat = useGameStore((state) => state.confirmCombat)
   const clearAttackers = useGameStore((state) => state.clearAttackers)
@@ -901,6 +904,39 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
     }
   }
 
+  const aiControlButton = sessionId && gameState?.otaria && !spectatingState &&
+    !spectatorMode && !isEliminatedSpectator && !gameState.isGameOver && !gameOverState ? (
+    <button
+      type="button"
+      aria-pressed={aiControlEnabled}
+      aria-label={aiControlEnabled ? 'Take back control from AI' : 'Let AI play for you'}
+      title={aiControlEnabled
+        ? 'The AI is playing your seat. Select to take back control.'
+        : 'Let the AI play your seat while you are away.'}
+      disabled={aiControlPending}
+      onClick={() => setAiControl(!aiControlEnabled)}
+      style={{
+        position: 'absolute',
+        top: 8,
+        right: 12,
+        zIndex: 120,
+        minHeight: 32,
+        padding: '0 12px',
+        borderRadius: 999,
+        border: `1px solid ${aiControlEnabled ? '#64d8a2' : '#71839b'}`,
+        background: aiControlEnabled ? 'rgba(20, 75, 58, 0.96)' : 'rgba(15, 23, 36, 0.96)',
+        color: '#f4f7fb',
+        fontSize: 12,
+        fontWeight: 700,
+        boxShadow: '0 2px 12px rgba(0, 0, 0, 0.35)',
+        cursor: aiControlPending ? 'wait' : 'pointer',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {aiControlPending ? 'Switching…' : aiControlEnabled ? 'AI playing · Take control' : 'Let AI play'}
+    </button>
+  ) : null
+
   return (
     <RenderProfiler id="GameBoard">
     <ResponsiveContext.Provider value={responsive}>
@@ -1577,6 +1613,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                   plateAnchor={teamBannersActive ? 'bottom' : 'top'}
                   spectatorMode={spectatorMode}
                   {...(isHijacked ? { hijackedSurfaceStyle } : {})}
+                  aiControlButton={aiControlButton}
                 />
               )
             }
@@ -1621,7 +1658,8 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
           {otariaMapPosition === 'right' && <OtariaOverviewMapSlot gameState={gameState} />}
         </div>
       ) : isEliminatedSpectator ? null : (
-        <div ref={playerRowRef} style={styles.playerArea}>
+        <div ref={playerRowRef} style={{ ...styles.playerArea, position: 'relative' }}>
+          {aiControlButton}
           <div style={styles.playerRowWithZones}>
             {/* Player command zone (left side) — Commander format only; renders nothing otherwise. */}
             {effectiveViewingPlayer && <CommandZone player={effectiveViewingPlayer} />}
@@ -2715,6 +2753,7 @@ function SelfBottomCell({
   plateAnchor = 'bottom',
   spectatorMode,
   hijackedSurfaceStyle,
+  aiControlButton,
 }: {
   player: import('@/types').ClientPlayer
   basis: string
@@ -2731,6 +2770,7 @@ function SelfBottomCell({
   plateAnchor?: 'top' | 'bottom'
   spectatorMode: boolean
   hijackedSurfaceStyle?: React.CSSProperties
+  aiControlButton?: React.ReactNode
 }) {
   const { cellRef, handBand } = useCellHandMetrics()
   const plateAtBottom = showPlate && plateAnchor === 'bottom'
@@ -2747,6 +2787,7 @@ function SelfBottomCell({
         position: 'relative',
       }}
     >
+      {aiControlButton}
       {/* Your own cell carries the same active-turn ring as every other board. */}
       {isActiveTurn && (
         <div
