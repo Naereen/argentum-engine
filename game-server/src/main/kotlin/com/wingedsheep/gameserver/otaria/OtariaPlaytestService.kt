@@ -116,7 +116,6 @@ class OtariaPlaytestService(
             "Experimental playtest, not a complete campaign. Movement, preparation, player combat and creature/boss encounters can be tested.",
             "Encounters use initiative, individual mana, direct creature combat, captures and retreat; their left-hand manager can be human or AI.",
             "Some exploration events and supply cards are not implemented. An unsupported exploration reports an error and may leave the turn waiting; start a new playtest to continue testing.",
-            "Legendary encounters still use normal Magic targeting; the variant's special player/planeswalker targeting substitutions are not implemented.",
         ),
         missingCards = OtariaSuppliesCatalog.missingCardDefinitions(cards),
     )

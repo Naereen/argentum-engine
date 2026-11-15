@@ -9,6 +9,7 @@ import com.wingedsheep.engine.handlers.PredicateContext
 import com.wingedsheep.engine.handlers.PredicateEvaluator
 import com.wingedsheep.engine.handlers.TargetingSourceType
 import com.wingedsheep.engine.otaria.cardTextPlayerId
+import com.wingedsheep.engine.otaria.OtariaTargeting
 import com.wingedsheep.engine.state.GameState
 import com.wingedsheep.engine.state.ZoneKey
 import com.wingedsheep.engine.state.components.identity.CardComponent
@@ -839,7 +840,9 @@ class TargetValidator(
         // Use unified filter with projection (face-down creatures have CMC 0 per Rule 708.2)
         val projected = state.projectedState
         val predicateContext = targetContext ?: PredicateContext(controllerId = casterId, sourceId = sourceId, xValue = xValue)
-        val matches = predicateEvaluator.matches(state, projected, target.entityId, filter.baseFilter, predicateContext)
+        val matches = OtariaTargeting.matchesTargetFilter(
+            state, projected, target.entityId, filter.baseFilter, casterId, predicateEvaluator, predicateContext
+        )
         if (!matches) {
             return "Target does not match filter: ${filter.description}"
         }
@@ -933,6 +936,9 @@ class TargetValidator(
                     ?: return "Target not found"
                 val cardComponent = container.get<CardComponent>()
                     ?: return "Target is not a card"
+                if (OtariaTargeting.isLegendaryEncounterCreature(state, casterId, target.entityId)) {
+                    return "Target must be a creature or player"
+                }
                 // Face-down permanents are always creatures (Rule 708.2)
                 if (!state.projectedState.isCreature(target.entityId) && !container.has<FaceDownComponent>()) {
                     return "Target must be a creature or player"
@@ -992,12 +998,12 @@ class TargetValidator(
                     ?: return "Target not found"
                 val cardComponent = container.get<CardComponent>()
                     ?: return "Target is not a card"
-                if (CardType.PLANESWALKER !in cardComponent.typeLine.cardTypes) {
-                    return "Target must be an opponent or planeswalker"
-                }
                 if (target.entityId !in state.getBattlefield()) {
                     return "Target must be on the battlefield"
                 }
+                if (CardType.PLANESWALKER !in cardComponent.typeLine.cardTypes &&
+                    !OtariaTargeting.isLegendaryEncounterCreature(state, casterId, target.entityId)
+                ) return "Target must be an opponent or planeswalker"
                 null
             }
             else -> "Target must be an opponent or planeswalker"
@@ -1017,12 +1023,12 @@ class TargetValidator(
                     ?: return "Target not found"
                 val cardComponent = container.get<CardComponent>()
                     ?: return "Target is not a card"
-                if (CardType.PLANESWALKER !in cardComponent.typeLine.cardTypes) {
-                    return "Target must be a player or planeswalker"
-                }
                 if (target.entityId !in state.getBattlefield()) {
                     return "Target must be on the battlefield"
                 }
+                if (CardType.PLANESWALKER !in cardComponent.typeLine.cardTypes &&
+                    !OtariaTargeting.isLegendaryEncounterCreature(state, casterId, target.entityId)
+                ) return "Target must be a player or planeswalker"
                 null
             }
             else -> "Target must be a player or planeswalker"

@@ -13,6 +13,7 @@ import com.wingedsheep.engine.state.components.identity.ControllerComponent
 import com.wingedsheep.engine.mechanics.ControllerGrants
 import com.wingedsheep.engine.mechanics.layers.ProjectedState
 import com.wingedsheep.engine.otaria.cardTextPlayerId
+import com.wingedsheep.engine.otaria.OtariaTargeting
 import com.wingedsheep.engine.mechanics.targeting.ControllerHexproof
 import com.wingedsheep.engine.mechanics.targeting.ControllerShroud
 import com.wingedsheep.engine.mechanics.targeting.SourceKindProtection
@@ -122,7 +123,11 @@ class TargetFinder(
                 if (requirement.filter == GameObjectFilter.Any) candidates else {
                     val projected = state.projectedState
                     val context = targetingContext(controllerId, sourceId, triggeringEntityId = triggeringEntityId, pipelineContext = pipelineContext)
-                    candidates.filter { predicateEvaluator.matches(state, projected, it, requirement.filter, context) }
+                    candidates.filter {
+                        OtariaTargeting.matchesTargetFilter(
+                            state, projected, it, requirement.filter, controllerId, predicateEvaluator, context
+                        )
+                    }
                 }
             }
             is TargetCreatureOrPlayer -> findCreatureOrPlayerTargets(state, controllerId, sourceId, targetingSourceType, pipelineContext)
@@ -257,7 +262,7 @@ class TargetFinder(
         targets.addAll(state.turnOrder.filter { it != controllerId && state.hasEntity(it) &&
             !playerHasShroud(state, it) && !playerHasHexproofAgainst(state, it, controllerId) })
 
-        // Add all planeswalkers on the battlefield
+        // Add all planeswalkers, plus the explorer's legendary encounter creature.
         val battlefield = state.getBattlefield()
         for (entityId in battlefield) {
             val container = state.getEntity(entityId) ?: continue
@@ -267,7 +272,9 @@ class TargetFinder(
             // Read the PROJECTED type line, not the printed one, so a permanent that
             // becomes a planeswalker via a continuous effect is offered (CR 115.4 /
             // projection rule), consistent with findAnyTargets.
-            if (!projected.isPlaneswalker(entityId)) continue
+            if (!projected.isPlaneswalker(entityId) &&
+                !OtariaTargeting.isLegendaryEncounterCreature(state, controllerId, entityId)
+            ) continue
 
             // Check hexproof/shroud
             if (projected.hasKeyword(entityId, Keyword.HEXPROOF) && entityController != controllerId &&
@@ -297,7 +304,7 @@ class TargetFinder(
         targets.addAll(state.turnOrder.filter { state.hasEntity(it) && !playerHasShroud(state, it) &&
             !playerHasHexproofAgainst(state, it, controllerId) })
 
-        // Add all planeswalkers on the battlefield
+        // Add all planeswalkers, plus the explorer's legendary encounter creature.
         val battlefield = state.getBattlefield()
         for (entityId in battlefield) {
             val container = state.getEntity(entityId) ?: continue
@@ -307,7 +314,9 @@ class TargetFinder(
             // Read the PROJECTED type line, not the printed one, so a permanent that
             // becomes a planeswalker via a continuous effect is offered (CR 115.4 /
             // projection rule), consistent with findAnyTargets.
-            if (!projected.isPlaneswalker(entityId)) continue
+            if (!projected.isPlaneswalker(entityId) &&
+                !OtariaTargeting.isLegendaryEncounterCreature(state, controllerId, entityId)
+            ) continue
 
             // Check hexproof/shroud
             if (projected.hasKeyword(entityId, Keyword.HEXPROOF) && entityController != controllerId &&
@@ -381,7 +390,9 @@ class TargetFinder(
 
             // Use unified filter with projected state
             val predicateContext = targetingContext(controllerId, sourceId, triggeringEntityId = triggeringEntityId, pipelineContext = pipelineContext)
-            predicateEvaluator.matches(state, projected, entityId, filter.baseFilter, predicateContext)
+            OtariaTargeting.matchesTargetFilter(
+                state, projected, entityId, filter.baseFilter, controllerId, predicateEvaluator, predicateContext
+            )
         }
     }
 
@@ -652,7 +663,9 @@ class TargetFinder(
             if (hasCantBeTargetedRestriction(state, entityId, entityController, controllerId, targetingSourceType, sourceId)) continue
 
             if (permanentFilter != null &&
-                !predicateEvaluator.matches(state, projected, entityId, permanentFilter, predicateContext)
+                !OtariaTargeting.matchesTargetFilter(
+                    state, projected, entityId, permanentFilter, controllerId, predicateEvaluator, predicateContext
+                )
             ) continue
 
             targets.add(entityId)
