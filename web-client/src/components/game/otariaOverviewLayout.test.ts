@@ -4,6 +4,7 @@ import { otariaBottomOrder, otariaOverviewMapPosition } from './otariaOverviewLa
 
 describe('Otaria table overview layout', () => {
   it('reserves the right or center for the map according to the living seats', () => {
+    expect(otariaOverviewMapPosition(true, 1, 1)).toBe('right')
     expect(otariaOverviewMapPosition(true, 2, 1)).toBe('right')
     expect(otariaOverviewMapPosition(true, 2, 2)).toBe('center')
     expect(otariaOverviewMapPosition(true, 3, 2)).toBe('right')

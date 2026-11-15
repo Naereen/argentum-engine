@@ -9,7 +9,11 @@ export function otariaOverviewMapPosition(
 ): OtariaOverviewMapPosition {
   if (!enabled) return null
   if (topCount === 2 && bottomCount === 2) return 'center'
-  if ((topCount === 2 && bottomCount === 1) || (topCount === 3 && bottomCount === 2)) return 'right'
+  if (
+    (topCount === 1 && bottomCount === 1) ||
+    (topCount === 2 && bottomCount === 1) ||
+    (topCount === 3 && bottomCount === 2)
+  ) return 'right'
   return null
 }
 
