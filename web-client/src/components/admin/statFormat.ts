@@ -1,4 +1,5 @@
 /** Shared formatting helpers for stat displays. */
+import i18n from '@/i18n'
 
 const COLOR_NAMES: Record<string, string> = { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green' }
 
@@ -16,8 +17,17 @@ const COLOR_SWATCH: Record<string, string> = {
  * both the profile and admin color breakdowns so they read the same way.
  */
 export function colorLabel(colors: string): string {
-  if (!colors) return 'Colorless'
-  const names = [...colors].map((c) => COLOR_NAMES[c]).filter(Boolean)
+  if (!colors) return i18n.t('adminAiGames.colorless')
+  const names = [...colors]
+    .map((c) => {
+      const key = c === 'W' ? 'adminAiGames.white' :
+        c === 'U' ? 'adminAiGames.blue' :
+          c === 'B' ? 'adminAiGames.black' :
+            c === 'R' ? 'adminAiGames.red' :
+              c === 'G' ? 'adminAiGames.green' : null
+      return key ? i18n.t(key) : COLOR_NAMES[c]
+    })
+    .filter(Boolean)
   return names.length > 0 ? names.join('/') : colors
 }
 
@@ -59,21 +69,23 @@ export function gameModeLabel(
   gameMode: string | null,
   format: string | null,
 ): { primary: string; variant: string | null } {
+  const label = (key: 'adminAiVsHuman.modeTournament' | 'adminAiVsHuman.modeMultiplayer' | 'adminAiVsHuman.modeQuickGame' | 'adminAiVsHuman.modeCasual' | 'adminAiVsHuman.modeHotseat') =>
+    i18n.t(key)
   switch (gameMode) {
     case 'TOURNAMENT':
-      return { primary: 'Tournament', variant: format ? prettyFormat(format) : null }
+      return { primary: label('adminAiVsHuman.modeTournament'), variant: format === 'PREMADE_DECKS' ? i18n.t('adminAiVsHuman.formatPremade') : format ? prettyFormat(format) : null }
     case 'FREE_FOR_ALL':
-      return { primary: 'Multiplayer', variant: 'Free-for-All' }
+      return { primary: label('adminAiVsHuman.modeMultiplayer'), variant: i18n.t('adminAiVsHuman.modeFreeForAll') }
     case 'TWO_HEADED_GIANT':
-      return { primary: 'Multiplayer', variant: 'Two-Headed Giant' }
+      return { primary: label('adminAiVsHuman.modeMultiplayer'), variant: i18n.t('adminAiVsHuman.modeTwoHeadedGiant') }
     case 'TEAM_VS_TEAM':
-      return { primary: 'Multiplayer', variant: 'Team vs Team' }
+      return { primary: label('adminAiVsHuman.modeMultiplayer'), variant: i18n.t('adminAiVsHuman.modeTeamVsTeam') }
     case 'QUICK_GAME':
-      return { primary: 'Quick Game', variant: null }
+      return { primary: label('adminAiVsHuman.modeQuickGame'), variant: null }
     case 'CASUAL':
-      return { primary: 'Casual', variant: null }
+      return { primary: label('adminAiVsHuman.modeCasual'), variant: null }
     case 'HOTSEAT':
-      return { primary: 'Hotseat', variant: null }
+      return { primary: label('adminAiVsHuman.modeHotseat'), variant: null }
     case null:
     case '':
     case 'UNKNOWN':

@@ -22,10 +22,9 @@ import { ManaSymbol } from '@/components/ui/ManaSymbols'
 import { ModalShell } from './AdminPlayerDecks'
 import { cellStyle } from './adminUi'
 import { useAdminNav } from './adminNav'
-import { colorLabel, gameModeLabel } from './statFormat'
+import { gameModeLabel } from './statFormat'
 import css from './aiVsHuman.module.css'
-
-const OUTCOME_LABEL = { AI: 'AI won', HUMAN: 'Human won', DRAW: 'Draw' } as const
+import { useTranslation } from 'react-i18next'
 
 /** Open a finished game's replay in a new tab, so the admin keeps their place here. */
 const watchReplay = (gameId: string) => window.open(`/replay/${gameId}`, '_blank', 'noopener')
@@ -35,20 +34,28 @@ function modeText(gameMode: string | null, format: string | null): string {
   return variant ? `${primary} › ${variant}` : primary
 }
 
-function when(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+function when(iso: string, language: string): string {
+  return new Date(iso).toLocaleString(language, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 /** A deck's colours as mana symbols — `C` for colourless, a dash when no deck was recorded. */
 export function ColorPips({ colors }: { colors: string | null }) {
+  const { t } = useTranslation()
   if (colors == null) {
     return (
-      <span className={css.pipsNone} title="No deck recorded">
+      <span className={css.pipsNone} title={t('adminAiGames.noDeck')}>
         —
       </span>
     )
   }
-  const label = colorLabel(colors)
+  const colorNames: Record<string, string> = {
+    W: t('adminAiGames.white'),
+    U: t('adminAiGames.blue'),
+    B: t('adminAiGames.black'),
+    R: t('adminAiGames.red'),
+    G: t('adminAiGames.green'),
+  }
+  const label = colors ? [...colors].map((color) => colorNames[color] ?? color).join('/') : t('adminAiGames.colorless')
   return (
     <span className={css.pips} title={label} aria-label={label} role="img">
       {(colors ? [...colors] : ['C']).map((c, i) => (
@@ -75,16 +82,17 @@ export function GameList({
   /** Inside a human's drawer: their key, so the row shows their own colours instead of a human column. */
   focusKey?: string
 }) {
+  const { t, i18n } = useTranslation()
   return (
-    <div className={css.games} role="table" aria-label="Games">
+    <div className={css.games} role="table" aria-label={t('adminAiGames.games')}>
       <div className={`${css.gameRow} ${css.gameHead}`} role="row">
-        <span role="columnheader">When</span>
-        <span role="columnheader">Mode</span>
-        <span role="columnheader">AI deck</span>
-        <span role="columnheader">{focusKey ? 'Their deck' : 'Human'}</span>
-        <span role="columnheader">Result</span>
+        <span role="columnheader">{t('adminAiGames.when')}</span>
+        <span role="columnheader">{t('adminAiGames.mode')}</span>
+        <span role="columnheader">{t('adminAiGames.aiDeck')}</span>
+        <span role="columnheader">{focusKey ? t('adminAiGames.theirDeck') : t('adminAiGames.humanDeck')}</span>
+        <span role="columnheader">{t('adminAiGames.result')}</span>
         <span role="columnheader" className={css.srOnly}>
-          Actions
+          {t('adminAiGames.actions')}
         </span>
       </div>
       {games.map((g) => {
@@ -93,13 +101,13 @@ export function GameList({
         return (
           <div key={g.matchId} className={css.gameRow} role="row">
             <span className={css.gameWhen} role="cell">
-              {when(g.endedAt)}
+              {when(g.endedAt, i18n.resolvedLanguage ?? 'en')}
             </span>
             <span className={css.gameMode} role="cell" title={modeText(g.gameMode, g.format)}>
               {modeText(g.gameMode, g.format)}
             </span>
             <span className={css.gameSide} role="cell">
-              <span className={css.gameSideLabel}>AI</span>
+              <span className={css.gameSideLabel}>{t('adminAiGames.ai')}</span>
               {g.aiColors.length === 0 ? <ColorPips colors={null} /> : g.aiColors.map((c, i) => <ColorPips key={i} colors={c} />)}
             </span>
             <span className={css.gameHumans} role="cell">
@@ -112,7 +120,7 @@ export function GameList({
                         className={css.humanLink}
                         data-won={h.won}
                         onClick={() => onOpenHuman(h.key)}
-                        title={`${h.name}'s games against the AI`}
+                        title={t('adminAiGames.humanGamesTitle', { name: h.name })}
                       >
                         {h.name}
                       </button>
@@ -121,37 +129,37 @@ export function GameList({
                         {h.name}
                       </span>
                     ))}
-                  {!focusKey && h.isGuest && <span className={css.guest}>guest</span>}
+                  {!focusKey && h.isGuest && <span className={css.guest}>{t('adminAiGames.guest')}</span>}
                   <ColorPips colors={h.colors} />
                 </span>
               ))}
               {others.length > 0 && (
                 <span className={css.gameWith} title={others.map((h) => h.name).join(', ')}>
-                  with {others.map((h) => h.name).join(', ')}
+                  {t('adminAiGames.withHumans', { names: others.map((h) => h.name).join(', ') })}
                 </span>
               )}
             </span>
             <span role="cell">
               <span className={css.outcome} data-outcome={g.outcome}>
-                {OUTCOME_LABEL[g.outcome]}
+                {t(g.outcome === 'AI' ? 'adminAiGames.aiWon' : g.outcome === 'HUMAN' ? 'adminAiGames.humanWon' : 'adminAiGames.draw')}
               </span>
             </span>
             <span className={css.gameActions} role="cell">
               <button type="button" className={css.deckButton} onClick={() => onOpenGame(g.matchId)}>
-                Decks
+                {t('adminAiGames.decks')}
               </button>
               {g.replayGameId ? (
                 <button
                   type="button"
                   className={css.excludeButton}
                   onClick={() => watchReplay(g.replayGameId as string)}
-                  title="Open the replay in a new tab"
+                  title={t('adminAiGames.openReplay')}
                 >
-                  Replay ↗
+                  {t('adminAiGames.replay')}
                 </button>
               ) : (
-                <span className={css.noReplay} title="No replay was stored for this game">
-                  No replay
+                <span className={css.noReplay} title={t('adminAiGames.noReplayTitle')}>
+                  {t('adminAiGames.noReplay')}
                 </span>
               )}
             </span>
@@ -164,16 +172,17 @@ export function GameList({
 
 /** Every seat's deck for one game, AI first, with a link to its replay. Shared by the AI-vs-humans and Activity screens. */
 export function MatchDecksModal({ auth, matchId, onClose }: { auth: AdminAuth; matchId: number; onClose: () => void }) {
+  const { t, i18n } = useTranslation()
   const [decks, setDecks] = useState<GameDecks | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
     let live = true
     setDecks(null)
-    setError(null)
+    setFailed(false)
     fetchMatchDecks(auth, matchId)
       .then((d) => live && setDecks(d))
-      .catch(() => live && setError('Could not load this game’s decks.'))
+      .catch(() => live && setFailed(true))
     return () => {
       live = false
     }
@@ -183,12 +192,12 @@ export function MatchDecksModal({ auth, matchId, onClose }: { auth: AdminAuth; m
   const humans = decks?.participants.filter((p) => !p.isAi) ?? []
   // An AI game reads "Engine AI vs <humans>"; a game between people names every seat.
   const title = !decks
-    ? 'Game decks'
+    ? t('adminAiGames.gameDecks')
     : ai.length === 0
-      ? humans.map((p) => p.playerName).join(' vs ') || 'Game decks'
-      : `${ai.length > 1 ? `${ai.length} AI seats` : 'Engine AI'} vs ${humans.map((p) => p.playerName).join(', ') || 'humans'}`
+      ? humans.map((p) => p.playerName).join(` ${t('adminAiGames.versus')} `) || t('adminAiGames.gameDecks')
+      : `${ai.length > 1 ? t('adminAiGames.aiSeatMany', { count: ai.length }) : t('adminAiGames.engineAi')} ${t('adminAiGames.versus')} ${humans.map((p) => p.playerName).join(', ') || t('adminAiGames.humans')}`
   const subtitle = decks
-    ? `${modeText(decks.gameMode, decks.format ?? null)} · ${new Date(decks.endedAt).toLocaleString(undefined, {
+    ? `${modeText(decks.gameMode, decks.format ?? null)} · ${new Date(decks.endedAt).toLocaleString(i18n.resolvedLanguage ?? 'en', {
         dateStyle: 'medium',
         timeStyle: 'short',
       })}`
@@ -204,17 +213,17 @@ export function MatchDecksModal({ auth, matchId, onClose }: { auth: AdminAuth; m
       actions={
         decks?.hasReplay ? (
           <button type="button" className={css.deckButton} onClick={() => watchReplay(decks.gameId)}>
-            Watch replay ↗
+            {t('adminAiGames.watchReplay')}
           </button>
         ) : undefined
       }
     >
-      {error ? (
-        <p className={css.error}>{error}</p>
+      {failed ? (
+        <p className={css.error}>{t('adminAiGames.couldNotLoadDecks')}</p>
       ) : !decks ? (
-        <p style={cellStyle.muted}>Loading…</p>
+        <p style={cellStyle.muted}>{t('adminAiGames.loading')}</p>
       ) : !recorded ? (
-        <p style={cellStyle.muted}>No decklist was recorded for this game.</p>
+        <p style={cellStyle.muted}>{t('adminAiGames.noDecklist')}</p>
       ) : (
         <GameDeckColumns participants={decks.participants} />
       )}
@@ -243,19 +252,20 @@ export function HumanGamesModal({
   onOpenGame: (matchId: number) => void
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const { open } = useAdminNav()
   const [data, setData] = useState<AiHumanGames | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
 
   // The slice, not the filter object: leaving someone else out mustn't refetch this player's games.
   const { gameMode, format, setCode } = filter
   useEffect(() => {
     let live = true
     setData(null)
-    setError(null)
+    setFailed(false)
     fetchAiHumanGames(auth, humanKey, days, { gameMode, format, setCode, excludeHumans: [], excludeTopHumans: 0 })
       .then((d) => live && setData(d))
-      .catch(() => live && setError('Could not load this player’s games.'))
+      .catch(() => live && setFailed(true))
     return () => {
       live = false
     }
@@ -263,11 +273,11 @@ export function HumanGamesModal({
 
   const human = data?.human
   const fallbackName = humanKey.replace(/^(user|guest):/, '')
-  const name = human?.name ?? data?.games[0]?.humans.find((h) => h.key === humanKey)?.name ?? (humanKey.startsWith('guest:') ? fallbackName : 'Player')
+  const name = human?.name ?? data?.games[0]?.humans.find((h) => h.key === humanKey)?.name ?? (humanKey.startsWith('guest:') ? fallbackName : t('adminAiGames.player'))
   const userId = humanKey.startsWith('user:') ? humanKey.slice('user:'.length) : null
   const decisive = human ? human.wins + human.losses : 0
   const slice = [
-    days ? `last ${rangeLabel}` : 'all time',
+    days ? t('adminAiGames.lastRange', { range: rangeLabel }) : t('adminAiGames.allTime'),
     filter.gameMode ? modeText(filter.gameMode, filter.format) : null,
     filter.setCode,
   ]
@@ -278,15 +288,20 @@ export function HumanGamesModal({
     <ModalShell
       title={
         <>
-          {name} <span className={css.vsAi}>vs the AI</span>
-          {human?.isGuest && <span className={css.guest}>guest</span>}
+          {name} <span className={css.vsAi}>{t('adminAiGames.versusAi')}</span>
+          {human?.isGuest && <span className={css.guest}>{t('adminAiGames.guest')}</span>}
         </>
       }
       subtitle={
         human ? (
           <>
-            {human.games} game{human.games === 1 ? '' : 's'} · {human.wins}–{human.losses}–{human.draws}
-            {decisive > 0 && ` · beats the AI ${Math.round((human.wins / decisive) * 100)}%`}
+            {t(human.games === 1 ? 'adminAiGames.singleGameStats' : 'adminAiGames.gameStats', {
+              games: human.games,
+              wins: human.wins,
+              losses: human.losses,
+              draws: human.draws,
+            })}
+            {decisive > 0 && t('adminAiGames.beatsAi', { percent: Math.round((human.wins / decisive) * 100) })}
             <span className={css.sliceNote}> · {slice}</span>
           </>
         ) : (
@@ -298,23 +313,23 @@ export function HumanGamesModal({
       actions={
         userId ? (
           <button type="button" className={css.excludeButton} onClick={() => open(`players/${encodeURIComponent(userId)}`)}>
-            Full profile →
+            {t('adminAiGames.fullProfile')}
           </button>
         ) : undefined
       }
     >
-      {error ? (
-        <p className={css.error}>{error}</p>
+      {failed ? (
+        <p className={css.error}>{t('adminAiGames.couldNotLoadHumanGames')}</p>
       ) : !data ? (
-        <p style={cellStyle.muted}>Loading…</p>
+        <p style={cellStyle.muted}>{t('adminAiGames.loading')}</p>
       ) : data.games.length === 0 ? (
-        <p style={cellStyle.muted}>No games against the AI in this slice.</p>
+        <p style={cellStyle.muted}>{t('adminAiGames.noGamesInSlice')}</p>
       ) : (
         <>
           <GameList games={data.games} onOpenGame={onOpenGame} focusKey={humanKey} />
           {human && human.games > data.games.length && (
             <p className={css.listNote}>
-              Showing the latest {data.games.length} of {human.games} games.
+              {t('adminAiGames.showingLatest', { shown: data.games.length, total: human.games })}
             </p>
           )}
         </>
