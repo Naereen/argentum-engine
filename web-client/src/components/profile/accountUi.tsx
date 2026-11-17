@@ -5,6 +5,7 @@
  */
 import { useEffect } from 'react'
 import type React from 'react'
+import { useTranslation } from 'react-i18next'
 import type { GameHistoryEntry, NotCountedReason, UserTournamentEntry } from '@/api/account'
 import { colorForIdentity, colorLabel, gameModeLabel } from '@/components/admin/statFormat'
 import { TournamentStatusBadge } from '@/components/tournament/TournamentStatusBadge'
@@ -83,6 +84,7 @@ export function GameHistoryList({
   games: GameHistoryEntry[]
   renderActions?: (game: GameHistoryEntry) => React.ReactNode
 }) {
+  const { t } = useTranslation()
   return (
     <ul className={a.list}>
       {games.map((g, i) => {
@@ -93,9 +95,9 @@ export function GameHistoryList({
               className={a.result}
               data-won={g.won}
               data-counted={!g.notCounted}
-              title={g.notCounted ? NOT_COUNTED_TITLE[g.notCounted] : undefined}
+              title={g.notCounted ? t(NOT_COUNTED_KEY[g.notCounted]) : undefined}
             >
-              {g.won ? 'Win' : 'Loss'}
+              {g.won ? t('accountHistory.win') : t('accountHistory.loss')}
             </span>
             <span className={a.cellStack}>
               <span className={a.cellMain}>
@@ -105,15 +107,15 @@ export function GameHistoryList({
               <span className={a.cellSub}>
                 {formatDateTime(g.endedAt)}
                 {g.notCounted && (
-                  <span className={a.notCounted} title={NOT_COUNTED_TITLE[g.notCounted]}>
-                    Not counted
+                  <span className={a.notCounted} title={t(NOT_COUNTED_KEY[g.notCounted])}>
+                    {t('accountHistory.notCounted')}
                   </span>
                 )}
               </span>
             </span>
             <span className={a.cellStack}>
               <span className={a.cellMain}>
-                <span className={a.dim}>vs </span>
+                <span className={a.dim}>{t('accountHistory.versus')} </span>
                 <OpponentCell entry={g} />
               </span>
               <span className={a.cellSub}>
@@ -123,7 +125,7 @@ export function GameHistoryList({
                     {colorLabel(g.colors)}
                   </>
                 ) : (
-                  'Colors unknown'
+                  t('accountHistory.colorsUnknown')
                 )}
               </span>
             </span>
@@ -139,9 +141,9 @@ export function GameHistoryList({
 }
 
 /** Why a listed game is left out of the record, as the row's tooltip. */
-const NOT_COUNTED_TITLE: Record<NotCountedReason, string> = {
-  NO_ACTION: 'Not counted in your record: you never took an action in this game.',
-  OPPONENT_NO_ACTION: 'Not counted in your record: your opponent never took an action in this game.',
+const NOT_COUNTED_KEY: Record<NotCountedReason, 'accountHistory.notCountedNoAction' | 'accountHistory.notCountedOpponentNoAction'> = {
+  NO_ACTION: 'accountHistory.notCountedNoAction',
+  OPPONENT_NO_ACTION: 'accountHistory.notCountedOpponentNoAction',
 }
 
 /**
@@ -161,21 +163,22 @@ export function PlayedRecord({
   forfeitWins?: number | undefined
   forfeitLosses?: number | undefined
 }) {
+  const { t } = useTranslation()
   const forfeits = forfeitWins + forfeitLosses
   const played = `${wins - forfeitWins}–${losses - forfeitLosses}${draws ? `–${draws}` : ''}`
   const forfeitTitle = [
-    forfeitWins > 0 ? `${forfeitWins} won because the opponent left` : null,
-    forfeitLosses > 0 ? `${forfeitLosses} lost by leaving the tournament` : null,
+    forfeitWins > 0 ? t('accountHistory.forfeitOpponentLeft', { count: forfeitWins }) : null,
+    forfeitLosses > 0 ? t('accountHistory.forfeitLeftTournament', { count: forfeitLosses }) : null,
   ]
     .filter(Boolean)
     .join(', ')
   return (
-    <span className={a.dim} title="Matches played (wins–losses–draws)">
+    <span className={a.dim} title={t('accountHistory.recordTitle')}>
       {played}
       {forfeits > 0 && (
-        <span className={a.forfeits} title={`Forfeited, not played: ${forfeitTitle}`}>
+        <span className={a.forfeits} title={t('accountHistory.forfeitedTitle', { details: forfeitTitle })}>
           {' '}
-          +{forfeits} forfeited
+          {t('accountHistory.forfeitedCount', { count: forfeits })}
         </span>
       )}
     </span>
@@ -194,40 +197,41 @@ export function TournamentList({
   tournaments: UserTournamentEntry[]
   onOpen: (id: number) => void
 }) {
+  const { t } = useTranslation()
   return (
     <ul className={a.list}>
-      {tournaments.map((t, i) => {
-        const mode = gameModeLabel(t.gameMode, t.format)
-        const live = t.status === 'IN_PROGRESS'
-        const won = t.status === 'COMPLETED' && t.placement === 1
+      {tournaments.map((tournament, i) => {
+        const mode = gameModeLabel(tournament.gameMode, tournament.format)
+        const live = tournament.status === 'IN_PROGRESS'
+        const won = tournament.status === 'COMPLETED' && tournament.placement === 1
         return (
-          <li key={`${t.id}-${i}`}>
-            <button type="button" className={a.tournamentRow} onClick={() => onOpen(t.id)}>
+          <li key={`${tournament.id}-${i}`}>
+            <button type="button" className={a.tournamentRow} onClick={() => onOpen(tournament.id)}>
               <span className={a.cellStack}>
-                <span className={a.cellMain}>{t.name?.trim() || 'Tournament'}</span>
+                <span className={a.cellMain}>{tournament.name?.trim() || t('accountHistory.defaultTournament')}</span>
                 <span className={a.cellSub}>
-                  {mode.variant ?? mode.primary} · {formatDateTime(t.endedAt)}
+                  {mode.variant ?? mode.primary} · {formatDateTime(tournament.endedAt)}
                 </span>
               </span>
               <span>
                 {live ? (
-                  <TournamentStatusBadge status={t.status} />
+                  <TournamentStatusBadge status={tournament.status} />
                 ) : (
                   <PlayedRecord
-                    wins={t.wins}
-                    losses={t.losses}
-                    draws={t.draws}
-                    forfeitWins={t.forfeitWins}
-                    forfeitLosses={t.forfeitLosses}
+                    wins={tournament.wins}
+                    losses={tournament.losses}
+                    draws={tournament.draws}
+                    forfeitWins={tournament.forfeitWins}
+                    forfeitLosses={tournament.forfeitLosses}
                   />
                 )}
               </span>
               <span className={a.place} data-first={won}>
-                {!live && t.placement > 0 ? (
+                {!live && tournament.placement > 0 ? (
                   <>
                     {won ? '🏆 ' : ''}
-                    {t.placement}
-                    <span className={a.dim} style={{ fontSize: 13 }}>/{t.playerCount}</span>
+                    {tournament.placement}
+                    <span className={a.dim} style={{ fontSize: 13 }}>/{tournament.playerCount}</span>
                   </>
                 ) : (
                   <span className={a.dim}>—</span>
@@ -255,6 +259,7 @@ export function AccountModal({
   onClose: () => void
   children: React.ReactNode
 }) {
+  const { t } = useTranslation()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -271,7 +276,7 @@ export function AccountModal({
             <h2 className={a.dialogTitle}>{title}</h2>
             {titleExtra}
           </span>
-          <button type="button" className={a.close} onClick={onClose} aria-label="Close">
+          <button type="button" className={a.close} onClick={onClose} aria-label={t('accountHistory.close')}>
             ×
           </button>
         </div>

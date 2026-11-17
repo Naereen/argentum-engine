@@ -7,19 +7,14 @@
  * nudge remain as quieter entry points afterwards.
  */
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type React from 'react'
 import { useAuthStore } from '@/store/authStore'
 
 const DISMISS_KEY = 'argentum-account-benefits-dismissed'
 
-const BENEFITS: { icon: string; text: string }[] = [
-  { icon: '☁️', text: 'Save your decks in the cloud, on any device' },
-  { icon: '👥', text: 'Add friends, see when they’re online and message them' },
-  { icon: '🏆', text: 'Ranked play with ELO and win/loss stats' },
-  { icon: '🎬', text: 'Rewatch and share your game replays' },
-]
-
 export function AccountBenefitsCallout({ onCreateAccount }: { onCreateAccount: () => void }) {
+  const { t } = useTranslation()
   const status = useAuthStore((s) => s.status)
   const accountsEnabled = useAuthStore((s) => s.accountsEnabled)
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === '1')
@@ -35,23 +30,22 @@ export function AccountBenefitsCallout({ onCreateAccount }: { onCreateAccount: (
   return (
     <div style={styles.banner}>
       <div style={styles.text}>
-        <strong>Playing as a guest.</strong> Create a free account — one magic link, no password —
-        and get:
+        <strong>{t('accountBenefits.guest')}</strong> {t('accountBenefits.intro')}
         <ul style={styles.list}>
-          {BENEFITS.map((b) => (
-            <li key={b.text} style={styles.listItem}>
-              <span style={styles.icon} aria-hidden="true">{b.icon}</span>
-              {b.text}
+          {(['cloud', 'friends', 'ranked', 'replays'] as const).map((benefit, index) => (
+            <li key={benefit} style={styles.listItem}>
+              <span style={styles.icon} aria-hidden="true">{['☁️', '👥', '🏆', '🎬'][index]}</span>
+              {t(`accountBenefits.${benefit}`)}
             </li>
           ))}
         </ul>
       </div>
       <div style={styles.actions}>
         <button type="button" style={styles.primary} onClick={onCreateAccount}>
-          Create free account
+          {t('accountBenefits.createAccount')}
         </button>
         <button type="button" style={styles.secondary} onClick={dismiss}>
-          Not now
+          {t('accountBenefits.notNow')}
         </button>
       </div>
     </div>

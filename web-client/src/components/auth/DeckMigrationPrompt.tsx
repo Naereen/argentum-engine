@@ -7,6 +7,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import type React from 'react'
+import { useTranslation } from 'react-i18next'
 import { listDecks, upsertDeckByName } from '@/api/account'
 import { useDeckLibrary } from '@/store/deckLibrary'
 import { savedDeckToShared } from '@/store/useSaveDeck'
@@ -15,6 +16,7 @@ import { useAuthStore } from '@/store/authStore'
 const DISMISS_KEY = 'argentum-deck-migration-dismissed'
 
 export function DeckMigrationPrompt() {
+  const { t } = useTranslation()
   const status = useAuthStore((s) => s.status)
   const localDecks = useDeckLibrary((s) => s.decks)
   const hydrate = useDeckLibrary((s) => s.hydrate)
@@ -65,25 +67,23 @@ export function DeckMigrationPrompt() {
     <div style={styles.banner}>
       <div style={styles.text}>
         {state === 'done' ? (
-          <strong>Decks saved to your account ✓</strong>
+          <strong>{t('deckMigration.saved')}</strong>
         ) : (
           <>
             <strong>
-              You have {candidates.length} deck{candidates.length === 1 ? '' : 's'} saved only in this
-              browser.
+              {t(candidates.length === 1 ? 'deckMigration.availableOne' : 'deckMigration.availableMany', { count: candidates.length })}
             </strong>{' '}
-            Save them to your account so they're backed up, available on any device you sign in from,
-            and safe if this browser's storage gets cleared.
+            {t('deckMigration.explanation')}
           </>
         )}
       </div>
       {state !== 'done' && (
         <div style={styles.actions}>
           <button type="button" style={styles.primary} disabled={state === 'saving'} onClick={() => void migrate()}>
-            {state === 'saving' ? 'Saving…' : `Save ${candidates.length} to my account`}
+            {state === 'saving' ? t('deckMigration.saving') : t('deckMigration.saveCount', { count: candidates.length })}
           </button>
           <button type="button" style={styles.secondary} onClick={dismiss}>
-            Not now
+            {t('deckMigration.notNow')}
           </button>
         </div>
       )}

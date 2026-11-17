@@ -57,6 +57,8 @@ Continue the in-progress i18n task from this working tree. The user chose **core
 - Added translated UI across home navigation, preferences, phase labels, gameplay decisions/HUD, Otaria playtest/setup/lobby/map/reserve/movement, account/profile/friends/messages, library/cards/cubes, and stats.
 - Game logs now retain structured client events, render recognized events using localized interpolation, preserve card names, and fall back to server descriptions for legacy or unknown entries.
 - Added French labels to lobby cube management/capacity, stats filters/dashboard, card-selection empty states, yield controls, initiative notices, speed gauge, stack badges, zone labels, card previews, and gameplay accessibility labels.
+- Localized the account/profile avatar editor and crop controls, game-deck save/view flows, tournament history/detail and status badges, ante spoils, and the signed-in deck-migration banner.
+- Localized the admin sign-in and dashboard hub, plus the replay player's back-button accessibility label.
 - Corrected the stale Otaria layout test assertion in `src/components/game/otariaOverviewLayout.test.ts`: `(true, 1, 1)` is right; use `(true, 0, 1)` for the no-map/null case.
 - Existing tests adapted to render translated Otaria components under an `I18nextProvider` and use the changed label copy.
 
@@ -66,20 +68,18 @@ Continue the in-progress i18n task from this working tree. The user chose **core
 - Full `npm test` passes: 122 files, 1,411 tests.
 - `npm run build` passes.
 - The running browser was manually checked in French on the Cards and Stats pages, including the global language switcher and route persistence. Gameplay overlays have not had a full scenario-driven browser walkthrough.
+- The latest profile/tournament/account/admin/replay changes also pass the full test suite, typecheck, production build, and `git diff --check`. API-backed profile/game screens were not manually exercised in the browser because the game-server was unavailable during the prior browser attempt.
 
 ## Current working tree / safety
 
-There is unrelated untracked `Explorer-Of-version-novembre-2026/`. Do not stage it, delete it, or otherwise alter it. Stage only intended web-client files and the requested handoff file. No commit has been made yet. Run `git status`, `git diff`, and inspect status/diff before committing.
+There is unrelated untracked `Explorer-Of-version-novembre-2026/`. Do not stage it, delete it, or otherwise alter it. The original request is for local commits only; never push. Stage only intentional web-client changes and this handoff file after checking status and diff.
 
 ## Important remaining work
 
-1. **Stabilize current partial implementation.** Inspect the relevant diffs, ensure locale JSON is valid and parity test passes, run `npm run typecheck`, targeted Otaria/i18n tests, full `npm test`, and `npm run build`. Fix regressions introduced by this work; distinguish unrelated failures.
-2. **Continue the core game audit.** Some status/zone/decision labels and overlays remain untranslated. Search rendered JSX, user-facing ARIA labels, tooltips, confirmations, errors, and empty states. Do not translate card Oracle/rules/flavor text, card names, Scryfall data, user-authored text, or protocol identifiers/enums.
-3. **Finish lobby and join-flow audit.** Core lobby settings and cube management have translations, but continue checking quick-join/public-lobby surfaces and player status. Keep backend values and stable format IDs unchanged; translate display mappings only.
-4. **Help/documentation exclusion.** Per the user's explicit direction, do not translate `src/help/topics.ts` or the large Help page/content. Leave the help content in English; do not alter stable topic IDs or deep links.
-5. **Broader app remains unfinished.** Continue beyond the core milestone through learn, admin/dev/scenario, set guide/completion, replay, draft/sealed/tournament, announcements, and other remaining user-facing screens. Keep card data and protocol identifiers unchanged.
-6. **Locale integrity.** Leaf-key parity, non-empty values, and matching interpolation placeholders are tested. Keep TypeScript i18next key checking enabled and add focused tests as new features are localized.
-7. **Final UX and commit.** Do not run E2E. Manually exercise the running app for player-visible changes when a suitable scenario is available. Inspect the intended diff/status, leave `Explorer-Of-version-novembre-2026/` untouched, stage only task files and this handoff, create the requested local commit, and never push.
+1. **Continue the broad UI audit.** Inspect remaining user-facing source strings, including game decisions/logs, replay, admin/dev/scenario, set guide/completion, announcements, and any remaining account/lobby surfaces. Preserve card content, user-authored text, and protocol values.
+2. **Help/documentation exclusion.** Per the user's explicit direction, do not translate `src/help/topics.ts` or the large Help page/content. Leave the help content in English; do not alter stable topic IDs or deep links.
+3. **Locale integrity and verification.** Keep leaf-key parity, non-empty values, matching interpolation placeholders, strict i18next key typing, and the persistence/switcher tests. Run focused and full checks after further changes.
+4. **Browser and commit.** Do not run E2E. Manually exercise the app for player-visible changes when the full app is available. Keep `Explorer-Of-version-novembre-2026/` untouched; stage only task files and make local commits, never push.
 
 ## Useful commands
 

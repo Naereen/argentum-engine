@@ -2647,6 +2647,7 @@ function SpectatorNameLabel({
   ringColor: string | undefined
   style: React.CSSProperties
 }) {
+  const { t } = useTranslation()
   const seat = useIdentityColor(player.playerId)
   const hasPortrait = useHasSeatPortrait(player.playerId)
   // Phones: a smaller face keeps the label its text-only height, clear of the chrome buttons above.
@@ -2655,7 +2656,7 @@ function SpectatorNameLabel({
   return (
     <div
       data-spectator-name-label={player.playerId}
-      title={`${player.name} — ${handSize} ${handSize === 1 ? 'card' : 'cards'} in hand`}
+      title={t('gameCore.handCountTitle', { playerName: player.name, count: handSize })}
       style={{
         ...styles.spectatorNameLabel,
         ...(hasPortrait
@@ -2696,15 +2697,16 @@ function AllyHandFan({
    */
   interactive?: boolean
 }) {
+  const { t } = useTranslation()
   return (
     <div
       data-zone="ally-hand"
       data-hijack-controlled={interactive || undefined}
-      aria-label={`${player.name}'s hand`}
+      aria-label={t('gameCore.playerHandLabel', { playerName: player.name })}
       title={
         interactive
-          ? `${player.name}'s hand — you are playing this seat`
-          : `${player.name}'s hand — visible to you (CR 810.5), but only they can play from it`
+          ? t('gameCore.allyHandInteractiveTitle', { playerName: player.name })
+          : t('gameCore.allyHandVisibleTitle', { playerName: player.name })
       }
       style={{
         width,

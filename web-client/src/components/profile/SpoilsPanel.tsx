@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { type Spoils, fetchSpoils } from '@/api/account'
 import { AnteCardThumb, AnteCoinMark } from '@/components/ante/AnteCardThumb'
 import anteStyles from '@/components/ante/Ante.module.css'
@@ -11,6 +12,7 @@ import { accountStyles as a } from './accountUi'
  * Outside a Limited tournament an ante win is a trophy, and this is where the trophies live.
  */
 export function SpoilsPanel() {
+  const { t } = useTranslation()
   const [spoils, setSpoils] = useState<Spoils | null>(null)
 
   useEffect(() => {
@@ -25,21 +27,21 @@ export function SpoilsPanel() {
   if (!spoils) return null
 
   const { won, lost } = spoils
-  const lostTitle = lost.map((l) => `${l.cardName} — to ${l.opponentName}`).join('\n')
+  const lostTitle = lost.map((l) => t('spoilsUi.lostToTitle', { cardName: l.cardName, opponent: l.opponentName })).join('\n')
 
   return (
     <section className={p.panel} data-testid="profile-spoils">
       <div className={a.sectionHead}>
         <h2 className={a.sectionTitle} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <AnteCoinMark />
-          Spoils
+          {t('spoilsUi.title')}
         </h2>
         {won.length > 0 && (
-          <span className={a.count}>{won.length} card{won.length === 1 ? '' : 's'} won for ante</span>
+          <span className={a.count}>{t(won.length === 1 ? 'spoilsUi.wonCountOne' : 'spoilsUi.wonCountMany', { count: won.length })}</span>
         )}
       </div>
       {won.length === 0 ? (
-        <p className={a.muted}>No spoils yet — win a game played for ante.</p>
+        <p className={a.muted}>{t('spoilsUi.empty')}</p>
       ) : (
         <div className={anteStyles.cards} style={{ justifyContent: 'flex-start', marginTop: 4 }}>
           {won.map((s, i) => (
@@ -47,7 +49,7 @@ export function SpoilsPanel() {
               key={`${s.gameId ?? 'game'}-${s.cardName}-${i}`}
               cardName={s.cardName}
               imageUri={s.imageUri}
-              caption={`won from ${s.opponentName}`}
+              caption={t('spoilsUi.wonFrom', { opponent: s.opponentName })}
               tone="other"
             />
           ))}
@@ -55,7 +57,7 @@ export function SpoilsPanel() {
       )}
       {lost.length > 0 && (
         <p className={a.muted} style={{ marginTop: 12, fontSize: 13 }} title={lostTitle}>
-          Lost to the ante: {lost.length} card{lost.length === 1 ? '' : 's'}
+          {t(lost.length === 1 ? 'spoilsUi.lostCountOne' : 'spoilsUi.lostCountMany', { count: lost.length })}
           {' — '}
           {lost.slice(0, 3).map((l) => l.cardName).join(', ')}
           {lost.length > 3 ? ', …' : ''}

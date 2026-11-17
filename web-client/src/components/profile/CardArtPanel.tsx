@@ -4,6 +4,7 @@
  * Reports each change as a ready-to-save avatar value.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { pageStyles as p } from '@/components/ui/PageShell'
 import { type CardCrop, cardArtPath, cardArtUrl, formatCardAvatar } from './avatars'
 import { CropEditor } from './CropEditor'
@@ -53,7 +54,7 @@ function searchCards(q: string): Promise<CardHit[]> {
   return hit
 }
 
-function fetchArtChoices(name: string): Promise<ArtChoice[]> {
+function fetchArtChoices(name: string, artBy: (artist: string) => string): Promise<ArtChoice[]> {
   return fetch(`/api/cards/${encodeURIComponent(name)}/printings`)
     .then((r) => (r.ok ? r.json() : []))
     .then((printings: PrintingHit[]) => {
@@ -66,7 +67,7 @@ function fetchArtChoices(name: string): Promise<ArtChoice[]> {
         choices.push({
           path,
           label: pr.setCode.toUpperCase(),
-          title: [pr.setName, pr.artist && `art by ${pr.artist}`].filter(Boolean).join(' — '),
+          title: [pr.setName, pr.artist && artBy(pr.artist)].filter(Boolean).join(' — '),
         })
       }
       return choices
@@ -81,6 +82,7 @@ export function CardArtPanel({
   selection: CardArtSelection | null
   onSelect: (selection: CardArtSelection | null) => void
 }) {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<CardHit[] | null>(null)
   const [choices, setChoices] = useState<ArtChoice[]>([])
@@ -111,13 +113,13 @@ export function CardArtPanel({
     setChoices([])
     if (!selectedName) return
     let cancelled = false
-    void fetchArtChoices(selectedName).then((c) => {
+    void fetchArtChoices(selectedName, (artist) => t('avatarUi.artBy', { artist })).then((c) => {
       if (!cancelled) setChoices(c)
     })
     return () => {
       cancelled = true
     }
-  }, [selectedName])
+  }, [selectedName, t])
 
   const pick = (card: CardHit) => {
     const path = cardArtPath(card.imageUri)
@@ -129,19 +131,19 @@ export function CardArtPanel({
     requestAnimationFrame(() => inputRef.current?.focus())
   }
 
-  const alt = useMemo(() => (selection?.name ? `${selection.name} art` : 'Card art'), [selection?.name])
+  const alt = useMemo(() => (selection?.name ? t('avatarUi.cardArtAlt', { cardName: selection.name }) : t('avatarUi.cardArtLabel')), [selection?.name, t])
 
   if (selection) {
     return (
       <div className={s.editor}>
         <div className={s.editorHead}>
           <button type="button" className={s.back} onClick={backToSearch}>
-            <span aria-hidden>←</span> {selection.name ? 'Choose another card' : 'Choose a card'}
+            <span aria-hidden>←</span> {selection.name ? t('avatarUi.chooseAnotherCard') : t('avatarUi.chooseCard')}
           </button>
           {selection.name && <span className={s.cardName}>{selection.name}</span>}
         </div>
         {choices.length > 1 && (
-          <div className={s.printings} role="radiogroup" aria-label="Printing">
+          <div className={s.printings} role="radiogroup" aria-label={t('avatarUi.printing')}>
             {choices.map((c) => (
               <button
                 key={c.path}
@@ -174,18 +176,18 @@ export function CardArtPanel({
       <input
         ref={inputRef}
         className={`${p.input} ${s.input}`}
-        placeholder="Search for a card by name…"
+        placeholder={t('avatarUi.searchPlaceholder')}
         value={query}
         autoFocus
-        aria-label="Search cards"
+        aria-label={t('avatarUi.searchLabel')}
         onChange={(e) => setQuery(e.target.value)}
         data-testid="avatar-card-search"
       />
-      <p className={s.hint}>{query.trim() ? 'Pick a card to frame its art.' : 'A few to start with — or search for any card.'}</p>
+      <p className={s.hint}>{query.trim() ? t('avatarUi.pickToFrame') : t('avatarUi.searchOrBrowse')}</p>
       {results === null ? (
-        <div className={s.empty}>Searching…</div>
+        <div className={s.empty}>{t('avatarUi.searching')}</div>
       ) : results.length === 0 ? (
-        <div className={s.empty}>No cards match “{query.trim()}”.</div>
+        <div className={s.empty}>{t('avatarUi.noCardsMatch', { query: query.trim() })}</div>
       ) : (
         <div className={s.results}>
           {results.map((card) => (

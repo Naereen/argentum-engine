@@ -10,6 +10,7 @@
  * account — that account can then reach the dashboard with its own sign-in.
  */
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { AdminDashboard } from './AdminDashboard'
 import { AdminActivity } from './AdminActivity'
@@ -26,6 +27,7 @@ import { useAuthStore } from '@/store/authStore'
 type Access = 'pending' | 'granted' | 'denied'
 
 export function AdminPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const authStatus = useAuthStore((s) => s.status)
@@ -51,14 +53,14 @@ export function AdminPage() {
       const res = await fetch('/api/admin/live-overview', { headers: { 'X-Admin-Password': pwd } })
       if (res.status === 401) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null
-        return { ok: false, error: data?.error ?? 'Invalid admin password' }
+        return { ok: false, error: data?.error ?? t('adminUi.invalidPassword') }
       }
-      if (!res.ok) return { ok: false, error: `Server error: ${res.status}` }
+      if (!res.ok) return { ok: false, error: t('adminUi.serverError', { status: res.status }) }
       return { ok: true }
     } catch {
-      return { ok: false, error: 'Failed to connect to server' }
+      return { ok: false, error: t('adminUi.connectionError') }
     }
-  }, [])
+  }, [t])
 
   // Resolve the account session once.
   useEffect(() => {
@@ -106,15 +108,15 @@ export function AdminPage() {
       setAuth(passwordDraft)
       setAccess('granted')
     } else {
-      setError(result.error ?? 'Login failed')
+      setError(result.error ?? t('adminUi.loginFailed'))
     }
     setLoading(false)
   }
 
   if (access === 'pending') {
     return (
-      <PageShell title="Admin" width="narrow" plain>
-        <p className={`${pageStyles.empty} ${pageStyles.muted}`}>Loading…</p>
+      <PageShell title={t('adminUi.title')} width="narrow" plain>
+        <p className={`${pageStyles.empty} ${pageStyles.muted}`}>{t('adminUi.loading')}</p>
       </PageShell>
     )
   }
@@ -162,7 +164,9 @@ export function AdminPage() {
     )
   }
 
-  const authLabel = auth ? 'Signed in with the admin password' : `Signed in as ${user?.displayName ?? 'admin'}`
+  const authLabel = auth
+    ? t('adminUi.signedInPassword')
+    : t('adminUi.signedInAs', { name: user?.displayName ?? 'admin' })
   return <AdminHub onNavigate={open} authLabel={authLabel} />
 }
 
@@ -185,29 +189,30 @@ function LoginView({
   error: string | null
   loading: boolean
 }) {
+  const { t } = useTranslation()
   return (
-    <PageShell title="Admin" width="narrow" plain>
+    <PageShell title={t('adminUi.title')} width="narrow" plain>
       <div className={`${pageStyles.panel} ${devStyles.loginCard}`}>
-        <h1 className={pageStyles.h1}>Admin dashboard</h1>
+        <h1 className={pageStyles.h1}>{t('adminUi.dashboard')}</h1>
         <p className={devStyles.loginLede}>
-          Enter the admin password, or sign in with an admin account to skip this step.
+          {t('adminUi.loginPrompt')}
         </p>
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && onLogin()}
-          placeholder="Admin password"
+          placeholder={t('adminUi.passwordPlaceholder')}
           className={pageStyles.input}
           style={{ width: '100%' }}
           autoFocus
         />
         <button onClick={onLogin} disabled={loading || !password} className={pageStyles.buttonPrimary} style={{ width: '100%', minHeight: 42 }}>
-          {loading ? 'Connecting…' : 'Continue'}
+          {loading ? t('adminUi.connecting') : t('adminUi.continue')}
         </button>
         {error && <p className={devStyles.error}>{error}</p>}
         <button type="button" onClick={onHome} className={pageStyles.buttonGhost}>
-          ← Back to home
+          {t('adminUi.backHome')}
         </button>
       </div>
     </PageShell>

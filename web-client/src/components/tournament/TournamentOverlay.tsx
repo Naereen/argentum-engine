@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore, type TournamentState } from '@/store/gameStore.ts'
 import type { SealedCardInfo } from '@/types'
 import { getCardImageUrl } from '@/utils/cardImages.ts'
@@ -36,6 +37,7 @@ export function TournamentOverlay({
 }: {
   tournamentState: TournamentState
 }) {
+  const { t, i18n } = useTranslation()
   const playerId = useGameStore((state) => state.playerId)
   const spectateGame = useGameStore((state) => state.spectateGame)
   const readyForNextRound = useGameStore((state) => state.readyForNextRound)
@@ -71,8 +73,10 @@ export function TournamentOverlay({
   const openSaveDeckDialog = () => {
     if (!deckBuildingState) return
     const setNames = lobbyState?.settings.setNames?.join(' + ')
-    const stamp = new Date().toLocaleDateString()
-    const defaultName = setNames ? `${setNames} draft – ${stamp}` : `Drafted deck – ${stamp}`
+    const stamp = new Date().toLocaleDateString(i18n.language)
+    const defaultName = setNames
+      ? t('tournamentUi.draftedSetDeckName', { sets: setNames, date: stamp })
+      : t('tournamentUi.draftedDeckName', { date: stamp })
     setSaveDeckDialog({ name: defaultName })
   }
 
@@ -80,7 +84,9 @@ export function TournamentOverlay({
     if (!saveDeckDialog) return
     const built = buildDeckSave()
     if (!built) return
-    const name = saveDeckDialog.name.trim() || `Drafted deck – ${new Date().toLocaleDateString()}`
+    const name = saveDeckDialog.name.trim() || t('tournamentUi.draftedDeckName', {
+      date: new Date().toLocaleDateString(i18n.language),
+    })
     // Routes to the account when signed in, localStorage otherwise — same as the deckbuilder.
     void saveDeckRouted({ name, cards: built.cards, ...(built.entries ? { entries: built.entries } : {}) })
     setSaveDeckDialog(null)
@@ -161,7 +167,7 @@ export function TournamentOverlay({
   }
 
   const roundLabel = !tournamentState.isComplete
-    ? `Round ${roundNumber} of ${tournamentState.totalRounds}`
+    ? t('tournamentUi.roundOf', { round: roundNumber, total: tournamentState.totalRounds })
     : null
 
   return (
@@ -170,17 +176,17 @@ export function TournamentOverlay({
       <div className={styles.trnHeader}>
         <div className={styles.trnHeaderTop}>
           <h1 className={styles.trnTitle}>
-            {tournamentState.isComplete ? 'Tournament Complete' : 'Standings'}
+            {tournamentState.isComplete ? t('tournamentUi.complete') : t('tournamentUi.standings')}
           </h1>
           {roundLabel && <span className={styles.trnRound}>{roundLabel}</span>}
         </div>
         <div className={styles.trnToolbar}>
           <button onClick={copyShareLink} className={styles.trnToolbarBtn}>
-            {linkCopied ? 'Copied!' : 'Share Link'}
+            {linkCopied ? t('tournamentUi.copied') : t('tournamentUi.shareLink')}
           </button>
           {tournamentState.lastRoundResults && (
             <button onClick={() => setShowReplays(true)} className={styles.trnToolbarBtn}>
-              Replays
+              {t('tournamentUi.replays')}
             </button>
           )}
           {!isSpectator && deckBuildingState && (
@@ -193,12 +199,12 @@ export function TournamentOverlay({
                   borderColor: deckSavedAt ? 'rgba(95, 208, 140, 0.5)' : 'rgba(242, 180, 92, 0.6)',
                   color: deckSavedAt ? '#c8f2d8' : '#f6d9a8',
                 }}
-                title={isLoggedIn ? 'Save this drafted deck to your account' : 'Save this drafted deck to your browser My Decks library'}
+                title={isLoggedIn ? t('tournamentUi.saveAccountTitle') : t('tournamentUi.saveBrowserTitle')}
               >
-                {deckSavedAt ? 'Saved ✓' : 'Save Deck'}
+                {deckSavedAt ? t('tournamentUi.saved') : t('tournamentUi.saveDeck')}
               </button>
               <button onClick={() => setShowDeckViewer(true)} className={styles.trnToolbarBtn}>
-                View Deck
+                {t('tournamentUi.viewDeck')}
               </button>
             </>
           )}
@@ -211,11 +217,11 @@ export function TournamentOverlay({
           {/* Next opponent */}
           {isWaitingForReady && !tournamentState.nextRoundHasBye && (
             <div className={styles.statusBoxMatch}>
-              <div className={styles.statusBoxMatchLabel}>Next Match</div>
+              <div className={styles.statusBoxMatchLabel}>{t('tournamentUi.nextMatch')}</div>
               <div className={styles.statusBoxMatchOpponent}>
                 {tournamentState.nextOpponentName
-                  ? `vs ${tournamentState.nextOpponentName}`
-                  : 'Waiting for matchup...'}
+                  ? t('tournamentUi.vsOpponent', { opponent: tournamentState.nextOpponentName })
+                  : t('tournamentUi.waitingMatchup')}
               </div>
             </div>
           )}
@@ -224,7 +230,7 @@ export function TournamentOverlay({
           {((isWaitingForReady && tournamentState.nextRoundHasBye) || (tournamentState.isBye && !isWaitingForReady)) && (
             <div className={styles.statusBoxBye}>
               <span className={styles.byeIcon}>&#x2713;</span>
-              <span>Sitting out this round</span>
+              <span>{t('tournamentUi.sittingOut')}</span>
             </div>
           )}
 
@@ -236,7 +242,9 @@ export function TournamentOverlay({
                 disabled={isPlayerReady}
                 className={styles.readyButton}
               >
-                {isPlayerReady ? '✓ Ready' : readyLabel}
+                {isPlayerReady
+                  ? t('tournamentUi.ready')
+                  : t(readyLabel === 'Ready for Next Match' ? 'tournamentUi.readyNextMatch' : 'tournamentUi.readyNextRound')}
               </button>
               {/* Rebuilding from the pool is allowed before round 1 and between matches — "continuous
                   construction", the casual-event norm. The server refuses it mid-match. */}
@@ -245,14 +253,14 @@ export function TournamentOverlay({
                   onClick={unsubmitDeck}
                   className={styles.editDeckButton}
                   title={tournamentState.currentRound === 0
-                    ? 'Change your deck before the first round'
-                    : 'Rebuild your deck from your pool before your next match'}
+                    ? t('tournamentUi.changeDeckBeforeFirst')
+                    : t('tournamentUi.rebuildDeckBeforeNext')}
                 >
-                  Edit Deck
+                  {t('tournamentUi.editDeck')}
                 </button>
               )}
               <span className={styles.readyCount}>
-                {readyCount}/{totalPlayers} ready
+                {t('tournamentUi.readyCount', { ready: readyCount, total: totalPlayers })}
               </span>
             </div>
           )}
@@ -263,9 +271,9 @@ export function TournamentOverlay({
             <div className={styles.statusBoxWaiting}>
               {roundStillRunning
                 ? isPlayerReady
-                  ? `Round ${roundNumber} is still being played — your next match starts as soon as it can.`
-                  : `Round ${roundNumber} is still being played at other tables.`
-                : 'Waiting for other matches to complete...'}
+                  ? t('tournamentUi.roundStillNext', { round: roundNumber })
+                  : t('tournamentUi.roundStillOthers', { round: roundNumber })
+                : t('tournamentUi.waitingMatches')}
             </div>
           )}
         </div>
@@ -282,16 +290,16 @@ export function TournamentOverlay({
             const canKick = elapsed >= 120
             return (
               <div key={pid} className={styles.disconnectedPlayer}>
-                <span className={styles.disconnectedName}>{info.playerName} disconnected</span>
+                <span className={styles.disconnectedName}>{t('tournamentUi.disconnected', { player: info.playerName })}</span>
                 <span className={styles.disconnectedTimer}>{mins}:{secs.toString().padStart(2, '0')}</span>
                 {!isSpectator && (
                   <>
                     <button className={styles.addTimeButton} onClick={() => addDisconnectTime(pid)}>
-                      +1 min
+                      {t('tournamentUi.addMinute')}
                     </button>
                     {canKick && (
                       <button className={styles.kickButton} onClick={() => kickPlayer(pid)}>
-                        Kick
+                        {t('tournamentUi.kick')}
                       </button>
                     )}
                   </>
@@ -308,11 +316,11 @@ export function TournamentOverlay({
           <thead className={styles.standingsHeader}>
             <tr>
               <th className={styles.standingsTh}>#</th>
-              <th className={styles.standingsThLeft}>Player</th>
-              <th className={styles.standingsTh}>Record</th>
-              <th className={styles.standingsTh}>Pts</th>
-              <th className={styles.standingsTh} title="Game Win Rate">GWR</th>
-              {isWaitingForReady && <th className={styles.standingsTh}>Ready</th>}
+              <th className={styles.standingsThLeft}>{t('tournamentUi.player')}</th>
+              <th className={styles.standingsTh}>{t('tournamentUi.record')}</th>
+              <th className={styles.standingsTh}>{t('tournamentUi.pointsShort')}</th>
+              <th className={styles.standingsTh} title={t('tournamentUi.gameWinRate')}>GWR</th>
+              {isWaitingForReady && <th className={styles.standingsTh}>{t('tournamentUi.ready')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -365,7 +373,7 @@ export function TournamentOverlay({
                     <span className={styles.standingsPlayerName} title={standing.playerName}>
                       {standing.playerName}
                     </span>
-                    {isMe && <span className={styles.meIndicator}>(you)</span>}
+                    {isMe && <span className={styles.meIndicator}>{t('tournamentUi.you')}</span>}
                     {!standing.isConnected && (
                       <span className={styles.disconnectedIndicator}>DC</span>
                     )}
@@ -404,18 +412,18 @@ export function TournamentOverlay({
           >
             <div className={styles.tooltipName}>{hoveredStanding.playerName}</div>
             <div className={styles.tooltipStat}>
-              <span className={styles.tooltipStatLabel}>Match Record</span>
+              <span className={styles.tooltipStatLabel}>{t('tournamentUi.matchRecord')}</span>
               <span className={styles.tooltipStatValue}>
                 {hoveredStanding.wins}W-{hoveredStanding.losses}L-{hoveredStanding.draws}D
               </span>
             </div>
             <div className={styles.tooltipStat}>
-              <span className={styles.tooltipStatLabel}>Points</span>
+              <span className={styles.tooltipStatLabel}>{t('tournamentUi.points')}</span>
               <span className={styles.tooltipStatValue}>{hoveredStanding.points}</span>
             </div>
             {(hoveredStanding.gamesWon + hoveredStanding.gamesLost) > 0 && (
               <div className={styles.tooltipStat}>
-                <span className={styles.tooltipStatLabel}>Game Win % (GW%)</span>
+                <span className={styles.tooltipStatLabel}>{t('tournamentUi.gameWinPercent')}</span>
                 <span className={styles.tooltipStatValue}>
                   {hoveredStanding.gamesWon}-{hoveredStanding.gamesLost} (
                   {((hoveredStanding.gamesWon / (hoveredStanding.gamesWon + hoveredStanding.gamesLost)) * 100).toFixed(0)}%)
@@ -424,19 +432,19 @@ export function TournamentOverlay({
             )}
             {hoveredStanding.omwPercent !== undefined && (
               <div className={styles.tooltipStat}>
-                <span className={styles.tooltipStatLabel}>Opp. Match Win % (OMW%)</span>
+                <span className={styles.tooltipStatLabel}>{t('tournamentUi.opponentMatchWinPercent')}</span>
                 <span className={styles.tooltipStatValue}>{(hoveredStanding.omwPercent * 100).toFixed(1)}%</span>
               </div>
             )}
             {hoveredStanding.ogwPercent !== undefined && (
               <div className={styles.tooltipStat}>
-                <span className={styles.tooltipStatLabel}>Opp. Game Win % (OGW%)</span>
+                <span className={styles.tooltipStatLabel}>{t('tournamentUi.opponentGameWinPercent')}</span>
                 <span className={styles.tooltipStatValue}>{(hoveredStanding.ogwPercent * 100).toFixed(1)}%</span>
               </div>
             )}
             {hoveredStanding.lifeDifferential !== undefined && (
               <div className={styles.tooltipStat}>
-                <span className={styles.tooltipStatLabel}>Life Diff</span>
+                <span className={styles.tooltipStatLabel}>{t('tournamentUi.lifeDiff')}</span>
                 <span className={styles.tooltipStatValue}>
                   {hoveredStanding.lifeDifferential >= 0 ? '+' : ''}{hoveredStanding.lifeDifferential}
                 </span>
@@ -445,16 +453,16 @@ export function TournamentOverlay({
             {hoveredStanding.tiebreakerReason && hoveredStanding.tiebreakerReason !== 'TIED' && (
               <div className={styles.tooltipTiebreaker}>
                 {hoveredStanding.tiebreakerReason === 'OMW'
-                  ? "Ranked by opponents' match-win %"
+                    ? t('tournamentUi.rankedByOpponentMatchWin')
                   : hoveredStanding.tiebreakerReason === 'GW'
-                    ? 'Ranked by game-win %'
+                      ? t('tournamentUi.rankedByGameWin')
                     : hoveredStanding.tiebreakerReason === 'OGW'
-                      ? "Ranked by opponents' game-win %"
+                        ? t('tournamentUi.rankedByOpponentGameWin')
                       : null}
               </div>
             )}
             {hoveredStanding.tiebreakerReason === 'TIED' && (
-              <div className={styles.tooltipTiebreaker}>Tied</div>
+              <div className={styles.tooltipTiebreaker}>{t('tournamentUi.tied')}</div>
             )}
           </div>
         )}
@@ -464,7 +472,7 @@ export function TournamentOverlay({
       {!tournamentState.currentMatchGameSessionId && tournamentState.activeMatches && tournamentState.activeMatches.length > 0 && (
         <div className={`${styles.matchesSection} ${styles.trnSection}`}>
           <h3 className={styles.matchesSectionTitle}>
-            Live Matches
+            {t('tournamentUi.liveMatches')}
           </h3>
           <div className={styles.matchesList}>
             {tournamentState.activeMatches.map((match) => (
@@ -475,7 +483,7 @@ export function TournamentOverlay({
               >
                 <div className={styles.matchPlayers}>
                   <span className={styles.matchPlayerName}>{match.player1Name}</span>
-                  <span className={styles.matchVs}>vs</span>
+                  <span className={styles.matchVs}>{t('tournamentUi.vs')}</span>
                   <span className={styles.matchPlayerName}>{match.player2Name}</span>
                 </div>
                 <div className={styles.matchScore}>
@@ -486,7 +494,7 @@ export function TournamentOverlay({
                   <span className={match.player2Life <= 5 ? styles.matchLifeLow : styles.matchLifeHigh}>
                     {match.player2Life}
                   </span>
-                  <span className={styles.matchWatch}>▶ Watch</span>
+                  <span className={styles.matchWatch}>▶ {t('tournamentUi.watch')}</span>
                 </div>
               </button>
             ))}
@@ -498,7 +506,7 @@ export function TournamentOverlay({
       {tournamentState.lastRoundResults && tournamentState.lastRoundResults.length > 0 && (
         <div className={`${styles.resultsSection} ${styles.trnSection}`}>
           <h3 className={styles.resultsSectionTitle}>
-            Round {tournamentState.currentRound} Results
+            {t('tournamentUi.roundResults', { round: tournamentState.currentRound })}
           </h3>
           {tournamentState.lastRoundResults.map((result, i) => {
             // The winner's name is lit; the middle says only what a name can't (draw, bye, simulated).
@@ -516,13 +524,13 @@ export function TournamentOverlay({
                   {result.player1Name}
                 </span>
                 <span className={styles.resultOutcome}>
-                  {result.isBye ? 'Bye' : gameScore ? (result.isDraw ? `Draw ${gameScore}` : gameScore) : result.isDraw ? 'Draw' : 'vs'}
+                  {result.isBye ? t('tournamentUi.bye') : gameScore ? (result.isDraw ? t('tournamentUi.drawScore', { score: gameScore }) : gameScore) : result.isDraw ? t('tournamentUi.draw') : t('tournamentUi.vs')}
                   {result.isSimulated && (
                     <span
                       className={styles.resultSimulated}
-                      title="Both seats were AI, so the server decided this match instead of playing it. There is no replay."
+                      title={t('tournamentUi.simulatedTitle')}
                     >
-                      simulated
+                      {t('tournamentUi.simulated')}
                     </span>
                   )}
                 </span>
@@ -541,11 +549,11 @@ export function TournamentOverlay({
           <>
             {lobbyState?.isHost && (
               <button onClick={addExtraRound} className={styles.editDeckButton}>
-                Add Round
+                {t('tournamentUi.addRound')}
               </button>
             )}
             <button onClick={leaveTournament} className={styles.readyButton}>
-              Return to Menu
+              {t('tournamentUi.returnToMenu')}
             </button>
           </>
         ) : (
@@ -560,7 +568,7 @@ export function TournamentOverlay({
             }}
             className={confirmLeave ? styles.trnLeaveConfirm : styles.trnLeave}
           >
-            {confirmLeave ? 'Confirm Leave?' : 'Leave Tournament'}
+            {confirmLeave ? t('tournamentUi.confirmLeave') : t('tournamentUi.leaveTournament')}
           </button>
         )}
       </div>
@@ -600,6 +608,7 @@ function SaveDeckDialog({
   onConfirm: () => void
   onCancel: () => void
 }) {
+  const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     // Focus + select on mount so the user can immediately overtype the suggested name.
@@ -614,19 +623,19 @@ function SaveDeckDialog({
         style={{ maxWidth: 480 }}
       >
         <div className={styles.deckViewerHeader}>
-          <h3 className={styles.deckViewerTitle}>Save Deck</h3>
+          <h3 className={styles.deckViewerTitle}>{t('tournamentUi.saveDeck')}</h3>
           <button className={styles.deckViewerClose} onClick={onCancel}>
             &#x2715;
           </button>
         </div>
         <div style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
           <label style={{ fontSize: 'var(--font-sm)', color: 'var(--text-faint)' }}>
-            Deck name
+            {t('tournamentUi.deckName')}
           </label>
           <p style={{ margin: 0, fontSize: 'var(--font-xs, 0.75rem)', color: 'var(--text-faint)' }}>
             {online
-              ? 'Saving to your account — available on any device you sign in from.'
-              : 'Saving to this browser. Sign in to save decks to your account.'}
+              ? t('tournamentUi.savingOnline')
+              : t('tournamentUi.savingLocal')}
           </p>
           <input
             ref={inputRef}
@@ -637,7 +646,7 @@ function SaveDeckDialog({
               if (e.key === 'Enter') onConfirm()
               if (e.key === 'Escape') onCancel()
             }}
-            placeholder="Deck name"
+            placeholder={t('tournamentUi.deckName')}
             style={{
               background: 'rgba(0, 0, 0, 0.3)',
               border: '1px solid rgba(255, 255, 255, 0.12)',
@@ -653,7 +662,7 @@ function SaveDeckDialog({
               onClick={onCancel}
               className={styles.leaveButton}
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="button"
@@ -661,7 +670,7 @@ function SaveDeckDialog({
               disabled={!name.trim()}
               className={styles.startButton}
             >
-              Save to My Decks
+              {t('tournamentUi.saveToMyDecks')}
             </button>
           </div>
         </div>
@@ -680,12 +689,17 @@ function DeckViewerModal({
   deckBuildingState: { cardPool: readonly SealedCardInfo[]; basicLands: readonly SealedCardInfo[]; deck: readonly string[]; landCounts: Record<string, number> }
   onClose: () => void
 }) {
+  const { t, i18n } = useTranslation()
   const [hoveredCard, setHoveredCard] = useState<SealedCardInfo | null>(null)
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null)
   const hydrateDeckLibrary = useDeckLibrary((s) => s.hydrate)
   const { save: saveDeckRouted, isLoggedIn } = useSaveDeck()
   useEffect(() => { hydrateDeckLibrary() }, [hydrateDeckLibrary])
-  const defaultDeckName = `Drafted ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+  const now = new Date()
+  const defaultDeckName = t('tournamentUi.draftedDeckNameWithTime', {
+    date: now.toLocaleDateString(i18n.language),
+    time: now.toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' }),
+  })
   const [saveName, setSaveName] = useState(defaultDeckName)
   const [savedAt, setSavedAt] = useState<number | null>(null)
 
@@ -757,7 +771,7 @@ function DeckViewerModal({
     <div className={styles.deckViewerBackdrop} onClick={onClose}>
       <div className={styles.deckViewerPanel} onClick={(e) => e.stopPropagation()}>
         <div className={styles.deckViewerHeader}>
-          <h3 className={styles.deckViewerTitle}>Your Deck ({totalCards})</h3>
+          <h3 className={styles.deckViewerTitle}>{t('tournamentUi.yourDeckCount', { count: totalCards })}</h3>
           <button className={styles.deckViewerClose} onClick={onClose}>
             &#x2715;
           </button>
@@ -767,15 +781,15 @@ function DeckViewerModal({
           <div className={styles.deckViewerStats}>
             <div className={styles.deckViewerStat}>
               <span className={styles.deckViewerStatValue}>{creatures}</span>
-              <span className={styles.deckViewerStatLabel}>Creatures</span>
+              <span className={styles.deckViewerStatLabel}>{t('tournamentUi.creatures')}</span>
             </div>
             <div className={styles.deckViewerStat}>
               <span className={styles.deckViewerStatValue}>{nonCreatureSpells}</span>
-              <span className={styles.deckViewerStatLabel}>Spells</span>
+              <span className={styles.deckViewerStatLabel}>{t('tournamentUi.spells')}</span>
             </div>
             <div className={styles.deckViewerStat}>
               <span className={styles.deckViewerStatValue}>{totalLands}</span>
-              <span className={styles.deckViewerStatLabel}>Lands</span>
+              <span className={styles.deckViewerStatLabel}>{t('tournamentUi.lands')}</span>
             </div>
           </div>
 
@@ -783,7 +797,7 @@ function DeckViewerModal({
           {sortedGroups.map(([cmc, cards]) => (
             <div key={cmc} className={styles.deckViewerGroup}>
               <div className={styles.deckViewerGroupHeader}>
-                {cmc === 0 ? 'CMC 0' : `CMC ${cmc}`} ({cards.reduce((s, c) => s + c.count, 0)})
+                {t('tournamentUi.cmcCount', { cmc })} ({cards.reduce((s, c) => s + c.count, 0)})
               </div>
               {cards.map(({ card, count }) => (
                 <div
@@ -809,7 +823,7 @@ function DeckViewerModal({
           {totalLands > 0 && (
             <div className={styles.deckViewerLandsSection}>
               <div className={styles.deckViewerGroupHeader}>
-                Lands ({totalLands})
+                {t('tournamentUi.landsCount', { count: totalLands })}
               </div>
               {Object.entries(deckBuildingState.landCounts)
                 .filter(([, count]) => count > 0)
@@ -844,7 +858,7 @@ function DeckViewerModal({
             type="text"
             value={saveName}
             onChange={(e) => setSaveName(e.target.value)}
-            placeholder="Deck name"
+            placeholder={t('tournamentUi.deckName')}
             style={{
               flex: 1,
               background: 'rgba(0, 0, 0, 0.3)',
@@ -873,9 +887,9 @@ function DeckViewerModal({
             disabled={totalCards === 0}
             className={styles.startButton}
             style={{ flexShrink: 0 }}
-            title={isLoggedIn ? 'Save to your account' : 'Save to your browser My Decks library'}
+            title={isLoggedIn ? t('tournamentUi.saveAccountTitle') : t('tournamentUi.saveBrowserTitle')}
           >
-            {savedAt ? 'Saved ✓' : isLoggedIn ? 'Save to My Decks (online)' : 'Save to My Decks'}
+            {savedAt ? t('tournamentUi.saved') : isLoggedIn ? t('tournamentUi.saveToMyDecksOnline') : t('tournamentUi.saveToMyDecks')}
           </button>
         </div>
       </div>

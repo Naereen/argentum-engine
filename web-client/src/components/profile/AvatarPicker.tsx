@@ -5,6 +5,7 @@
  */
 import { useRef, useState } from 'react'
 import type React from 'react'
+import { useTranslation } from 'react-i18next'
 import { pageStyles as p } from '@/components/ui/PageShell'
 import { AccountModal } from './accountUi'
 import { AvatarArt } from './AvatarArt'
@@ -26,6 +27,7 @@ export function AvatarPicker({
   onSave: (avatar: string | null) => Promise<void>
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const choices: string[] = AVATARS.map((a) => a.id)
   const initial = resolveAvatar(current)
   const [tab, setTab] = useState<'portraits' | 'card'>(initial?.kind === 'card' ? 'card' : 'portraits')
@@ -57,7 +59,7 @@ export function AvatarPicker({
       await onSave(selected)
       onClose()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save your avatar')
+      setError(e instanceof Error ? t('avatarUi.saveError', { message: e.message }) : t('avatarUi.saveErrorGeneric'))
       setSaving(false)
     }
   }
@@ -90,23 +92,23 @@ export function AvatarPicker({
   }
 
   return (
-    <AccountModal title="Choose your avatar" onClose={onClose}>
+    <AccountModal title={t('avatarUi.chooseTitle')} onClose={onClose}>
       <div className={s.preview} style={{ '--tint': option?.tint ?? '#f2b45c' } as React.CSSProperties}>
         <span className={s.previewPortrait} data-portrait={resolved !== undefined}>
           {resolved ? <AvatarArt avatar={resolved} /> : initialOf(name)}
         </span>
         <div className={s.previewText}>
           <span className={s.previewName}>{name}</span>
-          <span className={s.previewLabel}>{option ? option.name : resolved?.kind === 'card' ? `Card art${card?.name ? ` · ${card.name}` : ''}` : 'Your initial'}</span>
+          <span className={s.previewLabel}>{option ? option.name : resolved?.kind === 'card' ? `${t('avatarUi.cardArtLabel')}${card?.name ? ` · ${card.name}` : ''}` : t('avatarUi.useInitial')}</span>
           <span className={s.previewHint}>
-            Shown on your profile, to friends and in messages, and in your life orb at the table.
+            {t('avatarUi.shownOnProfile')}
           </span>
         </div>
       </div>
 
       <div className={s.tabs} role="tablist">
-        <button type="button" role="tab" aria-selected={tab === 'portraits'} className={s.tab} onClick={() => setTab('portraits')}>Portraits</button>
-        <button type="button" role="tab" aria-selected={tab === 'card'} className={s.tab} onClick={() => setTab('card')} data-testid="avatar-tab-card">Card art</button>
+        <button type="button" role="tab" aria-selected={tab === 'portraits'} className={s.tab} onClick={() => setTab('portraits')}>{t('avatarUi.portraits')}</button>
+        <button type="button" role="tab" aria-selected={tab === 'card'} className={s.tab} onClick={() => setTab('card')} data-testid="avatar-tab-card">{t('avatarUi.cardArt')}</button>
       </div>
 
       {tab === 'card' ? (
@@ -116,14 +118,20 @@ export function AvatarPicker({
         ref={gridRef}
         className={s.portraits}
         role="radiogroup"
-        aria-label="Avatars"
+        aria-label={t('avatarUi.avatars')}
         onKeyDown={onGridKey}
       >
         {AVATAR_GROUPS.map((group) => (
           <section key={group.label} className={s.group} aria-label={group.label}>
             <h3 className={s.groupLabel}>
               <span className={s.groupDot} style={{ background: group.color }} aria-hidden />
-              {group.label}
+              {group.label === 'White' ? t('avatarUi.groups.white')
+                : group.label === 'Blue' ? t('avatarUi.groups.blue')
+                  : group.label === 'Black' ? t('avatarUi.groups.black')
+                    : group.label === 'Red' ? t('avatarUi.groups.red')
+                      : group.label === 'Green' ? t('avatarUi.groups.green')
+                        : group.label === 'Across the Multiverse' ? t('avatarUi.groups.multiverse')
+                          : t('avatarUi.groups.artifacts')}
             </h3>
             <div className={s.grid}>
               {group.avatars.map(({ id }) => {
@@ -173,12 +181,12 @@ export function AvatarPicker({
           data-testid="avatar-option-initial"
         >
           <span className={s.initialDot} aria-hidden>{initialOf(name)}</span>
-          Use my initial
+          {t('avatarUi.useInitial')}
         </button>
         <span className={s.spacer} />
         {error && <span className={s.error}>{error}</span>}
         <button type="button" className={p.buttonGhost} onClick={onClose}>
-          Cancel
+          {t('common.cancel')}
         </button>
         <button
           type="button"
@@ -187,7 +195,7 @@ export function AvatarPicker({
           onClick={() => void save()}
           data-testid="avatar-save"
         >
-          {saving ? 'Saving…' : 'Save avatar'}
+          {saving ? t('avatarUi.saving') : t('avatarUi.save')}
         </button>
       </div>
     </AccountModal>

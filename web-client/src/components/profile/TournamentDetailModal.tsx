@@ -4,6 +4,7 @@
  * replay. Opened from the Tournaments table on a profile. Player names link to their public profile.
  */
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { type TournamentDetail, fetchTournamentDetail } from '@/api/account'
 import { gameModeLabel } from '@/components/admin/statFormat'
@@ -17,17 +18,18 @@ export function TournamentDetailModal({
   tournamentId: number
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [detail, setDetail] = useState<TournamentDetail | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   useEffect(() => {
     let live = true
     setDetail(null)
-    setError(null)
+    setLoadFailed(false)
     fetchTournamentDetail(tournamentId)
       .then((d) => live && setDetail(d))
-      .catch(() => live && setError('Could not load this tournament.'))
+      .catch(() => live && setLoadFailed(true))
     return () => {
       live = false
     }
@@ -42,7 +44,14 @@ export function TournamentDetailModal({
 
   const mode = detail ? gameModeLabel(detail.gameMode, detail.format) : null
   const hasForfeits = !!detail?.standings.some((s) => (s.forfeitWins ?? 0) + (s.forfeitLosses ?? 0) > 0)
-  const title = detail?.name?.trim() || [detail?.setCodes, mode?.variant ?? mode?.primary].filter(Boolean).join(' ') || 'Tournament'
+  const title = detail?.name?.trim() || [detail?.setCodes, mode?.variant ?? mode?.primary].filter(Boolean).join(' ') || t('tournamentProfile.defaultTitle')
+  const forfeitLabel = (wins = 0, losses = 0) => {
+    const parts = [
+      wins > 0 ? t('tournamentProfile.forfeitWins', { count: wins }) : null,
+      losses > 0 ? t('tournamentProfile.forfeitLosses', { count: losses }) : null,
+    ].filter(Boolean)
+    return parts.length > 0 ? parts.join(' ') : '—'
+  }
 
   return (
     <AccountModal
@@ -55,30 +64,30 @@ export function TournamentDetailModal({
           {mode.primary}
           {mode.variant ? <span className={a.dim}> › {mode.variant}</span> : null}
           {' · '}
-          {detail.playerCount} players · {detail.endedAt.slice(0, 10)}
+          {t('tournamentProfile.players', { count: detail.playerCount })} · {detail.endedAt.slice(0, 10)}
         </p>
       )}
 
-      {error ? (
-        <p className={a.error} style={{ marginTop: 12 }}>{error}</p>
+      {loadFailed ? (
+        <p className={a.error} style={{ marginTop: 12 }}>{t('tournamentProfile.loadError')}</p>
       ) : !detail ? (
-        <p className={a.muted} style={{ marginTop: 12 }}>Loading…</p>
+        <p className={a.muted} style={{ marginTop: 12 }}>{t('common.loading')}</p>
       ) : (
         <>
-          <h3 className={a.dialogSection}>{detail.status === 'COMPLETED' ? 'Final standings' : 'Standings so far'}</h3>
+          <h3 className={a.dialogSection}>{detail.status === 'COMPLETED' ? t('tournamentProfile.finalStandings') : t('tournamentProfile.standingsSoFar')}</h3>
           {/* W/L are the matches played; a leaver's forfeits sit in their own column (placement counts them). */}
           <div className={a.tableWrap}>
             <table className={a.table}>
               <thead>
                 <tr>
                   <th style={{ width: 48 }}>#</th>
-                  <th>Player</th>
-                  <th className={a.num}>W</th>
-                  <th className={a.num}>L</th>
-                  <th className={a.num}>D</th>
+                  <th>{t('tournamentProfile.player')}</th>
+                  <th className={a.num}>{t('tournamentProfile.winShort')}</th>
+                  <th className={a.num}>{t('tournamentProfile.lossShort')}</th>
+                  <th className={a.num}>{t('tournamentProfile.drawShort')}</th>
                   {hasForfeits && (
-                    <th className={a.num} title="Matches decided because a player left the tournament — not played">
-                      Forfeits
+                    <th className={a.num} title={t('tournamentProfile.forfeitsTitle')}>
+                      {t('tournamentProfile.forfeits')}
                     </th>
                   )}
                 </tr>
@@ -91,7 +100,7 @@ export function TournamentDetailModal({
                       {s.placement === 1 ? ' 🏆' : ''}
                     </td>
                     <td>
-                      <PlayerName name={s.playerName} userId={s.userId} isAi={s.isAi} onClick={goProfile} />
+                      <PlayerName name={s.playerName} userId={s.userId} isAi={s.isAi} aiLabel={t('tournamentProfile.ai')} onClick={goProfile} />
                     </td>
                     <td className={a.num}>{s.wins - (s.forfeitWins ?? 0)}</td>
                     <td className={a.num}>{s.losses - (s.forfeitLosses ?? 0)}</td>
@@ -104,13 +113,13 @@ export function TournamentDetailModal({
           </div>
           {hasForfeits && (
             <p className={a.subtle} style={{ marginTop: 8 }}>
-              Wins and losses are matches played. Forfeits — matches a player left before playing — still count toward placement.
+              {t('tournamentProfile.forfeitsExplanation')}
             </p>
           )}
 
-          <h3 className={a.dialogSection}>Games</h3>
+          <h3 className={a.dialogSection}>{t('tournamentProfile.games')}</h3>
           {detail.games.length === 0 ? (
-            <p className={a.muted}>No game records were stored for this tournament.</p>
+            <p className={a.muted}>{t('tournamentProfile.noGameRecords')}</p>
           ) : (
             <ul className={a.tGames}>
               {detail.games.map((g, i) => (
@@ -118,9 +127,9 @@ export function TournamentDetailModal({
                   <span>
                     {g.players.map((p, j) => (
                       <span key={`${p.name}-${j}`}>
-                        {j > 0 && <span className={a.dim}> vs </span>}
+                        {j > 0 && <span className={a.dim}> {t('tournamentProfile.versus')} </span>}
                         <span className={p.won ? a.tWinner : undefined}>
-                          <PlayerName name={p.name} userId={p.userId} isAi={p.isAi} onClick={goProfile} />
+                          <PlayerName name={p.name} userId={p.userId} isAi={p.isAi} aiLabel={t('tournamentProfile.ai')} onClick={goProfile} />
                           {p.won ? ' ✓' : ''}
                         </span>
                       </span>
@@ -134,7 +143,7 @@ export function TournamentDetailModal({
                         className={a.miniButton}
                         onClick={() => navigate(`/replay/${g.gameId}`)}
                       >
-                        Watch
+                        {t('tournamentProfile.watch')}
                       </button>
                     ) : (
                       <span className={a.dim}>—</span>
@@ -151,21 +160,17 @@ export function TournamentDetailModal({
 }
 
 /** A player name that links to their public profile when signed in, with an AI tag otherwise. */
-/** A standing's forfeits, e.g. "+1 W" or "+3 L"; a dash when it has none. */
-function forfeitLabel(wins = 0, losses = 0): string {
-  const parts = [wins > 0 ? `+${wins} W` : null, losses > 0 ? `+${losses} L` : null].filter(Boolean)
-  return parts.length > 0 ? parts.join(' ') : '—'
-}
-
 function PlayerName({
   name,
   userId,
   isAi,
+  aiLabel,
   onClick,
 }: {
   name: string
   userId: string | null
   isAi: boolean
+  aiLabel: string
   onClick: (userId: string | null) => void
 }) {
   if (userId) {
@@ -178,7 +183,7 @@ function PlayerName({
   return (
     <span>
       {name}
-      {isAi ? <span className={a.aiTag}>AI</span> : null}
+      {isAi ? <span className={a.aiTag}>{aiLabel}</span> : null}
     </span>
   )
 }

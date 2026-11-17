@@ -255,7 +255,7 @@ export function ReplayPlayer({
           <button type="button" onClick={onHome} className={styles.brand} aria-label={t('replay.homeAria')} title={t('replay.home')}>
             <BrandMark size={28} />
           </button>
-          <button type="button" onClick={onExit} className={styles.back} aria-label="Back">
+          <button type="button" onClick={onExit} className={styles.back} aria-label={t('replay.back')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 18l-6-6 6-6" /></svg>
             <span className={styles.backLabel}>{t('replay.back')}</span>
           </button>

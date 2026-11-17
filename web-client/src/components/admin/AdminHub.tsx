@@ -4,6 +4,7 @@
  * arrives here after authenticating.
  */
 import type React from 'react'
+import { useTranslation } from 'react-i18next'
 import { AdminScreen, adminTheme } from './adminUi'
 
 const AREAS = ['stats', 'ai', 'live', 'activity', 'players'] as const
@@ -21,12 +22,12 @@ interface HubItem {
   description: string
 }
 
-const ITEMS: HubItem[] = [
-  { area: 'stats', icon: '📊', title: 'Stats', description: 'Global activity, decks, cards, win rates and geography.' },
-  { area: 'ai', icon: '🤖', title: 'AI vs humans', description: 'The built-in AI’s win rate against human players — over time, per build and per mode. Watch it improve.' },
-  { area: 'live', icon: '🟢', title: 'Live overview', description: 'Who is online and what they are doing, plus every game and tournament running — check before maintenance, or watch any game.' },
-  { area: 'activity', icon: '🏆', title: 'Activity', description: 'Recent games and tournaments across every player — click through to replays and standings.' },
-  { area: 'players', icon: '👥', title: 'Players', description: 'Registered accounts, their games, and admin access.' },
+const ITEMS: Omit<HubItem, 'title' | 'description'>[] = [
+  { area: 'stats', icon: '📊' },
+  { area: 'ai', icon: '🤖' },
+  { area: 'live', icon: '🟢' },
+  { area: 'activity', icon: '🏆' },
+  { area: 'players', icon: '👥' },
 ]
 
 export function AdminHub({
@@ -36,9 +37,17 @@ export function AdminHub({
   onNavigate: (area: AdminArea) => void
   authLabel: string
 }) {
+  const { t } = useTranslation()
+  const labels = {
+    stats: [t('adminUi.statsTitle'), t('adminUi.statsDescription')],
+    ai: [t('adminUi.aiTitle'), t('adminUi.aiDescription')],
+    live: [t('adminUi.liveTitle'), t('adminUi.liveDescription')],
+    activity: [t('adminUi.activityTitle'), t('adminUi.activityDescription')],
+    players: [t('adminUi.playersTitle'), t('adminUi.playersDescription')],
+  }
   return (
     <AdminScreen
-      title="Admin dashboard"
+      title={t('adminUi.dashboard')}
       subtitle={authLabel}
     >
       <div style={styles.grid}>
@@ -47,9 +56,9 @@ export function AdminHub({
             <span style={styles.icon} aria-hidden>
               {item.icon}
             </span>
-            <span style={styles.cardTitle}>{item.title}</span>
-            <span style={styles.cardDesc}>{item.description}</span>
-            <span style={styles.cardArrow}>Open →</span>
+            <span style={styles.cardTitle}>{labels[item.area][0]}</span>
+            <span style={styles.cardDesc}>{labels[item.area][1]}</span>
+            <span style={styles.cardArrow}>{t('adminUi.open')} →</span>
           </button>
         ))}
       </div>

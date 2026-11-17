@@ -12,15 +12,9 @@
  */
 import { useState } from 'react'
 import type React from 'react'
+import { useTranslation } from 'react-i18next'
 import type { GameDeckParticipant } from '@/api/account'
 import { useSaveDeck } from '@/store/useSaveDeck'
-
-/** Build the default deck name from the seat and the game's date (YYYY-MM-DD prefix of the ISO ts). */
-function defaultName(p: GameDeckParticipant, endedAt: string): string {
-  const date = endedAt.slice(0, 10)
-  const who = p.isSelf ? 'My deck' : `${p.playerName}’s deck`
-  return date ? `${who} · ${date}` : who
-}
 
 type Phase =
   | { kind: 'idle' }
@@ -36,14 +30,22 @@ export function SaveGameDeckButton({
   participant: GameDeckParticipant
   endedAt: string
 }) {
+  const { t } = useTranslation()
   const { save, isLoggedIn } = useSaveDeck()
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' })
+  const defaultName = (p: GameDeckParticipant) => {
+    const date = endedAt.slice(0, 10)
+    if (p.isSelf) return date ? t('profileUi.myDeckDated', { date }) : t('profileUi.myDeck')
+    return date
+      ? t('profileUi.playerDeckDated', { playerName: p.playerName, date })
+      : t('profileUi.playerDeck', { playerName: p.playerName })
+  }
 
   // No decklist recorded for this seat — nothing to save.
   if (participant.cards.length === 0) return null
 
   const doSave = async (name: string) => {
-    const trimmed = name.trim() || defaultName(participant, endedAt)
+    const trimmed = name.trim() || defaultName(participant)
     const cards: Record<string, number> = {}
     for (const c of participant.cards) cards[c.cardName] = c.copies
     setPhase({ kind: 'saving' })
@@ -57,8 +59,8 @@ export function SaveGameDeckButton({
 
   if (phase.kind === 'done') {
     return (
-      <span style={styles.feedback} title={phase.online ? 'Saved to your account' : 'Saved to this browser'}>
-        Saved {phase.online ? 'online' : 'locally'} ✓
+      <span style={styles.feedback} title={phase.online ? t('profileUi.savedToAccount') : t('profileUi.savedToBrowser')}>
+        {phase.online ? t('profileUi.savedOnline') : t('profileUi.savedLocally')}
       </span>
     )
   }
@@ -66,7 +68,7 @@ export function SaveGameDeckButton({
   if (phase.kind === 'error') {
     return (
       <button type="button" style={styles.button} onClick={() => setPhase({ kind: 'idle' })}>
-        Save failed — retry
+        {t('profileUi.saveFailedRetry')}
       </button>
     )
   }
@@ -85,30 +87,30 @@ export function SaveGameDeckButton({
           style={styles.input}
           value={phase.name}
           onChange={(e) => setPhase({ kind: 'editing', name: e.target.value })}
-          aria-label="Deck name"
+          aria-label={t('profileUi.deckName')}
         />
         <button type="submit" style={styles.saveBtn}>
-          Save
+          {t('profileUi.save')}
         </button>
         <button type="button" style={styles.cancelBtn} onClick={() => setPhase({ kind: 'idle' })}>
-          Cancel
+          {t('profileUi.cancel')}
         </button>
       </form>
     )
   }
 
   if (phase.kind === 'saving') {
-    return <span style={styles.feedback}>Saving…</span>
+    return <span style={styles.feedback}>{t('profileUi.saving')}</span>
   }
 
   return (
     <button
       type="button"
       style={styles.button}
-      onClick={() => setPhase({ kind: 'editing', name: defaultName(participant, endedAt) })}
-      title={isLoggedIn ? 'Save this deck to your account' : 'Save this deck to your browser'}
+      onClick={() => setPhase({ kind: 'editing', name: defaultName(participant) })}
+      title={isLoggedIn ? t('profileUi.saveToAccount') : t('profileUi.saveToBrowser')}
     >
-      Save deck
+      {t('profileUi.saveDeck')}
     </button>
   )
 }

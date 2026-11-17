@@ -6,6 +6,7 @@
  */
 import { useCallback, useRef, useState } from 'react'
 import type React from 'react'
+import { useTranslation } from 'react-i18next'
 import { type CardCrop, MIN_CROP_SIZE } from './avatars'
 import s from './CropEditor.module.css'
 
@@ -36,6 +37,7 @@ export function CropEditor({
   crop: CardCrop | null
   onChange: (crop: CardCrop) => void
 }) {
+  const { t } = useTranslation()
   const frameRef = useRef<HTMLDivElement>(null)
   const [aspect, setAspect] = useState<number | null>(null)
   const drag = useRef<{ dx: number; dy: number } | null>(null)
@@ -122,7 +124,7 @@ export function CropEditor({
         className={s.frame}
         tabIndex={0}
         role="group"
-        aria-label="Avatar crop. Drag to move, scroll or use + and − to zoom, arrow keys to nudge."
+        aria-label={t('avatarUi.cropLabel')}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
@@ -155,7 +157,7 @@ export function CropEditor({
             }}
           />
         )}
-        {!aspect && <div className={s.loading}>Loading art…</div>}
+        {!aspect && <div className={s.loading}>{t('avatarUi.loadingArt')}</div>}
       </div>
       <label className={s.zoomRow}>
         <span className={s.zoomIcon} aria-hidden>−</span>
@@ -167,7 +169,7 @@ export function CropEditor({
           step={0.005}
           value={zoom}
           disabled={!crop}
-          aria-label="Zoom"
+          aria-label={t('avatarUi.zoom')}
           onChange={(e) => zoomTo(maxSize + MIN_CROP_SIZE - Number(e.target.value))}
         />
         <span className={s.zoomIcon} aria-hidden>+</span>

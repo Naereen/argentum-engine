@@ -8,6 +8,7 @@
  * once there are more than two decks to show rather than squeezing a whole pod into two columns.
  */
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { type GameDecks, fetchGameDecks } from '@/api/account'
 import { GameDeckColumns } from '@/components/deck/GameDeckView'
 import { SaveGameDeckButton } from '@/components/profile/SaveGameDeckButton'
@@ -22,16 +23,17 @@ export function DeckViewModal({
   opponentLabel: string
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [decks, setDecks] = useState<GameDecks | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   useEffect(() => {
     let live = true
     setDecks(null)
-    setError(null)
+    setLoadFailed(false)
     fetchGameDecks(gameId)
       .then((d) => live && setDecks(d))
-      .catch(() => live && setError('Could not load this game’s decks.'))
+      .catch(() => live && setLoadFailed(true))
     return () => {
       live = false
     }
@@ -42,21 +44,21 @@ export function DeckViewModal({
 
   return (
     <AccountModal
-      title="Game decks"
+      title={t('profileUi.gameDecks')}
       size={multiplayer ? 'xl' : 'large'}
       onClose={onClose}
     >
       <p className={a.muted} style={{ marginTop: 4 }}>
-        vs {opponentLabel}
-        {multiplayer && <span className={a.dim}> · {seats}-player game</span>}
+        {t('profileUi.versus', { opponent: opponentLabel })}
+        {multiplayer && <span className={a.dim}> · {t('profileUi.playerCountGame', { count: seats })}</span>}
       </p>
 
-      {error ? (
-        <p className={a.error} style={{ marginTop: 12 }}>{error}</p>
+      {loadFailed ? (
+        <p className={a.error} style={{ marginTop: 12 }}>{t('profileUi.loadDecksError')}</p>
       ) : !decks ? (
-        <p className={a.muted} style={{ marginTop: 12 }}>Loading…</p>
+        <p className={a.muted} style={{ marginTop: 12 }}>{t('common.loading')}</p>
       ) : decks.participants.length === 0 ? (
-        <p className={a.muted} style={{ marginTop: 12 }}>No decklist was recorded for this game.</p>
+        <p className={a.muted} style={{ marginTop: 12 }}>{t('profileUi.noDecklist')}</p>
       ) : (
         <div style={{ marginTop: 16 }}>
           <GameDeckColumns

@@ -4,30 +4,38 @@
  * tournament detail modal. Accepts a plain string so callers don't have to share a status type.
  */
 import type React from 'react'
+import { useTranslation } from 'react-i18next'
 
-const STYLES: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  IN_PROGRESS: { label: 'In progress', color: '#7fd1ff', bg: 'rgba(88,166,255,0.14)', border: '#3d6fa855' },
-  COMPLETED: { label: 'Completed', color: '#5bd16e', bg: 'rgba(91,209,110,0.12)', border: '#3a8a4a55' },
-  ABANDONED: { label: 'Abandoned', color: '#e0a15b', bg: 'rgba(224,161,91,0.12)', border: '#8a6a3a55' },
+const STYLES: Record<string, { color: string; bg: string; border: string }> = {
+  IN_PROGRESS: { color: '#7fd1ff', bg: 'rgba(88,166,255,0.14)', border: '#3d6fa855' },
+  COMPLETED: { color: '#5bd16e', bg: 'rgba(91,209,110,0.12)', border: '#3a8a4a55' },
+  ABANDONED: { color: '#e0a15b', bg: 'rgba(224,161,91,0.12)', border: '#8a6a3a55' },
 }
 
 export function TournamentStatusBadge({ status }: { status: string }) {
-  const s = STYLES[status] ?? {
-    label: status,
+  const { t } = useTranslation()
+  const styles = STYLES[status] ?? {
     color: '#aaa',
     bg: 'rgba(160,160,160,0.12)',
     border: '#55555555',
   }
+  const label = status === 'IN_PROGRESS'
+    ? t('tournamentProfile.statusInProgress')
+    : status === 'COMPLETED'
+      ? t('tournamentProfile.statusCompleted')
+      : status === 'ABANDONED'
+        ? t('tournamentProfile.statusAbandoned')
+        : status
   return (
     <span
       style={{
         ...badge,
-        color: s.color,
-        backgroundColor: s.bg,
-        border: `1px solid ${s.border}`,
+        color: styles.color,
+        backgroundColor: styles.bg,
+        border: `1px solid ${styles.border}`,
       }}
     >
-      {s.label}
+      {label}
     </span>
   )
 }
