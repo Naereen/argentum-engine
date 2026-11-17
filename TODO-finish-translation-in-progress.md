@@ -65,6 +65,7 @@ Continue the in-progress i18n task from this working tree. The user chose **core
 - Localized the Preferences page, admin player-deck dialogs and saved-deck states, known tournament-format labels, and the replay-list back action. Saved-deck load failures now display an error instead of appearing as an empty list.
 - Removed duplicate keys in the English/French game and draft dictionaries and duplicate French preference entries. Split title-case “Counters”/“Damage” labels from the lowercase gameplay allocation nouns so both render correctly.
 - Localized the admin connection map's accessibility label, location heading, unknown-location fallback, and game counts, plus the set-implementation history chart's labels, dates, numbers, loading, and error states.
+- Localized the Set Completion page, filters/sorts, set-kind and known Scryfall type labels, coverage summaries, per-set badges/tooltips, card detail filters, AI-reading summaries/gaps, draft-rating descriptions, errors, and accessibility text. Kept card names, Assay Oracle-line excerpts, SDK effect-type identifiers, and URL filter values unchanged; added a language-switching page test.
 - Corrected the stale Otaria layout test assertion in `src/components/game/otariaOverviewLayout.test.ts`: `(true, 1, 1)` is right; use `(true, 0, 1)` for the no-map/null case.
 - Existing tests adapted to render translated Otaria components under an `I18nextProvider` and use the changed label copy.
 
@@ -78,6 +79,7 @@ Continue the in-progress i18n task from this working tree. The user chose **core
 - The AI-vs-human analytics batch also passes `npm run typecheck`, the locale parity/interpolation tests, the full test suite (122 files / 1,411 tests), and the production build. Its API-backed chart/list state was not manually exercised because the game-server is unavailable.
 - Latest continuation: `npm run typecheck`, locale plus gameplay tests (17 files / 347 tests), full `npm test` (122 files / 1,411 tests), and `npm run build` all pass. The Preferences screen and both English/French switcher states were manually checked in the browser; the config endpoint briefly returned 502 during server startup, then recovered.
 - Latest map/chart batch: `npm run typecheck`, full `npm test` (122 files / 1,411 tests), `npm run build`, focused locale/admin/set-completion checks, and `git diff --check` pass.
+- Latest Set Completion batch: `npm run typecheck`, locale and page-switch tests (2 files / 4 tests), full `npm test` (123 files / 1,412 tests), production build, and `git diff --check` pass. Manually switched the live page between English and French in the browser, verified localStorage persistence after reload, and reviewed the French page with real set data; the backend returned 502 only during its cold start and then recovered.
 
 ## Current working tree / safety
 
@@ -85,7 +87,7 @@ There is unrelated untracked `Explorer-Of-version-novembre-2026/`. Do not stage 
 
 ## Important remaining work
 
-1. **Continue the broad UI audit.** Inspect remaining user-facing source strings, including game decisions/logs, replay, admin/dev/scenario, set guide/completion, announcements, and any remaining account/lobby surfaces. Preserve card content, user-authored text, and protocol values.
+1. **Continue the broad UI audit.** Set Completion is now localized; inspect remaining user-facing source strings across game decisions/logs, replay, admin/dev/scenario, announcements, set guide, and any remaining account/lobby surfaces. Preserve card content, user-authored text, and protocol values.
 2. **Help/documentation exclusion.** Per the user's explicit direction, do not translate `src/help/topics.ts` or the large Help page/content. Leave the help content in English; do not alter stable topic IDs or deep links.
 3. **Locale integrity and verification.** Keep leaf-key parity, non-empty values, matching interpolation placeholders, strict i18next key typing, and the persistence/switcher tests. Run focused and full checks after further changes.
 4. **Browser and commit.** Do not run E2E. Manually exercise the app for player-visible changes when the full app is available. Keep `Explorer-Of-version-novembre-2026/` untouched; stage only task files and make local commits, never push.

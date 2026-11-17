@@ -2778,6 +2778,192 @@
     "partialSet": "Only part of this set is implemented, so its boosters draw from the cards that exist."
   },
   "setCompletion": {
+    "title": "Set completion",
+    "descriptionBefore": "How much of every Magic set Argentum can play today. Looking for a set to draft or play sealed?",
+    "guideLink": "Try the Set guide",
+    "descriptionAfter": ".",
+    "tabs": {
+      "label": "View",
+      "sets": "Sets",
+      "explorer": "Assay Explorer",
+      "explorerTitle": "Argentum Assay Explorer",
+      "explorerHelp": "What is the Assay Explorer?"
+    },
+    "summary": {
+      "overall": "overall",
+      "distinctBooster": "distinct booster cards implemented",
+      "distinctExtras": "distinct extras (completionist)",
+      "boosterPrintings": "booster printings across all sets",
+      "completeSets": "{{complete}} / {{total}} sets complete",
+      "notPlannedTitle": "Cards needing mechanics the engine will never carry — ante, physical dexterity. They're excluded from every total here.",
+      "notPlannedCount": "{{count}} cards not planned",
+      "boosterPrintingsImplemented": "booster printings implemented",
+      "viewProgress": "View progress →",
+      "progressTitle": "View implementation progress over time"
+    },
+    "filters": {
+      "searchPlaceholder": "Filter sets by name or code…",
+      "searchLabel": "Filter sets",
+      "completionLabel": "Filter by completion",
+      "all": "All",
+      "standard": "Standard",
+      "inProgress": "In progress",
+      "complete": "Complete",
+      "sort": "Sort",
+      "sortLabel": "Sort sets",
+      "newest": "Newest",
+      "percent": "Most complete",
+      "implemented": "Most cards done",
+      "assayReady": "Most Assay-ready",
+      "aiRead": "Least AI-read",
+      "name": "A–Z",
+      "kindLabel": "Filter by set type",
+      "allTypes": "All types",
+      "clear": "Clear filters",
+      "noMatches": "No sets match “{{query}}” with these filters.",
+      "noMatchesWithoutQuery": "No sets match these filters."
+    },
+    "kinds": {
+      "main": {
+        "label": "Main sets",
+        "description": "Premier expansions and core sets — the ones that rotate through Standard."
+      },
+      "commander": {
+        "label": "Commander",
+        "description": "Preconstructed Commander decks, with the new cards printed for them."
+      },
+      "supplemental": {
+        "label": "Supplemental",
+        "description": "Booster sets outside the main line: Masters, Modern Horizons, Conspiracy, Jumpstart, starter sets."
+      },
+      "precon": {
+        "label": "Decks & boxes",
+        "description": "Preconstructed products: Duel Decks, Planechase, Archenemy, From the Vault, gift boxes."
+      },
+      "funny": {
+        "label": "Un-sets",
+        "description": "Silver-bordered and acorn sets — not legal in sanctioned formats."
+      }
+    },
+    "typeLabels": {
+      "commander": "Commander",
+      "supplemental": "Supplemental",
+      "masters": "Masters",
+      "eternal": "Eternal",
+      "starter": "Starter",
+      "alchemy": "Alchemy",
+      "duelDeck": "Duel Deck",
+      "planechase": "Planechase",
+      "archenemy": "Archenemy",
+      "fromTheVault": "From the Vault",
+      "premiumDeck": "Premium Deck",
+      "spellbook": "Signature Spellbook",
+      "box": "Box set",
+      "treasureChest": "Treasure Chest",
+      "arsenal": "Arsenal",
+      "vanguard": "Vanguard",
+      "unSet": "Un-set"
+    },
+    "results": {
+      "set_one": "{{count}} set",
+      "set_other": "{{count}} sets",
+      "boosterPrintings": "booster printings",
+      "complete": "complete"
+    },
+    "set": {
+      "viewCards": "View {{name}} cards",
+      "standardTitle": "Currently legal in Standard",
+      "booster": "booster",
+      "cards": "cards",
+      "extra": "extra",
+      "notPlanned": "{{count}} cards we won't implement (ante, dexterity) — not counted in the total",
+      "notPlannedLabel": "not planned",
+      "notPlannedReasonAnte": "Ante",
+      "notPlannedReasonDexterity": "Dexterity",
+      "notPlannedCardTitle": "{{name}} — not planned: {{reason}}",
+      "assayReadyTitle": "Argentum Assay already reads {{count}} of this set's missing cards end to end — they need no new SDK vocabulary",
+      "assayReady": "Assay-ready",
+      "complete": "Complete",
+      "remaining": "{{count}} to go",
+      "badgeAssayReads": "Assay reads this card whole"
+    },
+    "assay": {
+      "readsWhole": "Assay reads this card whole.",
+      "implementable": "Assay reads this card whole — implementable with existing vocabulary.",
+      "declines": "Assay declines this card: {{kind}}{{line}}"
+    },
+    "errors": {
+      "coverage": "Couldn’t load coverage: {{error}}",
+      "loadingCoverage": "Loading set coverage…"
+    },
+    "ai": {
+      "bandWellRead": "well read",
+      "bandPartlyRead": "partly read",
+      "bandNeedsAttention": "needs attention",
+      "scoreTitle": "AI-reading score: the engine AI fully reads {{read}} of this set's {{total}} implemented cards ({{band}}). Click to see the {{unread}} it doesn't, grouped by what it misses.",
+      "checkWords": {
+        "polarity": "Can't tell if a target is helped or hurt",
+        "intent": "Doesn't know what the effect is for",
+        "combat": "Combat can't see it",
+        "timing": "No timing for an until-end-of-turn effect",
+        "modal": "Can't pay for extra modes"
+      },
+      "checkShort": {
+        "polarity": "Target",
+        "intent": "Purpose",
+        "combat": "Combat",
+        "timing": "Timing",
+        "modal": "Modes"
+      },
+      "readAbilities_one": "AI reads {{read}} of {{count}} ability",
+      "readAbilities_other": "AI reads {{read}} of {{count}} abilities",
+      "readingHasGaps": "AI reading has gaps",
+      "misses": "{{read}}. Misses: {{misses}}",
+      "cardTileAria": "{{name}}. {{summary}}. Open in the Assay Explorer.",
+      "clickExplorerHint": "Click to see where, in the Assay Explorer",
+      "loadError": "Couldn’t load the AI reading: {{error}}",
+      "loading": "Reading the set’s cards…",
+      "nothingToRead": "Nothing implemented in this set yet, so there is nothing for the AI to read.",
+      "sectionLabel": "What the AI misses in this set",
+      "scoreSummary": "The AI fully reads {{read}} of {{total}} implemented cards ({{band}}) · {{abilitiesRead}} of {{abilities}} abilities ({{percent}}%)",
+      "allRead": "The AI reads every implemented card in this set.",
+      "groupsIntro": "What it misses, by effect type — one fix to a reader covers every card in a group. Pick a group to narrow the cards below. Each card shows how many of its abilities the AI reads and what it misses; hover one for the detail, click it to open its AI reading in the Assay Explorer.",
+      "openCardTitle": "Open {{name}} in the Assay Explorer to see where the AI's reading stops",
+      "moreGroups": "…and {{count}} smaller groups.",
+      "draftPicks": "Draft picks",
+      "draftRatingsAria": "{{rated}} rated by the set's pick table, {{borrowed}} borrowed, {{heuristic}} heuristic guesses",
+      "pickTableRates": "Pick table rates {{rated}} of {{total}} nonland cards",
+      "noPickTable": "No pick table for this set",
+      "borrowed": "{{count}} borrowed from other sets or 17Lands",
+      "heuristic": "{{count}} with no draft rating — heuristic guess",
+      "archetypeAware": "archetype-aware",
+      "showGapsTitle": "Show the cards the AI doesn't fully read, grouped by what it misses"
+    },
+    "details": {
+      "filterAll": "All",
+      "filterImplemented": "Implemented",
+      "filterMissing": "Missing",
+      "filterAssayReady": "⚡ Assay-ready",
+      "filterAiGaps": "AI gaps",
+      "filterNotPlanned": "Not planned",
+      "assayReadyTitle": "Missing cards Argentum Assay already reads end to end — implementable with the SDK vocabulary that exists today",
+      "aiGapsTitle": "Implemented cards the engine AI doesn't fully read, grouped by what it misses",
+      "notPlanned": "not planned",
+      "assayReady": "Assay-ready",
+      "cards": "Cards",
+      "draftCards": "Draft Cards",
+      "countExtra": "extra",
+      "browseCardsTitle": "Look through {{name}}'s playable cards in the card browser",
+      "browseCards": "Browse cards",
+      "sections": "{{code}} sections",
+      "loadCardsError": "Couldn’t load cards: {{error}}",
+      "loadingCards": "Loading {{code}} cards…",
+      "nothingForFilter": "Nothing here for this filter.",
+      "ariaClose": "Close",
+      "aiReads": "AI reads",
+      "aiReadCards": "AI reads {{read}} of {{total}} ({{percent}}%)",
+      "implementedCount": "{{read}} of {{total}} implemented cards"
+    },
     "progress": {
       "title": "Card implementation progress",
       "description": "Distinct implemented cards, day by day since the project began",

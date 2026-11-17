@@ -1,11 +1,13 @@
 import { createPortal } from 'react-dom'
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
 import { SetIcon } from '../ui/SetIcon'
 import { HelpTip } from '../help/HelpTip'
 import { PageShell, pageStyles } from '../ui/PageShell'
 import { HoverCardPreview } from '../ui/HoverCardPreview'
 import { ProgressChartOverlay } from './ProgressChartOverlay'
+import i18n from '@/i18n'
 import { getScryfallFallbackUrl } from '@/utils/cardImages'
 import {
   fetchSetCoverage,
@@ -22,7 +24,7 @@ import {
   type SetDetail,
   type CardCoverage,
 } from '@/api/setCoverage'
-import { SET_KINDS, SET_KIND_ORDER, setKind, setTypeLabel, type SetKind } from './setKinds'
+import { SET_KIND_ORDER, setKind, setTypeLabelKey, type SetKind } from './setKinds'
 import styles from './SetCompletionPage.module.css'
 
 type SortKey = 'newest' | 'percent' | 'implemented' | 'assayReady' | 'aiRead' | 'name'
@@ -34,14 +36,14 @@ type KindFilter = 'all' | SetKind
 const DEFAULT_KIND: KindFilter = 'main'
 type Tab = 'sets' | 'explorer'
 
-const SORT_LABELS: Record<SortKey, string> = {
-  newest: 'Newest',
-  percent: 'Most complete',
-  implemented: 'Most cards done',
-  assayReady: 'Most Assay-ready',
-  aiRead: 'Least AI-read',
-  name: 'A–Z',
-}
+const SORT_LABEL_KEYS = {
+  newest: 'setCompletion.filters.newest',
+  percent: 'setCompletion.filters.percent',
+  implemented: 'setCompletion.filters.implemented',
+  assayReady: 'setCompletion.filters.assayReady',
+  aiRead: 'setCompletion.filters.aiRead',
+  name: 'setCompletion.filters.name',
+} as const satisfies Record<SortKey, string>
 
 /**
  * Where game-server mounts the live Argentum Assay explorer.
@@ -52,35 +54,38 @@ const SORT_LABELS: Record<SortKey, string> = {
  */
 const EXPLORER_URL = '/api/assay/explorer'
 
-/**
- * One line of English for a card's Assay verdict, for the tile tooltip.
- *
- * Returns null when the baked ledger has no row for the card. That is *unknown*, not "no", and the
- * tooltip stays silent rather than implying Assay was asked and refused.
- */
-function assayTooltip(card: CardCoverage): string | null {
-  const a = card.assay
-  if (!a) return null
-  if (a.readsWhole) {
-    return card.implemented
-      ? 'Assay reads this card whole.'
-      : 'Assay reads this card whole — implementable with existing vocabulary.'
-  }
-  const where = a.line ? ` — “${a.line}”` : ''
-  return `Assay declines this card: ${a.kind}${where}`
-}
-
 /** A card nobody has authored that Assay already reads end to end: the cheapest work on the board. */
 function isAssayReady(card: CardCoverage): boolean {
   return !card.implemented && card.notPlanned === null && card.assay?.readsWhole === true
 }
 
-const FILTER_LABELS: Record<Filter, string> = {
-  all: 'All',
-  standard: 'Standard',
-  inProgress: 'In progress',
-  complete: 'Complete',
-}
+const FILTER_LABEL_KEYS = {
+  all: 'setCompletion.filters.all',
+  standard: 'setCompletion.filters.standard',
+  inProgress: 'setCompletion.filters.inProgress',
+  complete: 'setCompletion.filters.complete',
+} as const satisfies Record<Filter, string>
+
+const KIND_LABEL_KEYS = {
+  main: 'setCompletion.kinds.main.label',
+  commander: 'setCompletion.kinds.commander.label',
+  supplemental: 'setCompletion.kinds.supplemental.label',
+  precon: 'setCompletion.kinds.precon.label',
+  funny: 'setCompletion.kinds.funny.label',
+} as const satisfies Record<SetKind, string>
+
+const KIND_DESCRIPTION_KEYS = {
+  main: 'setCompletion.kinds.main.description',
+  commander: 'setCompletion.kinds.commander.description',
+  supplemental: 'setCompletion.kinds.supplemental.description',
+  precon: 'setCompletion.kinds.precon.description',
+  funny: 'setCompletion.kinds.funny.description',
+} as const satisfies Record<SetKind, string>
+
+const NOT_PLANNED_REASON_KEYS = {
+  ante: 'setCompletion.set.notPlannedReasonAnte',
+  dexterity: 'setCompletion.set.notPlannedReasonDexterity',
+} as const
 
 /** Coverage tier drives the bar/accent color. Mirrors the at-a-glance red→green of the TUI. */
 function tier(pct: number): 'empty' | 'low' | 'mid' | 'high' | 'done' {
@@ -96,7 +101,11 @@ function year(releaseDate: string | null): string {
 }
 
 function fmtPct(pct: number): string {
-  return Number.isInteger(pct) ? String(pct) : pct.toFixed(1)
+  return new Intl.NumberFormat(i18n.resolvedLanguage ?? i18n.language, { maximumFractionDigits: 1 }).format(pct)
+}
+
+function fmtCount(count: number): string {
+  return count.toLocaleString(i18n.resolvedLanguage ?? i18n.language)
 }
 
 /** A URL parameter narrowed to the values the view knows, so a stale or hand-edited link falls back. */
@@ -118,6 +127,7 @@ interface HoverState {
 }
 
 export function SetCompletionPage() {
+  const { t } = useTranslation()
   const [sets, setSets] = useState<readonly SetCoverage[] | null>(null)
   const [summary, setSummary] = useState<CoverageSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -139,8 +149,8 @@ export function SetCompletionPage() {
     [setParams],
   )
   const query = params.get('q') ?? ''
-  const sort = oneOf(params.get('sort'), Object.keys(SORT_LABELS) as SortKey[], 'newest')
-  const filter = oneOf(params.get('status'), Object.keys(FILTER_LABELS) as Filter[], 'all')
+  const sort = oneOf(params.get('sort'), Object.keys(SORT_LABEL_KEYS) as SortKey[], 'newest')
+  const filter = oneOf(params.get('status'), Object.keys(FILTER_LABEL_KEYS) as Filter[], 'all')
   const kind = oneOf(params.get('type'), ['all', ...SET_KIND_ORDER] as KindFilter[], DEFAULT_KIND)
   const openCode = params.get('set')
   const setQuery = useCallback((q: string) => setParam('q', q || null), [setParam])
@@ -293,24 +303,25 @@ export function SetCompletionPage() {
   // page stops being its own scroll container while that tab is up and hands the height to the frame.
   const onExplorer = tab === 'explorer'
   return (
-    <PageShell title="Sets" width={onExplorer ? 'full' : 'wide'} fit={onExplorer} plain>
+    <PageShell title={t('setCompletion.tabs.sets')} width={onExplorer ? 'full' : 'wide'} fit={onExplorer} plain>
       <header className={styles.pageHead}>
         <div className={styles.pageHeading}>
-          <h1 className={pageStyles.h1}>Set completion</h1>
+        <h1 className={pageStyles.h1}>{t('setCompletion.title')}</h1>
           <p className={pageStyles.lede}>
-            How much of every Magic set Argentum can play today. Looking for a set to draft or play sealed?{' '}
-            <Link to="/sets">Try the Set guide</Link>.
-          </p>
-        </div>
-        <div className={styles.viewSwitch}>
-          <div className={pageStyles.tabs} role="tablist" aria-label="View">
+          {t('setCompletion.descriptionBefore')}{' '}
+          <Link to="/sets">{t('setCompletion.guideLink')}</Link>
+          {t('setCompletion.descriptionAfter')}
+        </p>
+      </div>
+      <div className={styles.viewSwitch}>
+        <div className={pageStyles.tabs} role="tablist" aria-label={t('setCompletion.tabs.label')}>
             <button
               role="tab"
               aria-selected={tab === 'sets'}
               className={pageStyles.tab}
               onClick={() => setTab('sets')}
             >
-              Sets
+              {t('setCompletion.tabs.sets')}
             </button>
             <button
               role="tab"
@@ -318,13 +329,13 @@ export function SetCompletionPage() {
               className={pageStyles.tab}
               onClick={() => setTab('explorer')}
             >
-              Assay Explorer
+              {t('setCompletion.tabs.explorer')}
             </button>
           </div>
           {/* Sibling of the tablist, never inside it: `HelpTip` is a button, and one nested in a
               `role="tab"` would be both invalid markup and a click that switches tabs. The explanation
               lives in `topics.ts` rather than in a `title=` so the popover and `/help` can't disagree. */}
-          <HelpTip topicId="assay-explorer" label="What is the Assay Explorer?" />
+          <HelpTip topicId="assay-explorer" label={t('setCompletion.tabs.explorerHelp')} />
         </div>
       </header>
 
@@ -390,12 +401,13 @@ export function SetCompletionPage() {
  * tree still working if it can't reach one — so there is no state this component has to anticipate.
  */
 function ExplorerPane({ hash }: { hash: string }) {
+  const { t } = useTranslation()
   return (
     <div className={styles.explorerPane}>
       <iframe
         className={styles.explorerFrame}
         src={EXPLORER_URL + hash}
-        title="Argentum Assay Explorer"
+        title={t('setCompletion.tabs.explorerTitle')}
         // Same origin, so the frame can talk to its own endpoints; it needs nothing else.
         sandbox="allow-scripts allow-same-origin allow-forms"
       />
@@ -448,6 +460,7 @@ function SetsTab({
   onOpen: (code: string) => void
   onShowProgress: () => void
 }) {
+  const { t } = useTranslation()
   const narrowed = query.trim() !== '' || filter !== 'all' || kind !== DEFAULT_KIND
   return (
     <>
@@ -455,7 +468,7 @@ function SetsTab({
         <button
           className={`${styles.summary} ${styles.summaryButton}`}
           onClick={onShowProgress}
-          title="View implementation progress over time"
+          title={t('setCompletion.summary.progressTitle')}
         >
           {(() => {
             // Headline is the DISTINCT figure (reprints deduped by name) so it answers "how much of
@@ -467,7 +480,7 @@ function SetsTab({
               <>
                 <div className={styles.summaryStat}>
                   <span className={styles.summaryValue}>{fmtPct(pct)}%</span>
-                  <span className={styles.summaryLabel}>overall</span>
+                  <span className={styles.summaryLabel}>{t('setCompletion.summary.overall')}</span>
                 </div>
                 <div className={styles.summaryBarWrap}>
                   <div className={styles.summaryBarTrack}>
@@ -477,26 +490,25 @@ function SetsTab({
                     {summary ? (
                       <>
                         <span>
-                          <strong>{summary.distinctImplemented.toLocaleString()}</strong> /{' '}
-                          {summary.distinctTotal.toLocaleString()} distinct booster cards implemented
+                          <strong>{fmtCount(summary.distinctImplemented)}</strong> /{' '}
+                          {fmtCount(summary.distinctTotal)} {t('setCompletion.summary.distinctBooster')}
                         </span>
                         <span>
-                          + <strong>{summary.extraDistinctImplemented.toLocaleString()}</strong> /{' '}
-                          {summary.extraDistinctTotal.toLocaleString()} distinct extras (completionist)
+                          + <strong>{fmtCount(summary.extraDistinctImplemented)}</strong> /{' '}
+                          {fmtCount(summary.extraDistinctTotal)} {t('setCompletion.summary.distinctExtras')}
                         </span>
                         <span>
-                          <strong>{summary.printingsImplemented.toLocaleString()}</strong> /{' '}
-                          {summary.printingsTotal.toLocaleString()} booster printings across all sets
+                          <strong>{fmtCount(summary.printingsImplemented)}</strong> /{' '}
+                          {fmtCount(summary.printingsTotal)} {t('setCompletion.summary.boosterPrintings')}
                         </span>
                         <span>
-                          <strong>{summary.setsComplete}</strong> / {summary.setCount} sets complete
+                          {t('setCompletion.summary.completeSets', { complete: summary.setsComplete, total: summary.setCount })}
                           {summary.distinctNotPlanned > 0 && (
                             <span
                               className={styles.summaryNote}
-                              title="Cards needing mechanics the engine will never carry — ante, physical dexterity. They're excluded from every total here."
+                              title={t('setCompletion.summary.notPlannedTitle')}
                             >
-                              {' '}
-                              ({summary.distinctNotPlanned} cards not planned)
+                              {' '}({t('setCompletion.summary.notPlannedCount', { count: summary.distinctNotPlanned })})
                             </span>
                           )}
                         </span>
@@ -504,17 +516,17 @@ function SetsTab({
                     ) : (
                       <>
                         <span>
-                          <strong>{totals.implemented.toLocaleString()}</strong> / {totals.total.toLocaleString()}{' '}
-                          booster printings implemented
+                          <strong>{fmtCount(totals.implemented)}</strong> / {fmtCount(totals.total)}{' '}
+                          {t('setCompletion.summary.boosterPrintingsImplemented')}
                         </span>
                         <span>
-                          <strong>{totals.complete}</strong> / {totals.setCount} sets complete
+                          {t('setCompletion.summary.completeSets', { complete: totals.complete, total: totals.setCount })}
                         </span>
                       </>
                     )}
                   </div>
                 </div>
-                <span className={styles.summaryHint}>View progress →</span>
+                <span className={styles.summaryHint}>{t('setCompletion.summary.viewProgress')}</span>
               </>
             )
           })()}
@@ -527,29 +539,29 @@ function SetsTab({
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filter sets by name or code…"
-          aria-label="Filter sets"
+          placeholder={t('setCompletion.filters.searchPlaceholder')}
+          aria-label={t('setCompletion.filters.searchLabel')}
         />
-        <div className={styles.segmented} role="group" aria-label="Filter by completion">
-          {(Object.keys(FILTER_LABELS) as Filter[]).map((f) => (
+        <div className={styles.segmented} role="group" aria-label={t('setCompletion.filters.completionLabel')}>
+          {(Object.keys(FILTER_LABEL_KEYS) as Filter[]).map((f) => (
             <button
               key={f}
               className={filter === f ? styles.segmentActive : styles.segment}
               aria-pressed={filter === f}
               onClick={() => setFilter(f)}
             >
-              {FILTER_LABELS[f]}
+              {t(FILTER_LABEL_KEYS[f])}
             </button>
           ))}
         </div>
         {/* A dropdown, not a fifth row of segments: sort is set once and left, and five always-visible
             buttons cost the width the filters need. */}
         <label className={styles.sortSelect}>
-          <span className={styles.sortLabel}>Sort</span>
-          <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} aria-label="Sort sets">
-            {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
+          <span className={styles.sortLabel}>{t('setCompletion.filters.sort')}</span>
+          <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} aria-label={t('setCompletion.filters.sortLabel')}>
+            {(Object.keys(SORT_LABEL_KEYS) as SortKey[]).map((k) => (
               <option key={k} value={k}>
-                {SORT_LABELS[k]}
+                {t(SORT_LABEL_KEYS[k])}
               </option>
             ))}
           </select>
@@ -557,13 +569,13 @@ function SetsTab({
       </div>
 
       {sets && (
-        <div className={styles.kindChips} role="group" aria-label="Filter by set type">
+        <div className={styles.kindChips} role="group" aria-label={t('setCompletion.filters.kindLabel')}>
           <button
             className={styles.kindChip}
             aria-pressed={kind === 'all'}
             onClick={() => setKindFilter('all')}
           >
-            All types <span className={styles.kindCount}>{preKindCount}</span>
+            {t('setCompletion.filters.allTypes')} <span className={styles.kindCount}>{preKindCount}</span>
           </button>
           {SET_KIND_ORDER.map((k) => {
             const n = kindCounts.get(k) ?? 0
@@ -578,27 +590,29 @@ function SetsTab({
                 aria-pressed={kind === k}
                 disabled={n === 0 && kind !== k}
                 onClick={() => setKindFilter(kind === k ? 'all' : k)}
-                title={SET_KINDS[k].description}
+                title={t(KIND_DESCRIPTION_KEYS[k])}
               >
                 <span className={styles.kindDot} aria-hidden />
-                {SET_KINDS[k].label} <span className={styles.kindCount}>{n}</span>
+                {t(KIND_LABEL_KEYS[k])} <span className={styles.kindCount}>{n}</span>
               </button>
             )
           })}
         </div>
       )}
 
-      {error && <div className={styles.error}>Couldn’t load coverage: {error}</div>}
-      {!sets && !error && <div className={styles.loading}>Loading set coverage…</div>}
+      {error && <div className={styles.error}>{t('setCompletion.errors.coverage', { error })}</div>}
+      {!sets && !error && <div className={styles.loading}>{t('setCompletion.errors.loadingCoverage')}</div>}
 
       {sets && (
         <>
           {narrowed && visible.length > 0 && <ResultsLine visible={visible} onClear={onClearFilters} />}
           {visible.length === 0 ? (
             <div className={styles.empty}>
-              No sets match {query ? <>“{query}” with </> : null}these filters.{' '}
+              {query
+                ? t('setCompletion.filters.noMatches', { query })
+                : t('setCompletion.filters.noMatchesWithoutQuery')}{' '}
               <button className={styles.linkButton} onClick={onClearFilters}>
-                Clear filters
+                {t('setCompletion.filters.clear')}
               </button>
             </div>
           ) : (
@@ -626,6 +640,7 @@ function SetsTab({
  * answers it without sending you to add up tiles.
  */
 function ResultsLine({ visible, onClear }: { visible: readonly SetCoverage[]; onClear: () => void }) {
+  const { t } = useTranslation()
   const implemented = visible.reduce((n, s) => n + s.implemented, 0)
   const total = visible.reduce((n, s) => n + s.total, 0)
   const complete = visible.filter((s) => s.percent >= 100).length
@@ -633,17 +648,17 @@ function ResultsLine({ visible, onClear }: { visible: readonly SetCoverage[]; on
   return (
     <div className={styles.resultsLine} aria-live="polite">
       <span>
-        <strong>{visible.length}</strong> {visible.length === 1 ? 'set' : 'sets'}
+        <strong>{t('setCompletion.results.set', { count: visible.length })}</strong>
       </span>
       <span>
-        <strong>{implemented.toLocaleString()}</strong> / {total.toLocaleString()} booster printings ·{' '}
+        <strong>{fmtCount(implemented)}</strong> / {fmtCount(total)} {t('setCompletion.results.boosterPrintings')} ·{' '}
         {fmtPct(pct)}%
       </span>
       <span>
-        <strong>{complete}</strong> complete
+        <strong>{complete}</strong> {t('setCompletion.results.complete')}
       </span>
       <button className={styles.linkButton} onClick={onClear}>
-        Clear filters
+        {t('setCompletion.filters.clear')}
       </button>
     </div>
   )
@@ -651,11 +666,13 @@ function ResultsLine({ visible, onClear }: { visible: readonly SetCoverage[]; on
 
 /** The per-set type badge — absent on main sets, which are the default and most of the list. */
 function KindBadge({ setType }: { setType: string | null }) {
-  const label = setTypeLabel(setType)
+  const { t } = useTranslation()
+  const key = setTypeLabelKey(setType)
+  const label = key ? t(key) : setType && setKind(setType) !== 'main' ? setType.replace(/_/g, ' ') : null
   if (!label) return null
   const k = setKind(setType)
   return (
-    <span className={styles.kindBadge} data-kind={k} title={SET_KINDS[k].description}>
+    <span className={styles.kindBadge} data-kind={k} title={t(KIND_DESCRIPTION_KEYS[k])}>
       {label}
     </span>
   )
@@ -672,6 +689,7 @@ function SetCard({
   onOpen: () => void
   onOpenAiGaps: () => void
 }) {
+  const { t: translate } = useTranslation()
   const t = tier(set.percent)
   const remaining = set.total - set.implemented
   const notPlanned = set.notPlanned + set.extraNotPlanned
@@ -681,7 +699,7 @@ function SetCard({
       data-tier={t}
       data-kind={setKind(set.setType)}
       onClick={onOpen}
-      title={`View ${set.name} cards`}
+      title={translate('setCompletion.set.viewCards', { name: set.name })}
     >
       <SetIcon code={set.code} className={styles.watermark} />
       <div className={styles.cardHead}>
@@ -696,8 +714,8 @@ function SetCard({
             <KindBadge setType={set.setType} />
             {set.block && <span className={styles.block}>{set.block}</span>}
             {set.inStandard && (
-              <span className={styles.standardBadge} title="Currently legal in Standard">
-                Standard
+              <span className={styles.standardBadge} title={translate('setCompletion.set.standardTitle')}>
+                {translate('setCompletion.filters.standard')}
               </span>
             )}
           </span>
@@ -711,19 +729,19 @@ function SetCard({
 
       <div className={styles.cardFoot}>
         <span>
-          <strong>{set.implemented}</strong> / {set.total} {set.extraTotal > 0 ? 'booster' : 'cards'}
+          <strong>{fmtCount(set.implemented)}</strong> / {fmtCount(set.total)} {translate(set.extraTotal > 0 ? 'setCompletion.set.booster' : 'setCompletion.set.cards')}
         </span>
         {set.extraTotal > 0 && (
           <span className={styles.extra}>
-            {set.extraImplemented}/{set.extraTotal} extra
+            {fmtCount(set.extraImplemented)}/{fmtCount(set.extraTotal)} {translate('setCompletion.set.extra')}
           </span>
         )}
         {notPlanned > 0 && (
           <span
             className={styles.notPlannedTag}
-            title={`${notPlanned} card${notPlanned === 1 ? '' : 's'} we won't implement (ante, dexterity) — not counted in the total`}
+            title={translate('setCompletion.set.notPlanned', { count: notPlanned })}
           >
-            {notPlanned} not planned
+            {notPlanned} {translate('setCompletion.set.notPlannedLabel')}
           </span>
         )}
         {/* Only worth the pixels when there is free work: a "0 Assay-ready" tag on 900 sets would
@@ -731,16 +749,16 @@ function SetCard({
         {set.assayReady != null && set.assayReady > 0 && (
           <span
             className={styles.assayTag}
-            title={`Argentum Assay already reads ${set.assayReady} of this set's missing cards end to end — they need no new SDK vocabulary`}
+            title={translate('setCompletion.set.assayReadyTitle', { count: set.assayReady })}
           >
-            ⚡ {set.assayReady} Assay-ready
+            ⚡ {set.assayReady} {translate('setCompletion.set.assayReady')}
           </span>
         )}
         <AiReadTag reading={aiRead} onOpen={onOpenAiGaps} />
         {t === 'done' ? (
-          <span className={styles.doneTag}>Complete</span>
+          <span className={styles.doneTag}>{translate('setCompletion.set.complete')}</span>
         ) : (
-          <span className={styles.remaining}>{remaining} to go</span>
+          <span className={styles.remaining}>{translate('setCompletion.set.remaining', { count: remaining })}</span>
         )}
       </div>
     </button>
@@ -797,11 +815,11 @@ function aiBand(pct: number): AiBand {
 }
 
 /** Colour is never the only cue: each band carries its own glyph and a word in the tooltip. */
-const AI_BAND: Record<AiBand, { icon: string; word: string }> = {
-  good: { icon: '✓', word: 'well read' },
-  fair: { icon: '◐', word: 'partly read' },
-  low: { icon: '!', word: 'needs attention' },
-}
+const AI_BAND = {
+  good: { icon: '✓', wordKey: 'setCompletion.ai.bandWellRead' },
+  fair: { icon: '◐', wordKey: 'setCompletion.ai.bandPartlyRead' },
+  low: { icon: '!', wordKey: 'setCompletion.ai.bandNeedsAttention' },
+} as const satisfies Record<AiBand, { icon: string; wordKey: string }>
 
 /**
  * "AI 82%" on a set tile: the set's AI-reading score — of its authored cards, the share the engine
@@ -814,6 +832,7 @@ const AI_BAND: Record<AiBand, { icon: string; word: string }> = {
  * set's "AI gaps" tab.
  */
 function AiReadTag({ reading, onOpen }: { reading: SetAiReading | null; onOpen: () => void }) {
+  const { t } = useTranslation()
   if (!reading || reading.total === 0) return null
   const pct = aiReadPercent(reading)
   const band = aiBand(pct)
@@ -826,7 +845,12 @@ function AiReadTag({ reading, onOpen }: { reading: SetAiReading | null; onOpen: 
         e.stopPropagation()
         onOpen()
       }}
-      title={`AI-reading score: the engine AI fully reads ${reading.readFully} of this set's ${reading.total} implemented cards (${AI_BAND[band].word}). Click to see the ${unread} it doesn't, grouped by what it misses.`}
+      title={t('setCompletion.ai.scoreTitle', {
+        read: reading.readFully,
+        total: reading.total,
+        band: t(AI_BAND[band].wordKey),
+        unread,
+      })}
     >
       <span aria-hidden="true">{AI_BAND[band].icon}</span> AI {pct}%
     </span>
@@ -834,21 +858,34 @@ function AiReadTag({ reading, onOpen }: { reading: SetAiReading | null; onOpen: 
 }
 
 /** Plain words for an audit check — the group's headline; the effect type stays beside it. */
-const AI_CHECK_WORDS: Record<string, string> = {
-  polarity: "Can't tell if a target is helped or hurt",
-  intent: "Doesn't know what the effect is for",
-  combat: "Combat can't see it",
-  timing: 'No timing for an until-end-of-turn effect',
-  modal: "Can't pay for extra modes",
+const AI_CHECK_WORD_KEYS = {
+  polarity: 'setCompletion.ai.checkWords.polarity',
+  intent: 'setCompletion.ai.checkWords.intent',
+  combat: 'setCompletion.ai.checkWords.combat',
+  timing: 'setCompletion.ai.checkWords.timing',
+  modal: 'setCompletion.ai.checkWords.modal',
+} as const
+
+const AI_CHECK_SHORT_KEYS = {
+  polarity: 'setCompletion.ai.checkShort.polarity',
+  intent: 'setCompletion.ai.checkShort.intent',
+  combat: 'setCompletion.ai.checkShort.combat',
+  timing: 'setCompletion.ai.checkShort.timing',
+  modal: 'setCompletion.ai.checkShort.modal',
+} as const
+
+function aiCheckWordKey(check: string) {
+  return check in AI_CHECK_WORD_KEYS ? AI_CHECK_WORD_KEYS[check as keyof typeof AI_CHECK_WORD_KEYS] : null
 }
 
-/** One word per audit check, for the chips on a card tile — the hover panel carries the full sentence. */
-const AI_CHECK_SHORT: Record<string, string> = {
-  polarity: 'Target',
-  intent: 'Purpose',
-  combat: 'Combat',
-  timing: 'Timing',
-  modal: 'Modes',
+function aiCheckShortKey(check: string) {
+  return check in AI_CHECK_SHORT_KEYS ? AI_CHECK_SHORT_KEYS[check as keyof typeof AI_CHECK_SHORT_KEYS] : null
+}
+
+function notPlannedReasonKey(kind: string) {
+  return kind in NOT_PLANNED_REASON_KEYS
+    ? NOT_PLANNED_REASON_KEYS[kind as keyof typeof NOT_PLANNED_REASON_KEYS]
+    : null
 }
 
 /** An audit flag key (`intent: AddCountersEffect`) split into its check and effect type. */
@@ -867,16 +904,6 @@ function cardAiBand(card: AiUnreadCard): AiBand {
   return card.abilitiesRead > 0 ? 'fair' : 'low'
 }
 
-/** One line for a screen reader or a tooltip: what the AI misses on this card. */
-function cardAiSummary(card: AiUnreadCard): string {
-  const read = card.abilities > 0 ? `AI reads ${card.abilitiesRead} of ${card.abilities} ${card.abilities === 1 ? 'ability' : 'abilities'}` : 'AI reading has gaps'
-  const misses = card.flags.map((f) => {
-    const { check, effectType } = splitFlag(f)
-    return `${AI_CHECK_WORDS[check] ?? check}${effectType ? ` (${effectType})` : ''}`
-  })
-  return `${read}. Misses: ${misses.join('; ')}`
-}
-
 /**
  * The AI's reading of one hovered card, under its preview: how many abilities the readers
  * understand and each gap in plain words, with the effect type behind it — so a reader scanning the
@@ -884,6 +911,7 @@ function cardAiSummary(card: AiUnreadCard): string {
  * ability-by-ability detail; clicking the tile goes there.
  */
 function AiCardPanel({ card, selected }: { card: AiUnreadCard; selected: string | null }) {
+  const { t } = useTranslation()
   const band = cardAiBand(card)
   return (
     <div className={styles.aiHoverPanel}>
@@ -891,24 +919,25 @@ function AiCardPanel({ card, selected }: { card: AiUnreadCard; selected: string 
         <span aria-hidden="true">{AI_BAND[band].icon}</span>{' '}
         {card.abilities > 0 ? (
           <>
-            AI reads <strong>{card.abilitiesRead}</strong> of {card.abilities} {card.abilities === 1 ? 'ability' : 'abilities'}
+            {t('setCompletion.ai.readAbilities', { read: card.abilitiesRead, count: card.abilities })}
           </>
         ) : (
-          <>AI reading has gaps</>
+          <>{t('setCompletion.ai.readingHasGaps')}</>
         )}
       </div>
       <ul className={styles.aiHoverList}>
         {card.flags.map((f) => {
           const { check, effectType } = splitFlag(f)
+          const wordKey = aiCheckWordKey(check)
           return (
             <li key={f} data-on={selected === f || undefined}>
-              <span>{AI_CHECK_WORDS[check] ?? check}</span>
+              <span>{wordKey ? t(wordKey) : check}</span>
               {effectType && <code>{effectType}</code>}
             </li>
           )
         })}
       </ul>
-      <div className={styles.aiHoverHint}>Click to see where, in the Assay Explorer</div>
+      <div className={styles.aiHoverHint}>{t('setCompletion.ai.clickExplorerHint')}</div>
     </div>
   )
 }
@@ -937,23 +966,30 @@ function AiGapsPanel({
   onSelect: (key: string | null) => void
   onExplore: (name: string) => void
 }) {
-  if (error) return <div className={styles.error}>Couldn’t load the AI reading: {error}</div>
-  if (!data || !data.ready) return <div className={styles.loading}>Reading the set’s cards…</div>
+  const { t } = useTranslation()
+  if (error) return <div className={styles.error}>{t('setCompletion.ai.loadError', { error })}</div>
+  if (!data || !data.ready) return <div className={styles.loading}>{t('setCompletion.ai.loading')}</div>
   const score = data.score
-  if (!score) return <div className={styles.aiGapsEmpty}>Nothing implemented in this set yet, so there is nothing for the AI to read.</div>
+  if (!score) return <div className={styles.aiGapsEmpty}>{t('setCompletion.ai.nothingToRead')}</div>
   const pct = aiReadPercent(score)
   const band = aiBand(pct)
   const abilityPct = score.abilities === 0 ? 100 : Math.floor((score.abilitiesRead * 100) / score.abilities)
   const top = data.groups[0]?.cards.length ?? 1
   return (
-    <section className={styles.aiGaps} aria-label="What the AI misses in this set">
+    <section className={styles.aiGaps} aria-label={t('setCompletion.ai.sectionLabel')}>
       <div className={styles.aiGapsHead}>
         <span className={styles.aiScore} data-band={band}>
           <span aria-hidden="true">{AI_BAND[band].icon}</span> {pct}%
         </span>
         <span className={styles.aiGapsSummary}>
-          The AI fully reads <strong>{score.readFully}</strong> of {score.total} implemented cards ({AI_BAND[band].word}) ·{' '}
-          {score.abilitiesRead} of {score.abilities} abilities ({abilityPct}%)
+          {t('setCompletion.ai.scoreSummary', {
+            read: score.readFully,
+            total: score.total,
+            band: t(AI_BAND[band].wordKey),
+            abilitiesRead: score.abilitiesRead,
+            abilities: score.abilities,
+            percent: abilityPct,
+          })}
           <span className={styles.assayNoteTip}>
             <HelpTip topicId="ai-reading" size="sm" />
           </span>
@@ -961,52 +997,53 @@ function AiGapsPanel({
       </div>
       {data.draft && data.draft.nonland > 0 && <DraftRatingsLine draft={data.draft} />}
       {data.groups.length === 0 ? (
-        <div className={styles.aiGapsEmpty}>The AI reads every implemented card in this set.</div>
+        <div className={styles.aiGapsEmpty}>{t('setCompletion.ai.allRead')}</div>
       ) : (
         <>
           <p className={styles.aiGapsLead}>
-            What it misses, by effect type — one fix to a reader covers every card in a group. Pick a group to narrow
-            the cards below. Each card shows how many of its abilities the AI reads and what it misses; hover one for
-            the detail, click it to open its AI reading in the Assay Explorer.
+            {t('setCompletion.ai.groupsIntro')}
           </p>
           <ol className={styles.aiGroups}>
-            {data.groups.slice(0, 12).map((g) => (
-              <li key={g.key}>
-                <button
-                  className={styles.aiGroup}
-                  data-on={selected === g.key || undefined}
-                  aria-pressed={selected === g.key}
-                  onClick={() => onSelect(selected === g.key ? null : g.key)}
-                >
-                  <span className={styles.aiGroupCount}>{g.cards.length}</span>
-                  <span className={styles.aiGroupBar} aria-hidden="true">
-                    <span style={{ width: `${Math.max(4, (g.cards.length * 100) / top)}%` }} />
-                  </span>
-                  <span className={styles.aiGroupText}>
-                    <span>{AI_CHECK_WORDS[g.check] ?? g.check}</span>
-                    <code>{g.effectType}</code>
-                  </span>
-                </button>
-                <span className={styles.aiGroupCards}>
-                  {g.cards.slice(0, 4).map((name, i) => (
-                    <span key={name}>
-                      {i > 0 && ', '}
-                      <button
-                        className={styles.linkButton}
-                        onClick={() => onExplore(name)}
-                        title={`Open ${name} in the Assay Explorer to see where the AI's reading stops`}
-                      >
-                        {name}
-                      </button>
+            {data.groups.slice(0, 12).map((g) => {
+              const wordKey = aiCheckWordKey(g.check)
+              return (
+                <li key={g.key}>
+                  <button
+                    className={styles.aiGroup}
+                    data-on={selected === g.key || undefined}
+                    aria-pressed={selected === g.key}
+                    onClick={() => onSelect(selected === g.key ? null : g.key)}
+                  >
+                    <span className={styles.aiGroupCount}>{g.cards.length}</span>
+                    <span className={styles.aiGroupBar} aria-hidden="true">
+                      <span style={{ width: `${Math.max(4, (g.cards.length * 100) / top)}%` }} />
                     </span>
-                  ))}
-                  {g.cards.length > 4 && ` +${g.cards.length - 4}`}
-                </span>
-              </li>
-            ))}
+                    <span className={styles.aiGroupText}>
+                      <span>{wordKey ? t(wordKey) : g.check}</span>
+                      <code>{g.effectType}</code>
+                    </span>
+                  </button>
+                  <span className={styles.aiGroupCards}>
+                    {g.cards.slice(0, 4).map((name, i) => (
+                      <span key={name}>
+                        {i > 0 && ', '}
+                        <button
+                          className={styles.linkButton}
+                          onClick={() => onExplore(name)}
+                          title={t('setCompletion.ai.openCardTitle', { name })}
+                        >
+                          {name}
+                        </button>
+                      </span>
+                    ))}
+                    {g.cards.length > 4 && ` +${g.cards.length - 4}`}
+                  </span>
+                </li>
+              )
+            })}
           </ol>
           {data.groups.length > 12 && (
-            <p className={styles.aiGapsLead}>…and {data.groups.length - 12} smaller groups.</p>
+            <p className={styles.aiGapsLead}>{t('setCompletion.ai.moreGroups', { count: data.groups.length - 12 })}</p>
           )}
         </>
       )}
@@ -1021,16 +1058,21 @@ function AiGapsPanel({
  * before trusting how the AI drafts the set.
  */
 function DraftRatingsLine({ draft }: { draft: SetDraftRatings }) {
+  const { t } = useTranslation()
   const filled = draft.nonland - draft.rated
   const borrowed = filled - draft.heuristic
   const pct = (n: number) => (n * 100) / draft.nonland
   return (
     <div className={styles.draftRatings}>
-      <span className={styles.draftRatingsLabel}>Draft picks</span>
+      <span className={styles.draftRatingsLabel}>{t('setCompletion.ai.draftPicks')}</span>
       <span
         className={styles.draftRatingsBar}
         role="img"
-        aria-label={`${draft.rated} rated by the set's pick table, ${borrowed} borrowed, ${draft.heuristic} heuristic guesses`}
+        aria-label={t('setCompletion.ai.draftRatingsAria', {
+          rated: draft.rated,
+          borrowed,
+          heuristic: draft.heuristic,
+        })}
       >
         <span className={styles.draftRatingsTable} style={{ width: `${pct(draft.rated)}%` }} />
         <span className={styles.draftRatingsFallback} style={{ width: `${pct(borrowed)}%` }} />
@@ -1039,19 +1081,19 @@ function DraftRatingsLine({ draft }: { draft: SetDraftRatings }) {
       <span className={styles.draftRatingsText}>
         {draft.hasTable ? (
           <>
-            Pick table rates <strong>{draft.rated}</strong> of {draft.nonland} nonland cards
+            {t('setCompletion.ai.pickTableRates', { rated: draft.rated, total: draft.nonland })}
           </>
         ) : (
-          <>No pick table for this set</>
+          <>{t('setCompletion.ai.noPickTable')}</>
         )}
-        {borrowed > 0 && <> · {borrowed} borrowed from other sets or 17Lands</>}
+        {borrowed > 0 && <> · {t('setCompletion.ai.borrowed', { count: borrowed })}</>}
         {draft.heuristic > 0 && (
           <span className={styles.draftRatingsWarn}>
             {' · '}
-            {draft.heuristic} with no draft rating — heuristic guess
+            {t('setCompletion.ai.heuristic', { count: draft.heuristic })}
           </span>
         )}
-        {draft.archetypes && ' · archetype-aware'}
+        {draft.archetypes && ` · ${t('setCompletion.ai.archetypeAware')}`}
         <span className={styles.assayNoteTip}>
           <HelpTip topicId="ai-rating" size="sm" />
         </span>
@@ -1062,14 +1104,14 @@ function DraftRatingsLine({ draft }: { draft: SetDraftRatings }) {
 
 type CardFilter = 'all' | 'implemented' | 'missing' | 'assayReady' | 'aiGaps' | 'notPlanned'
 
-const CARD_FILTER_LABELS: Record<CardFilter, string> = {
-  all: 'All',
-  implemented: 'Implemented',
-  missing: 'Missing',
-  assayReady: '⚡ Assay-ready',
-  aiGaps: 'AI gaps',
-  notPlanned: 'Not planned',
-}
+const CARD_FILTER_LABEL_KEYS = {
+  all: 'setCompletion.details.filterAll',
+  implemented: 'setCompletion.details.filterImplemented',
+  missing: 'setCompletion.details.filterMissing',
+  assayReady: 'setCompletion.details.filterAssayReady',
+  aiGaps: 'setCompletion.details.filterAiGaps',
+  notPlanned: 'setCompletion.details.filterNotPlanned',
+} as const satisfies Record<CardFilter, string>
 
 function SetDetailOverlay({
   code,
@@ -1090,6 +1132,7 @@ function SetDetailOverlay({
   onExplore: (name: string) => void
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [detail, setDetail] = useState<SetDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cardFilter, setCardFilter] = useState<CardFilter>(initialFilter)
@@ -1214,7 +1257,7 @@ function SetDetailOverlay({
       detail
         ? [
             {
-              label: extraSections.length > 0 ? 'Draft Cards' : 'Cards',
+              label: t(extraSections.length > 0 ? 'setCompletion.details.draftCards' : 'setCompletion.details.cards'),
               cards: draftCards,
               total: detail.draft.length,
               done: detail.implemented,
@@ -1229,7 +1272,7 @@ function SetDetailOverlay({
             })),
           ]
         : [],
-    [detail, draftCards, extraSections],
+    [detail, draftCards, extraSections, t],
   )
 
   // The index stays put while the card grid scrolls under it, so it needs the scroller and each
@@ -1277,11 +1320,11 @@ function SetDetailOverlay({
     }
   }, [sections])
 
-  const t = detail ? tier(detail.percent) : 'empty'
+  const coverageTier = detail ? tier(detail.percent) : 'empty'
 
   return (
     <div className={styles.overlayBackdrop} onClick={onClose}>
-      <div className={styles.overlay} data-tier={t} onClick={(e) => e.stopPropagation()}>
+      <div className={styles.overlay} data-tier={coverageTier} onClick={(e) => e.stopPropagation()}>
         <header className={styles.overlayHeader}>
           <SetIcon code={code} className={styles.overlayIcon} />
           <div className={styles.overlayTitleBlock}>
@@ -1297,17 +1340,17 @@ function SetDetailOverlay({
             <div className={styles.overlayStats}>
               <span className={styles.percent}>{fmtPct(detail.percent)}%</span>
               <span className={styles.overlayCounts}>
-                <strong>{detail.implemented}</strong>/{detail.total} {detail.extraTotal > 0 ? 'booster' : 'cards'}
+                <strong>{fmtCount(detail.implemented)}</strong>/{fmtCount(detail.total)} {t(detail.extraTotal > 0 ? 'setCompletion.set.booster' : 'setCompletion.set.cards')}
                 {detail.extraTotal > 0 && (
                   <>
                     {' · '}
-                    {detail.extraImplemented}/{detail.extraTotal} extra
+                    {fmtCount(detail.extraImplemented)}/{fmtCount(detail.extraTotal)} {t('setCompletion.details.countExtra')}
                   </>
                 )}
-                {notPlannedCount > 0 && <> · {notPlannedCount} not planned</>}
+                {notPlannedCount > 0 && <> · {notPlannedCount} {t('setCompletion.details.notPlanned')}</>}
                 {detail.assayReady != null && detail.assayReady > 0 && (
                   <span className={styles.assayNote}>
-                    {' · '}⚡ {detail.assayReady} Assay-ready
+                    {' · '}⚡ {detail.assayReady} {t('setCompletion.details.assayReady')}
                     <span className={styles.assayNoteTip}>
                       <HelpTip topicId="assay-ready" size="sm" />
                     </span>
@@ -1320,10 +1363,14 @@ function SetDetailOverlay({
                       className={styles.aiReadNoteButton}
                       data-band={aiBand(aiReadPercent(aiRead))}
                       onClick={() => setCardFilter('aiGaps')}
-                      title="Show the cards the AI doesn't fully read, grouped by what it misses"
+                      title={t('setCompletion.ai.showGapsTitle')}
                     >
-                      <span aria-hidden="true">{AI_BAND[aiBand(aiReadPercent(aiRead))].icon}</span> AI reads{' '}
-                      {aiRead.readFully} of {aiRead.total} ({aiReadPercent(aiRead)}%)
+                      <span aria-hidden="true">{AI_BAND[aiBand(aiReadPercent(aiRead))].icon}</span>{' '}
+                      {t('setCompletion.details.aiReadCards', {
+                        read: aiRead.readFully,
+                        total: aiRead.total,
+                        percent: aiReadPercent(aiRead),
+                      })}
                     </button>
                   </span>
                 )}
@@ -1334,12 +1381,12 @@ function SetDetailOverlay({
             <Link
               className={styles.overlayBrowse}
               to={`/cards?q=${encodeURIComponent(`s:${code.toLowerCase()}`)}`}
-              title={`Look through ${detail.name}'s playable cards in the card browser`}
+              title={t('setCompletion.details.browseCardsTitle', { name: detail.name })}
             >
-              Browse cards
+              {t('setCompletion.details.browseCards')}
             </Link>
           )}
-          <button className={styles.overlayClose} onClick={onClose} aria-label="Close">
+          <button className={styles.overlayClose} onClick={onClose} aria-label={t('common.close')}>
             ✕
           </button>
         </header>
@@ -1351,7 +1398,7 @@ function SetDetailOverlay({
         )}
 
         <div className={styles.overlayControls}>
-          {(Object.keys(CARD_FILTER_LABELS) as CardFilter[])
+          {(Object.keys(CARD_FILTER_LABEL_KEYS) as CardFilter[])
             // The not-planned tab only exists for the handful of sets that have such a card.
             .filter((f) => f !== 'notPlanned' || notPlannedCount > 0)
             // The Assay tab needs a baked ledger to mean anything. Hidden when `assayReady` is null
@@ -1367,13 +1414,13 @@ function SetDetailOverlay({
                 onClick={() => setCardFilter(f)}
                 title={
                   f === 'assayReady'
-                    ? 'Missing cards Argentum Assay already reads end to end — implementable with the SDK vocabulary that exists today'
+                    ? t('setCompletion.details.assayReadyTitle')
                     : f === 'aiGaps'
-                      ? "Implemented cards the engine AI doesn't fully read, grouped by what it misses"
+                      ? t('setCompletion.details.aiGapsTitle')
                       : undefined
                 }
               >
-                {CARD_FILTER_LABELS[f]}
+                {t(CARD_FILTER_LABEL_KEYS[f])}
                 {f === 'notPlanned' && ` (${notPlannedCount})`}
                 {f === 'assayReady' && ` (${detail?.assayReady ?? 0})`}
                 {f === 'aiGaps' && aiRead && ` (${aiRead.total - aiRead.readFully})`}
@@ -1385,7 +1432,7 @@ function SetDetailOverlay({
           {/* Pinned beside the grid rather than hidden in a menu (Scryfall's own set pages use a
               dropdown): what a set contains stays readable without scrolling a 280-tile grid. */}
           {sections.length > 1 && (
-            <nav className={styles.sectionIndex} aria-label={`${code} sections`}>
+            <nav className={styles.sectionIndex} aria-label={t('setCompletion.details.sections', { code })}>
               {sections.map((s) => (
                 <button
                   key={s.label}
@@ -1402,8 +1449,8 @@ function SetDetailOverlay({
           )}
 
           <div className={styles.overlayBody} ref={bodyRef}>
-            {error && <div className={styles.error}>Couldn’t load cards: {error}</div>}
-            {!detail && !error && <div className={styles.loading}>Loading {code} cards…</div>}
+            {error && <div className={styles.error}>{t('setCompletion.details.loadCardsError', { error })}</div>}
+            {!detail && !error && <div className={styles.loading}>{t('setCompletion.details.loadingCards', { code })}</div>}
             {cardFilter === 'aiGaps' && (
               <AiGapsPanel
                 data={aiDetail}
@@ -1478,6 +1525,7 @@ const CardSection = memo(function CardSection({
   aiGroup: string | null
   onExplore: (name: string) => void
 }) {
+  const { t } = useTranslation()
   if (total === 0) return null
   return (
     <section className={styles.cardSection} ref={(el) => register(title, el)}>
@@ -1488,7 +1536,7 @@ const CardSection = memo(function CardSection({
         </span>
       </h3>
       {cards.length === 0 ? (
-        <div className={styles.sectionEmpty}>Nothing here for this filter.</div>
+        <div className={styles.sectionEmpty}>{t('setCompletion.details.nothingForFilter')}</div>
       ) : (
         <div className={styles.cardImageGrid}>
           {cards.map((c) => (
@@ -1521,6 +1569,7 @@ const CardTile = memo(function CardTile({
   aiGroup: string | null
   onExplore: (name: string) => void
 }) {
+  const { t } = useTranslation()
   // A not-planned card is neither done nor outstanding, so it gets its own look and always
   // explains itself — the reason travels with the flag from the manifest to this tooltip.
   const className = card.implemented
@@ -1529,12 +1578,24 @@ const CardTile = memo(function CardTile({
       ? styles.tileNotPlanned
       : styles.tileMissing
   const ready = isAssayReady(card)
+  const reasonKey = card.notPlanned ? notPlannedReasonKey(card.notPlanned.kind) : null
+  const assay = card.assay
+  const assayText = !assay
+    ? null
+    : assay.readsWhole
+      ? t(card.implemented ? 'setCompletion.assay.readsWhole' : 'setCompletion.assay.implementable')
+      : t('setCompletion.assay.declines', { kind: assay.kind, line: assay.line ? ` — “${assay.line}”` : '' })
   // Assay's reading is on every tooltip but only badges the actionable case. A chip on all ~280
   // tiles would be wallpaper; the one state worth spotting across a grid is "nobody built this and
   // the grammar already reads it", which is a card you could pick up right now.
   const tooltip = [
-    card.notPlanned ? `${card.name} — not planned: ${card.notPlanned.why}` : card.name,
-    assayTooltip(card),
+    card.notPlanned
+      ? t('setCompletion.set.notPlannedCardTitle', {
+          name: card.name,
+          reason: reasonKey ? t(reasonKey) : card.notPlanned.kind,
+        })
+      : card.name,
+    assayText,
   ]
     .filter(Boolean)
     .join('\n')
@@ -1558,10 +1619,16 @@ const CardTile = memo(function CardTile({
         decoding="async"
       />
       <span className={styles.tileBadge}>
-        {card.implemented ? '✓' : card.notPlanned ? card.notPlanned.kind : 'Missing'}
+        {card.implemented
+          ? '✓'
+          : card.notPlanned
+            ? reasonKey
+              ? t(reasonKey)
+              : card.notPlanned.kind
+            : t('setCompletion.details.filterMissing')}
       </span>
       {ready && (
-        <span className={styles.assayBadge} aria-label="Assay reads this card whole">
+        <span className={styles.assayBadge} aria-label={t('setCompletion.set.badgeAssayReads')}>
           ⚡
         </span>
       )}
@@ -1591,6 +1658,7 @@ function AiCardTile({
   hoverAt: (e: ReactMouseEvent) => void
   onExplore: (name: string) => void
 }) {
+  const { t } = useTranslation()
   const band = cardAiBand(ai)
   // One chip per kind of gap, not per flag: a card missing two intent readings says "Purpose ×2"
   // rather than spending the tile's width on the same word twice.
@@ -1600,11 +1668,22 @@ function AiCardTile({
     const c = checks.get(check) ?? { count: 0, on: false }
     checks.set(check, { count: c.count + 1, on: c.on || f === aiGroup })
   }
+  const readSummary = ai.abilities > 0
+    ? t('setCompletion.ai.readAbilities', { read: ai.abilitiesRead, count: ai.abilities })
+    : t('setCompletion.ai.readingHasGaps')
+  const missesSummary = ai.flags.map((f) => {
+    const { check, effectType } = splitFlag(f)
+    const wordKey = aiCheckWordKey(check)
+    return `${wordKey ? t(wordKey) : check}${effectType ? ` (${effectType})` : ''}`
+  }).join('; ')
   return (
     <button
       type="button"
       className={`${styles.tile} ${styles.tileAi}`}
-      aria-label={`${card.name}. ${cardAiSummary(ai)}. Open in the Assay Explorer.`}
+      aria-label={t('setCompletion.ai.cardTileAria', {
+        name: card.name,
+        summary: t('setCompletion.ai.misses', { read: readSummary, misses: missesSummary }),
+      })}
       onClick={() => {
         onHover(null)
         onExplore(card.name)
@@ -1625,12 +1704,15 @@ function AiCardTile({
         {ai.abilities > 0 && ` ${ai.abilitiesRead}/${ai.abilities}`}
       </span>
       <span className={styles.tileAiChips} aria-hidden="true">
-        {[...checks].map(([check, { count, on }]) => (
-          <span key={check} className={styles.tileAiChip} data-on={on || undefined}>
-            {AI_CHECK_SHORT[check] ?? check}
-            {count > 1 && ` ×${count}`}
-          </span>
-        ))}
+        {[...checks].map(([check, { count, on }]) => {
+          const shortKey = aiCheckShortKey(check)
+          return (
+            <span key={check} className={styles.tileAiChip} data-on={on || undefined}>
+              {shortKey ? t(shortKey) : check}
+              {count > 1 && ` ×${count}`}
+            </span>
+          )
+        })}
       </span>
     </button>
   )

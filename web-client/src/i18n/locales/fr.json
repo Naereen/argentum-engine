@@ -2778,6 +2778,192 @@
     "partialSet": "Seule une partie de cette édition est implémentée ; ses boosters sont donc constitués des cartes disponibles."
   },
   "setCompletion": {
+    "title": "Avancement des extensions",
+    "descriptionBefore": "Découvrez la part de chaque extension Magic jouable dans Argentum. Vous cherchez une extension à drafter ou à jouer en paquet scellé ?",
+    "guideLink": "Essayez le guide des extensions",
+    "descriptionAfter": ".",
+    "tabs": {
+      "label": "Vue",
+      "sets": "Extensions",
+      "explorer": "Explorateur Assay",
+      "explorerTitle": "Explorateur Argentum Assay",
+      "explorerHelp": "Qu’est-ce que l’explorateur Assay ?"
+    },
+    "summary": {
+      "overall": "au total",
+      "distinctBooster": "cartes distinctes de boosters implémentées",
+      "distinctExtras": "cartes bonus distinctes (collection complète)",
+      "boosterPrintings": "cartes de boosters parmi toutes les extensions",
+      "completeSets": "{{complete}} / {{total}} extensions terminées",
+      "notPlannedTitle": "Cartes nécessitant des mécaniques que le moteur ne prendra jamais en charge — mises, dextérité physique. Elles sont exclues de tous les totaux.",
+      "notPlannedCount": "{{count}} cartes non prévues",
+      "boosterPrintingsImplemented": "cartes de boosters implémentées",
+      "viewProgress": "Voir la progression →",
+      "progressTitle": "Voir la progression des implémentations au fil du temps"
+    },
+    "filters": {
+      "searchPlaceholder": "Filtrer par nom ou code d’extension…",
+      "searchLabel": "Filtrer les extensions",
+      "completionLabel": "Filtrer par avancement",
+      "all": "Toutes",
+      "standard": "Standard",
+      "inProgress": "En cours",
+      "complete": "Terminées",
+      "sort": "Trier",
+      "sortLabel": "Trier les extensions",
+      "newest": "Plus récentes",
+      "percent": "Les plus complètes",
+      "implemented": "Le plus de cartes terminées",
+      "assayReady": "Le plus de cartes Assay prêtes",
+      "aiRead": "Moins bien comprises par l’IA",
+      "name": "A–Z",
+      "kindLabel": "Filtrer par type d’extension",
+      "allTypes": "Tous les types",
+      "clear": "Effacer les filtres",
+      "noMatches": "Aucune extension ne correspond à « {{query}} » avec ces filtres.",
+      "noMatchesWithoutQuery": "Aucune extension ne correspond à ces filtres."
+    },
+    "kinds": {
+      "main": {
+        "label": "Extensions principales",
+        "description": "Extensions majeures et éditions de base — celles qui entrent dans la rotation du Standard."
+      },
+      "commander": {
+        "label": "Commander",
+        "description": "Decks Commander préconstruits et nouvelles cartes imprimées pour eux."
+      },
+      "supplemental": {
+        "label": "Compléments",
+        "description": "Extensions de boosters hors de la gamme principale : Masters, Horizons du Modern, Conspiracy, Jumpstart et éditions de démarrage."
+      },
+      "precon": {
+        "label": "Decks et coffrets",
+        "description": "Produits préconstruits : Duel Decks, Planechase, Archenemy, From the Vault et coffrets cadeaux."
+      },
+      "funny": {
+        "label": "Extensions « Un »",
+        "description": "Extensions à bordure argentée ou avec gland — non légales en tournoi homologué."
+      }
+    },
+    "typeLabels": {
+      "commander": "Commander",
+      "supplemental": "Complément",
+      "masters": "Masters",
+      "eternal": "Éternel",
+      "starter": "Démarrage",
+      "alchemy": "Alchemy",
+      "duelDeck": "Duel Deck",
+      "planechase": "Planechase",
+      "archenemy": "Archenemy",
+      "fromTheVault": "From the Vault",
+      "premiumDeck": "Deck Premium",
+      "spellbook": "Signature Spellbook",
+      "box": "Coffret",
+      "treasureChest": "Coffre au trésor",
+      "arsenal": "Arsenal",
+      "vanguard": "Vanguard",
+      "unSet": "Extension « Un »"
+    },
+    "results": {
+      "set_one": "{{count}} extension",
+      "set_other": "{{count}} extensions",
+      "boosterPrintings": "cartes de boosters",
+      "complete": "terminées"
+    },
+    "set": {
+      "viewCards": "Voir les cartes de {{name}}",
+      "standardTitle": "Légal actuellement en Standard",
+      "booster": "booster",
+      "cards": "cartes",
+      "extra": "bonus",
+      "notPlanned": "{{count}} cartes que nous n’implémenterons pas (mises, dextérité) — exclues du total",
+      "notPlannedLabel": "non prévues",
+      "notPlannedReasonAnte": "Mises",
+      "notPlannedReasonDexterity": "Dextérité",
+      "notPlannedCardTitle": "{{name}} — non prévue : {{reason}}",
+      "assayReadyTitle": "Argentum Assay lit déjà intégralement {{count}} cartes manquantes de cette extension — aucun nouveau vocabulaire SDK nécessaire",
+      "assayReady": "prêtes pour Assay",
+      "complete": "Terminée",
+      "remaining": "{{count}} restantes",
+      "badgeAssayReads": "Assay lit intégralement cette carte"
+    },
+    "assay": {
+      "readsWhole": "Assay lit intégralement cette carte.",
+      "implementable": "Assay lit intégralement cette carte — elle est réalisable avec le vocabulaire existant.",
+      "declines": "Assay ne peut pas lire cette carte : {{kind}}{{line}}"
+    },
+    "errors": {
+      "coverage": "Impossible de charger la couverture : {{error}}",
+      "loadingCoverage": "Chargement de la couverture des extensions…"
+    },
+    "ai": {
+      "bandWellRead": "bien comprise",
+      "bandPartlyRead": "partiellement comprise",
+      "bandNeedsAttention": "à améliorer",
+      "scoreTitle": "Score de lecture de l’IA : l’IA du moteur comprend entièrement {{read}} des {{total}} cartes implémentées de cette extension ({{band}}). Cliquez pour voir les {{unread}} restantes, classées par lacune.",
+      "checkWords": {
+        "polarity": "Ne sait pas si une cible est aidée ou blessée",
+        "intent": "Ne comprend pas le rôle de l’effet",
+        "combat": "Non pris en compte en combat",
+        "timing": "Ne gère pas la durée jusqu’à la fin du tour",
+        "modal": "Ne sait pas payer pour des modes supplémentaires"
+      },
+      "checkShort": {
+        "polarity": "Cible",
+        "intent": "Rôle",
+        "combat": "Combat",
+        "timing": "Durée",
+        "modal": "Modes"
+      },
+      "readAbilities_one": "L’IA comprend {{read}} capacité sur {{count}}",
+      "readAbilities_other": "L’IA comprend {{read}} capacités sur {{count}}",
+      "readingHasGaps": "La lecture de l’IA comporte des lacunes",
+      "misses": "{{read}}. Lacunes : {{misses}}",
+      "cardTileAria": "{{name}}. {{summary}}. Ouvrir dans l’explorateur Assay.",
+      "clickExplorerHint": "Cliquez pour voir où, dans l’explorateur Assay",
+      "loadError": "Impossible de charger la lecture de l’IA : {{error}}",
+      "loading": "Lecture des cartes de l’extension…",
+      "nothingToRead": "Aucune carte n’est encore implémentée dans cette extension ; l’IA n’a donc rien à lire.",
+      "sectionLabel": "Ce que l’IA ne comprend pas dans cette extension",
+      "scoreSummary": "L’IA comprend entièrement {{read}} des {{total}} cartes implémentées ({{band}}) · {{abilitiesRead}} capacités sur {{abilities}} ({{percent}} %)",
+      "allRead": "L’IA comprend toutes les cartes implémentées de cette extension.",
+      "groupsIntro": "Les lacunes, classées par type d’effet — une correction du lecteur couvre toutes les cartes d’un groupe. Choisissez un groupe pour filtrer les cartes ci-dessous. Chaque carte indique combien de ses capacités l’IA comprend et ce qui lui échappe ; survolez-la pour les détails, ou cliquez pour ouvrir sa lecture dans l’explorateur Assay.",
+      "openCardTitle": "Ouvrir {{name}} dans l’explorateur Assay pour voir où la lecture de l’IA s’arrête",
+      "moreGroups": "…et {{count}} groupes plus petits.",
+      "draftPicks": "Choix de draft",
+      "draftRatingsAria": "{{rated}} évaluées par la table de l’extension, {{borrowed}} empruntées, {{heuristic}} estimées par heuristique",
+      "pickTableRates": "La table d’évaluation note {{rated}} des {{total}} cartes non-terrain",
+      "noPickTable": "Aucune table d’évaluation pour cette extension",
+      "borrowed": "{{count}} empruntées à d’autres extensions ou à 17Lands",
+      "heuristic": "{{count}} sans note de draft — estimation heuristique",
+      "archetypeAware": "tient compte des archétypes",
+      "showGapsTitle": "Afficher les cartes que l’IA ne comprend pas entièrement, classées par lacune"
+    },
+    "details": {
+      "filterAll": "Toutes",
+      "filterImplemented": "Implémentées",
+      "filterMissing": "Manquantes",
+      "filterAssayReady": "⚡ Prêtes pour Assay",
+      "filterAiGaps": "Lacunes de l’IA",
+      "filterNotPlanned": "Non prévues",
+      "assayReadyTitle": "Cartes manquantes qu’Argentum Assay lit déjà intégralement — réalisables avec le vocabulaire SDK existant",
+      "aiGapsTitle": "Cartes implémentées que l’IA du moteur ne comprend pas entièrement, classées par lacune",
+      "notPlanned": "non prévues",
+      "assayReady": "prêtes pour Assay",
+      "cards": "Cartes",
+      "draftCards": "Cartes de draft",
+      "countExtra": "bonus",
+      "browseCardsTitle": "Parcourir les cartes jouables de {{name}} dans le navigateur de cartes",
+      "browseCards": "Parcourir les cartes",
+      "sections": "Sections de {{code}}",
+      "loadCardsError": "Impossible de charger les cartes : {{error}}",
+      "loadingCards": "Chargement des cartes de {{code}}…",
+      "nothingForFilter": "Aucune carte ne correspond à ce filtre.",
+      "ariaClose": "Fermer",
+      "aiReads": "L’IA lit",
+      "aiReadCards": "L’IA comprend {{read}} cartes sur {{total}} ({{percent}} %)",
+      "implementedCount": "{{read}} cartes implémentées sur {{total}}"
+    },
     "progress": {
       "title": "Progression de l’implémentation des cartes",
       "description": "Nombre de cartes distinctes implémentées, jour après jour depuis le début du projet",

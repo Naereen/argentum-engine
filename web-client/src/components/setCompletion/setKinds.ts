@@ -86,6 +86,28 @@ const TYPE_LABELS: Record<string, string> = {
   funny: 'Un-set',
 }
 
+const TYPE_LABEL_KEYS = {
+  commander: 'setCompletion.typeLabels.commander',
+  draft_innovation: 'setCompletion.typeLabels.supplemental',
+  masters: 'setCompletion.typeLabels.masters',
+  eternal: 'setCompletion.typeLabels.eternal',
+  starter: 'setCompletion.typeLabels.starter',
+  alchemy: 'setCompletion.typeLabels.alchemy',
+  duel_deck: 'setCompletion.typeLabels.duelDeck',
+  planechase: 'setCompletion.typeLabels.planechase',
+  archenemy: 'setCompletion.typeLabels.archenemy',
+  from_the_vault: 'setCompletion.typeLabels.fromTheVault',
+  premium_deck: 'setCompletion.typeLabels.premiumDeck',
+  spellbook: 'setCompletion.typeLabels.spellbook',
+  box: 'setCompletion.typeLabels.box',
+  treasure_chest: 'setCompletion.typeLabels.treasureChest',
+  arsenal: 'setCompletion.typeLabels.arsenal',
+  vanguard: 'setCompletion.typeLabels.vanguard',
+  funny: 'setCompletion.typeLabels.unSet',
+} as const
+
+export type SetTypeLabelKey = (typeof TYPE_LABEL_KEYS)[keyof typeof TYPE_LABEL_KEYS]
+
 /** A set whose type we don't recognise (or Scryfall didn't report) counts as a main set, unbadged. */
 export function setKind(setType: string | null): SetKind {
   return (setType && KIND_BY_TYPE[setType]) || 'main'
@@ -95,4 +117,10 @@ export function setKind(setType: string | null): SetKind {
 export function setTypeLabel(setType: string | null): string | null {
   if (setKind(setType) === 'main' || !setType) return null
   return TYPE_LABELS[setType] ?? setType.replace(/_/g, ' ')
+}
+
+/** Translation key for a known Scryfall set type; unknown types keep their source label. */
+export function setTypeLabelKey(setType: string | null): SetTypeLabelKey | null {
+  if (!setType || setKind(setType) === 'main' || !Object.hasOwn(TYPE_LABEL_KEYS, setType)) return null
+  return TYPE_LABEL_KEYS[setType as keyof typeof TYPE_LABEL_KEYS]
 }
