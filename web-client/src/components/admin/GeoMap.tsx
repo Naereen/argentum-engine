@@ -13,6 +13,7 @@ import { geoNaturalEarth1, geoPath } from 'd3-geo'
 import { feature } from 'topojson-client'
 import CENTROIDS from 'virtual:country-centroids'
 import worldTopology from 'world-atlas/countries-110m.json'
+import { useTranslation } from 'react-i18next'
 import type { GeoBucket } from '@/api/adminStats'
 import { adminTheme } from './adminUi'
 
@@ -26,19 +27,20 @@ interface CountryAgg {
 }
 
 /** Sum games per resolved country; rows without a country code are folded into one "unknown" entry. */
-function aggregateByCountry(buckets: GeoBucket[]): CountryAgg[] {
+function aggregateByCountry(buckets: GeoBucket[], unknownLabel: string): CountryAgg[] {
   const byCode = new Map<string, CountryAgg>()
   for (const b of buckets) {
     const key = b.countryCode ?? '∅'
     const existing = byCode.get(key)
     if (existing) existing.games += b.games
-    else byCode.set(key, { code: b.countryCode, country: b.country ?? 'Unknown / local', games: b.games })
+    else byCode.set(key, { code: b.countryCode, country: b.country ?? unknownLabel, games: b.games })
   }
   return [...byCode.values()].sort((a, b) => b.games - a.games)
 }
 
 export function GeoMap({ buckets }: { buckets: GeoBucket[] }) {
-  const [hover, setHover] = useState<{ label: string; x: number; y: number } | null>(null)
+  const { t } = useTranslation()
+  const [hover, setHover] = useState<{ country: string; games: number; x: number; y: number } | null>(null)
 
   const { paths, markers, ranked, maxGames } = useMemo(() => {
     const fc = feature(
@@ -49,7 +51,7 @@ export function GeoMap({ buckets }: { buckets: GeoBucket[] }) {
     const pathGen = geoPath(projection)
     const countryPaths = fc.features.map((f) => pathGen(f as never) ?? '')
 
-    const ranked = aggregateByCountry(buckets)
+    const ranked = aggregateByCountry(buckets, t('adminGeoMap.unknownLocal'))
     const maxGames = Math.max(1, ...ranked.map((r) => r.games))
     const markers = ranked
       .filter((r) => r.code && CENTROIDS[r.code])
@@ -61,12 +63,12 @@ export function GeoMap({ buckets }: { buckets: GeoBucket[] }) {
       })
       .sort((a, b) => b.radius - a.radius) // big bubbles first so small ones stay clickable on top
     return { paths: countryPaths, markers, ranked, maxGames }
-  }, [buckets])
+  }, [buckets, t])
 
   return (
     <div style={styles.wrap}>
       <div style={styles.mapBox}>
-        <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} style={styles.svg} role="img" aria-label="Player connection map">
+        <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} style={styles.svg} role="img" aria-label={t('adminGeoMap.ariaLabel')}>
           <g>
             {paths.map((d, i) => (
               <path key={i} d={d} fill={adminTheme.panelAlt} stroke={adminTheme.border} strokeWidth={0.4} />
@@ -84,17 +86,23 @@ export function GeoMap({ buckets }: { buckets: GeoBucket[] }) {
                 stroke={adminTheme.accent}
                 strokeWidth={1}
                 style={{ cursor: 'default' }}
-                onMouseEnter={() => setHover({ label: `${m.country} · ${m.games}`, x: m.x, y: m.y })}
+                onMouseEnter={() => setHover({ country: m.country, games: m.games, x: m.x, y: m.y })}
                 onMouseLeave={() => setHover(null)}
               >
-                <title>{`${m.country}: ${m.games} game${m.games === 1 ? '' : 's'}`}</title>
+                <title>
+                  {m.games === 1
+                    ? t('adminGeoMap.locationGamesOne', { country: m.country, count: m.games })
+                    : t('adminGeoMap.locationGamesMany', { country: m.country, count: m.games })}
+                </title>
               </circle>
             ))}
           </g>
           {hover && (
             <g transform={`translate(${hover.x}, ${hover.y - 12})`} pointerEvents="none">
               <text textAnchor="middle" style={styles.hoverText}>
-                {hover.label}
+                {hover.games === 1
+                  ? t('adminGeoMap.locationGamesOne', { country: hover.country, count: hover.games })
+                  : t('adminGeoMap.locationGamesMany', { country: hover.country, count: hover.games })}
               </text>
             </g>
           )}
@@ -102,7 +110,7 @@ export function GeoMap({ buckets }: { buckets: GeoBucket[] }) {
       </div>
 
       <div style={styles.list}>
-        <div style={styles.listHead}>Top locations</div>
+        <div style={styles.listHead}>{t('adminGeoMap.topLocations')}</div>
         {ranked.slice(0, 12).map((r) => (
           <div key={r.code ?? r.country} style={styles.listRow}>
             <span style={styles.listName}>{r.country}</span>

@@ -1747,6 +1747,13 @@
     "teamNumber": "Équipe {{count}}",
     "movePlayerToOtherTeam": "Cliquez pour déplacer ce joueur dans l'autre équipe"
   },
+  "adminGeoMap": {
+    "ariaLabel": "Carte des connexions des joueurs",
+    "topLocations": "Principales localisations",
+    "unknownLocal": "Inconnue / locale",
+    "locationGamesOne": "{{country}} : {{count}} partie",
+    "locationGamesMany": "{{country}} : {{count}} parties"
+  },
   "lobbyAi": {
     "aiDeck": "Deck de l'IA",
     "auto": "Auto",
@@ -2769,6 +2776,24 @@
     "andMore": "et {{count}} de plus",
     "moreInGuide": "Plus d’infos dans le guide des éditions ↗",
     "partialSet": "Seule une partie de cette édition est implémentée ; ses boosters sont donc constitués des cartes disponibles."
+  },
+  "setCompletion": {
+    "progress": {
+      "title": "Progression de l’implémentation des cartes",
+      "description": "Nombre de cartes distinctes implémentées, jour après jour depuis le début du projet",
+      "loading": "Chargement de la progression…",
+      "loadError": "Impossible de charger la progression : {{error}}",
+      "distinctCards": "Cartes distinctes",
+      "implemented": "implémentées",
+      "activeDays": "Jours actifs",
+      "ofDays": "sur {{count}}",
+      "busiestDay": "Jour le plus actif",
+      "chartAria": "Progression quotidienne et cumulée de l’implémentation des cartes",
+      "cumulativeCards": "Cartes cumulées",
+      "cardsAddedPerDay": "Cartes ajoutées par jour",
+      "cardsTotal": "cartes au total",
+      "thatDay": "ce jour-là"
+    }
   },
   "scenario": {
     "title": "Constructeur de scénarios",

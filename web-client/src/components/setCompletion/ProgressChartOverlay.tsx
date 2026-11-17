@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { fetchProgressHistory, type ProgressPoint } from '@/api/setCoverage'
+import { useTranslation } from 'react-i18next'
 import styles from './SetCompletionPage.module.css'
 
 // The chart is drawn in real pixels: the viewBox mirrors the measured size of its container, so the
@@ -24,13 +25,13 @@ const C_TOTAL = '#5fd0b8' // the hub's teal — the running total
 const C_ADDED = '#f2b45c' // the hub's amber — what each day added
 const SURFACE = '#10131d'
 
-const fmt = (n: number) => n.toLocaleString('en-US')
-const niceFull = (s: string) =>
-  new Date(`${s}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })
+const fmt = (n: number, locale: string) => n.toLocaleString(locale)
+const niceFull = (s: string, locale: string) =>
+  new Date(`${s}T00:00:00`).toLocaleDateString(locale, { weekday: 'short', month: 'long', day: 'numeric' })
 // January carries its year, so the axis stays readable once labels get thinned out on a narrow chart.
-const monthLabel = (s: string) => {
+const monthLabel = (s: string, locale: string) => {
   const d = new Date(`${s}T00:00:00`)
-  const m = d.toLocaleDateString('en-US', { month: 'short' })
+  const m = d.toLocaleDateString(locale, { month: 'short' })
   return d.getMonth() === 0 ? `${m} ’${String(d.getFullYear()).slice(2)}` : m
 }
 
@@ -62,6 +63,8 @@ function useElementSize<T extends HTMLElement>() {
 
 /** Modal showing implemented cards over time: a cumulative curve above a daily-adds panel. */
 export function ProgressChartOverlay({ onClose }: { onClose: () => void }) {
+  const { t, i18n } = useTranslation()
+  const locale = i18n.resolvedLanguage ?? i18n.language
   const [points, setPoints] = useState<readonly ProgressPoint[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [hoverI, setHoverI] = useState<number | null>(null)
@@ -137,7 +140,7 @@ export function ProgressChartOverlay({ onClose }: { onClose: () => void }) {
       lastMonth = m
       if (X(i) - lastX < MONTH_GAP) return // too crowded to label without overlapping
       lastX = X(i)
-      monthTicks.push({ i, label: monthLabel(p.date) })
+      monthTicks.push({ i, label: monthLabel(p.date, locale) })
     })
 
     let dArea = `M ${X(0)} ${Y(0)}`
@@ -160,7 +163,7 @@ export function ProgressChartOverlay({ onClose }: { onClose: () => void }) {
       n, totals, added, final, maxY, addMax, X, Y, Yb, yGrid, monthTicks, dArea, dLine, bars,
       showEndLabel: !tight,
     }
-  }, [points, plotSize])
+  }, [points, plotSize, locale])
 
   function onMove(e: React.MouseEvent<SVGSVGElement>) {
     if (!model) return
@@ -187,39 +190,39 @@ export function ProgressChartOverlay({ onClose }: { onClose: () => void }) {
       <div className={styles.chartOverlay} onClick={(e) => e.stopPropagation()}>
         <header className={styles.chartHeader}>
           <div className={styles.chartHeadText}>
-            <h2 className={styles.chartTitle}>Card implementation progress</h2>
-            <p className={styles.chartSub}>Distinct implemented cards, day by day since the project began</p>
+            <h2 className={styles.chartTitle}>{t('setCompletion.progress.title')}</h2>
+            <p className={styles.chartSub}>{t('setCompletion.progress.description')}</p>
           </div>
-          <button type="button" className={styles.overlayClose} onClick={onClose} aria-label="Close">
+          <button type="button" className={styles.overlayClose} onClick={onClose} aria-label={t('common.close')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
         </header>
 
-        {error && <div className={styles.error}>Couldn’t load progress: {error}</div>}
-        {!points && !error && <div className={styles.loading}>Loading progress…</div>}
+        {error && <div className={styles.error}>{t('setCompletion.progress.loadError', { error })}</div>}
+        {!points && !error && <div className={styles.loading}>{t('setCompletion.progress.loading')}</div>}
 
         {summary && (
           <>
             <div className={styles.chartStats}>
               <div className={styles.chartStat}>
-                <div style={statK}>Distinct cards</div>
+                <div style={statK}>{t('setCompletion.progress.distinctCards')}</div>
                 <div style={statV}>
-                  {fmt(summary.final)} <small style={statSmall}>implemented</small>
+                  {fmt(summary.final, locale)} <small style={statSmall}>{t('setCompletion.progress.implemented')}</small>
                 </div>
               </div>
               <div className={styles.chartStat}>
-                <div style={statK}>Active days</div>
+                <div style={statK}>{t('setCompletion.progress.activeDays')}</div>
                 <div style={statV}>
-                  {fmt(summary.activeDays)} <small style={statSmall}>of {summary.days}</small>
+                  {fmt(summary.activeDays, locale)} <small style={statSmall}>{t('setCompletion.progress.ofDays', { count: summary.days })}</small>
                 </div>
               </div>
               <div className={styles.chartStat}>
-                <div style={statK}>Busiest day</div>
+                <div style={statK}>{t('setCompletion.progress.busiestDay')}</div>
                 <div style={statV}>
-                  +{fmt(summary.busiest)}{' '}
+                  +{fmt(summary.busiest, locale)}{' '}
                   <small style={statSmall}>
                     {summary.busiestDate &&
-                      new Date(`${summary.busiestDate}T00:00:00`).toLocaleDateString('en-US', {
+                      new Date(`${summary.busiestDate}T00:00:00`).toLocaleDateString(locale, {
                         month: 'short',
                         day: 'numeric',
                       })}
@@ -234,6 +237,7 @@ export function ProgressChartOverlay({ onClose }: { onClose: () => void }) {
                   <svg
                     className={styles.chartSvg}
                     viewBox={`0 0 ${model.VW} ${model.VH}`}
+                    aria-label={t('setCompletion.progress.chartAria')}
                     onMouseMove={onMove}
                     onMouseLeave={() => setHoverI(null)}
                   >
@@ -246,7 +250,7 @@ export function ProgressChartOverlay({ onClose }: { onClose: () => void }) {
 
                     {/* ---- cumulative panel ---- */}
                     <text x={model.M.l} y={model.topY - 9} style={panelCaption}>
-                      Cumulative cards
+                      {t('setCompletion.progress.cumulativeCards')}
                     </text>
                     {model.yGrid.map((v) => (
                       <g key={`y${v}`}>
@@ -258,7 +262,7 @@ export function ProgressChartOverlay({ onClose }: { onClose: () => void }) {
                           y2={model.Y(v)}
                         />
                         <text x={model.M.l - 10} y={model.Y(v) + 4} textAnchor="end" style={axisText}>
-                          {fmt(v)}
+                          {fmt(v, locale)}
                         </text>
                       </g>
                     ))}
@@ -287,13 +291,13 @@ export function ProgressChartOverlay({ onClose }: { onClose: () => void }) {
                         textAnchor="start"
                         style={endLabel}
                       >
-                        {fmt(model.final)}
+                        {fmt(model.final, locale)}
                       </text>
                     )}
 
                     {/* ---- daily-adds panel ---- */}
                     <text x={model.M.l} y={model.botY - 9} style={panelCaption}>
-                      Cards added per day
+                      {t('setCompletion.progress.cardsAddedPerDay')}
                     </text>
                     <line
                       className={styles.chartGridLine}
@@ -310,7 +314,7 @@ export function ProgressChartOverlay({ onClose }: { onClose: () => void }) {
                       y2={model.Yb(0)}
                     />
                     <text x={model.M.l - 10} y={model.Yb(model.addMax) + 4} textAnchor="end" style={axisText}>
-                      {fmt(model.addMax)}
+                      {fmt(model.addMax, locale)}
                     </text>
                     <text x={model.M.l - 10} y={model.Yb(0) + 4} textAnchor="end" style={axisText}>
                       0
@@ -357,18 +361,18 @@ export function ProgressChartOverlay({ onClose }: { onClose: () => void }) {
                       ...(tipTransform ? { transform: tipTransform } : {}),
                     }}
                   >
-                    <div style={tipDate}>{niceFull(hoverPoint.date)}</div>
+                    <div style={tipDate}>{niceFull(hoverPoint.date, locale)}</div>
                     <div style={tipRow}>
                       <span style={{ ...tipKey, background: C_TOTAL }} />
-                      <strong style={tipValue}>{fmt(model.totals[hoverI] ?? 0)}</strong>
-                      <span style={tipName}>cards total</span>
+                      <strong style={tipValue}>{fmt(model.totals[hoverI] ?? 0, locale)}</strong>
+                      <span style={tipName}>{t('setCompletion.progress.cardsTotal')}</span>
                     </div>
                     <div style={tipRow}>
                       <span style={{ ...tipKey, background: C_ADDED }} />
                       <strong style={tipValue}>
-                        {(model.added[hoverI] ?? 0) > 0 ? `+${fmt(model.added[hoverI] ?? 0)}` : '—'}
+                        {(model.added[hoverI] ?? 0) > 0 ? `+${fmt(model.added[hoverI] ?? 0, locale)}` : '—'}
                       </strong>
-                      <span style={tipName}>that day</span>
+                      <span style={tipName}>{t('setCompletion.progress.thatDay')}</span>
                     </div>
                   </div>
                 )}

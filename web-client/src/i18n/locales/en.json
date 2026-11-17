@@ -1747,6 +1747,13 @@
     "teamNumber": "Team {{count}}",
     "movePlayerToOtherTeam": "Click to move this player to the other team"
   },
+  "adminGeoMap": {
+    "ariaLabel": "Player connection map",
+    "topLocations": "Top locations",
+    "unknownLocal": "Unknown / local",
+    "locationGamesOne": "{{country}}: {{count}} game",
+    "locationGamesMany": "{{country}}: {{count}} games"
+  },
   "lobbyAi": {
     "aiDeck": "AI deck",
     "auto": "Auto",
@@ -2769,6 +2776,24 @@
     "andMore": "and {{count}} more",
     "moreInGuide": "More in the Set guide ↗",
     "partialSet": "Only part of this set is implemented, so its boosters draw from the cards that exist."
+  },
+  "setCompletion": {
+    "progress": {
+      "title": "Card implementation progress",
+      "description": "Distinct implemented cards, day by day since the project began",
+      "loading": "Loading progress…",
+      "loadError": "Couldn’t load progress: {{error}}",
+      "distinctCards": "Distinct cards",
+      "implemented": "implemented",
+      "activeDays": "Active days",
+      "ofDays": "of {{count}}",
+      "busiestDay": "Busiest day",
+      "chartAria": "Daily and cumulative card implementation progress",
+      "cumulativeCards": "Cumulative cards",
+      "cardsAddedPerDay": "Cards added per day",
+      "cardsTotal": "cards total",
+      "thatDay": "that day"
+    }
   },
   "scenario": {
     "title": "Scenario Builder",
