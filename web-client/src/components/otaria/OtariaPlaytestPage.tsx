@@ -406,7 +406,7 @@ export function OtariaPlaytestContents({
         {fullAi && <>
           <p className={pageStyles.muted}>{t('otaria.allAiDescription')}</p>
           <label className={styles.field} htmlFor="otaria-ai-action-delay">
-            <span>{t('otaria.aiDelay', { milliseconds: aiThinkingDelayMs })}<output>{aiThinkingDelayMs} ms</output></span>
+            <span>{t('otaria.aiDelay', { milliseconds: aiThinkingDelayMs })}</span>
             <input
               id="otaria-ai-action-delay"
               className={pageStyles.input}
