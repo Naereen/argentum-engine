@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore, type WinstonDraftState } from '@/store/gameStore.ts'
 import type { SealedCardInfo, LobbySettings } from '@/types'
 import { useResponsive } from '@/hooks/useResponsive.ts'
@@ -26,6 +27,7 @@ export function WinstonDraftOverlay() {
 }
 
 function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraftState; settings: LobbySettings }) {
+  const { t } = useTranslation()
   const responsive = useResponsive()
   const winstonTakePile = useGameStore((s) => s.winstonTakePile)
   const winstonSkipPile = useGameStore((s) => s.winstonSkipPile)
@@ -137,7 +139,7 @@ function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraft
       <div className={ls.header}>
         <div className={ls.headerGroup}>
           <h2 className={ls.title}>
-            Winston Draft <span className={ls.titleSub}>· {settings.setNames.join(' + ')}</span>
+            {t('winston.title')} <span className={ls.titleSub}>· {settings.setNames.join(' + ')}</span>
           </h2>
           <SetSynergiesButton setCodes={settings.setCodes} cardPool={winstonState.pickedCards} />
         </div>
@@ -148,30 +150,30 @@ function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraft
             ...(timerWarning ? { background: 'rgba(233,69,96,0.3)', borderColor: 'rgba(233,69,96,0.5)', color: '#ffd0d8' } : {}),
             animation: timerWarning ? 'pulse 1s infinite' : undefined,
           }}
-          title={winstonState.timeRemaining === null ? 'No time limit — take as long as you like' : undefined}>
+          title={winstonState.timeRemaining === null ? t('draft.noTimeLimit') : undefined}>
             {winstonState.timeRemaining === null ? '\u221e' : `${winstonState.timeRemaining}s`}
           </div>
 
           {/* Deck remaining */}
-          <span className={ls.pill} title="Cards left in the main deck">Deck {winstonState.mainDeckRemaining}</span>
+          <span className={ls.pill} title={t('draft.cardsLeftInMainDeck')}>{t('draft.deckCount', { count: winstonState.mainDeckRemaining })}</span>
 
           {/* Picked count */}
           {/* On phones the Pool button carries the count. */}
-          {!isMobile && <span className={ls.pill} title="Cards you've picked">Picked {winstonState.pickedCards.length}</span>}
+          {!isMobile && <span className={ls.pill} title={t('draft.cardsPicked')}>{t('draft.pickedCount', { count: winstonState.pickedCards.length })}</span>}
 
           {isMobile && (
             <button type="button" className={ls.button} onClick={() => setShowPickedCards((v) => !v)}>
-              {showPickedCards ? 'Piles' : `Pool (${winstonState.pickedCards.length})`}
+              {showPickedCards ? t('winston.piles') : t('draft.poolCount', { count: winstonState.pickedCards.length })}
             </button>
           )}
 
           {isHost ? (
             <button type="button" onClick={stopLobby} className={ls.leave}>
-              Stop Draft
+              {t('draft.stopDraft')}
             </button>
           ) : (
             <button type="button" onClick={leaveLobby} className={ls.leave}>
-              Leave
+              {t('common.leave')}
             </button>
           )}
           <ChatButton className={`${ls.button} ${ls.iconButton}`} />
@@ -193,8 +195,8 @@ function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraft
               fontSize: 16, fontWeight: 600,
             }}>
               {winstonState.isYourTurn
-                ? 'Your turn — examine and choose'
-                : `Waiting for ${winstonState.activePlayerName}...`}
+                ? t('winston.yourTurn')
+                : t('draft.waitingForPlayer', { name: winstonState.activePlayerName })}
             </div>
 
             {/* Last action log + last picked cards */}
@@ -237,14 +239,14 @@ function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraft
                 }}
               >
                 {winstonState.isYourTurn
-                  ? 'Opponent'
+                  ? t('winston.opponent')
                   : winstonState.activePlayerName}
                 <span style={{ marginLeft: 6, opacity: 0.7 }}>
-                  — {winstonState.totalPickedByOpponent} {winstonState.totalPickedByOpponent === 1 ? 'card' : 'cards'}
+                  — {t('draft.cardCount', { count: winstonState.totalPickedByOpponent })}
                 </span>
                 {winstonState.knownOpponentCards.length > 0 && (
                   <span style={{ marginLeft: 4, opacity: 0.6 }}>
-                    ({winstonState.knownOpponentCards.length} known)
+                    ({t('winston.knownCount', { count: winstonState.knownOpponentCards.length })})
                   </span>
                 )}
               </div>
@@ -274,7 +276,7 @@ function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraft
                       letterSpacing: '0.08em', marginBottom: 8,
                       color: isExaminable ? '#f2b45c' : 'rgba(255,255,255,0.5)',
                     }}>
-                      Pile {pileIndex + 1}
+                      {t('winston.pileNumber', { number: pileIndex + 1 })}
                     </div>
 
                     {/* Pile visualization */}
@@ -296,7 +298,7 @@ function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraft
                     }}>
                       {pileSize === 0 ? (
                         <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 12 }}>
-                          Empty
+                          {t('winston.empty')}
                         </span>
                       ) : (
                         <>
@@ -325,7 +327,7 @@ function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraft
                             position: 'relative', zIndex: 1,
                             fontSize: 11, color: 'rgba(255,255,255,0.4)',
                           }}>
-                            card{pileSize !== 1 ? 's' : ''}
+                            {t('winston.card', { count: pileSize })}
                           </div>
                         </>
                       )}
@@ -337,7 +339,7 @@ function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraft
                         marginTop: 8, fontSize: 11,
                         color: '#f2b45c', fontWeight: 600,
                       }}>
-                        Examining
+                        {t('winston.examining')}
                       </div>
                     )}
                   </div>
@@ -352,7 +354,7 @@ function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraft
                   fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.6)',
                   marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em',
                 }}>
-                  Pile {winstonState.currentPileIndex + 1} Contents ({winstonState.currentPileCards.length} card{winstonState.currentPileCards.length !== 1 ? 's' : ''})
+                  {t('winston.pileContents', { number: winstonState.currentPileIndex + 1, count: winstonState.currentPileCards.length })}
                 </div>
                 <div style={{
                   display: 'flex', flexWrap: 'wrap', gap: 8,
@@ -382,7 +384,7 @@ function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraft
                   disabled={winstonState.pileSizes[winstonState.currentPileIndex] === 0}
                   className={`${ls.primary} ${ls.large}`}
                 >
-                  Take Pile {winstonState.currentPileIndex + 1}
+                  {t('winston.takePile', { number: winstonState.currentPileIndex + 1 })}
                 </button>
                 <button
                   type="button"
@@ -390,8 +392,8 @@ function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraft
                   className={`${ls.button} ${ls.large}`}
                 >
                   {winstonState.currentPileIndex === 2
-                    ? 'Skip (Blind Pick)'
-                    : `Skip → Pile ${winstonState.currentPileIndex + 2}`}
+                    ? t('winston.skipBlind')
+                    : t('winston.skipToPile', { number: winstonState.currentPileIndex + 2 })}
                 </button>
               </div>
             )}
@@ -417,9 +419,9 @@ function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraft
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 marginBottom: 8,
               }}>
-                <span style={{ color: '#ccc', fontWeight: 600, fontSize: 14 }}>Card Pool</span>
+                <span style={{ color: '#ccc', fontWeight: 600, fontSize: 14 }}>{t('draft.cardPool')}</span>
                 <span style={{ color: '#4fc3f7', fontWeight: 600, fontSize: 13 }}>
-                  {winstonState.pickedCards.length} {winstonState.pickedCards.length === 1 ? 'card' : 'cards'}
+                  {t('draft.cardCount', { count: winstonState.pickedCards.length })}
                 </span>
               </div>
 
@@ -427,11 +429,11 @@ function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraft
               <div style={{ display: 'flex', gap: 14, marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ color: '#6bcb77', fontSize: 14, fontWeight: 700 }}>{creatureCount}</span>
-                  <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10 }}>Creatures</span>
+                  <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10 }}>{t('draft.creatures')}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ color: '#6eb5ff', fontSize: 14, fontWeight: 700 }}>{spellCount}</span>
-                  <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10 }}>Spells</span>
+                  <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10 }}>{t('draft.spells')}</span>
                 </div>
               </div>
 
@@ -471,7 +473,7 @@ function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraft
               {pickedAnalytics.creatureTypes.length > 0 && (
                 <div style={{ marginTop: 8 }}>
                   <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 9, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Top Creature Types
+                    {t('draft.topCreatureTypes')}
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
                     {pickedAnalytics.creatureTypes.slice(0, 6).map(({ type, count, legendaryCount }) => (
@@ -551,7 +553,7 @@ function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraft
                   textAlign: 'center', color: 'rgba(255,255,255,0.3)',
                   padding: 20, fontSize: 13,
                 }}>
-                  No cards picked yet
+                  {t('winston.noCardsPicked')}
                 </div>
               )}
             </div>
@@ -582,7 +584,7 @@ function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraft
               color: '#f2b45c',
               textShadow: '0 0 20px rgba(242,180,92,0.5)',
             }}>
-              {pickAnimation.cards.length === 1 ? 'Card Picked' : `${pickAnimation.cards.length} Cards Picked`}
+              {t('winston.pickedCount', { count: pickAnimation.cards.length })}
             </div>
             <div style={{
               display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap',
@@ -634,7 +636,7 @@ function WinstonDrafter({ winstonState, settings }: { winstonState: WinstonDraft
       {/* Opponent known cards overlay */}
       {viewingOpponent && (
         <OpponentKnownCardsOverlay
-          opponentName={winstonState.isYourTurn ? 'Opponent' : winstonState.activePlayerName}
+          opponentName={winstonState.isYourTurn ? t('winston.opponent') : winstonState.activePlayerName}
           knownCards={winstonState.knownOpponentCards}
           unknownCount={winstonState.unknownOpponentCardCount}
           onClose={() => setViewingOpponent(false)}
@@ -678,6 +680,7 @@ function OpponentKnownCardsOverlay({ opponentName, knownCards, unknownCount, onC
   onClose: () => void
   onHover: (card: SealedCardInfo | null, e?: React.MouseEvent) => void
 }) {
+  const { t } = useTranslation()
   const colorGroups = useMemo(() => {
     const groups: Record<string, Array<{ card: SealedCardInfo; count: number }>> = {
       W: [], U: [], B: [], R: [], G: [], M: [], C: [],
@@ -739,10 +742,10 @@ function OpponentKnownCardsOverlay({ opponentName, knownCards, unknownCount, onC
         }}>
           <div>
             <div style={{ color: '#fff', fontWeight: 700, fontSize: 15 }}>
-              {opponentName}'s Cards
+              {t('winston.opponentCardsTitle', { name: opponentName })}
             </div>
             <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 2 }}>
-              {totalKnown} known / {unknownCount} unknown
+              {t('winston.knownUnknownStats', { known: totalKnown, unknown: unknownCount })}
             </div>
           </div>
           <button
@@ -766,7 +769,7 @@ function OpponentKnownCardsOverlay({ opponentName, knownCards, unknownCount, onC
           fontSize: 12,
           textAlign: 'center',
         }}>
-          Showing opponent cards you've seen in piles
+          {t('winston.viewingOpponentCards')}
         </div>
 
         {/* Card list */}
@@ -824,7 +827,7 @@ function OpponentKnownCardsOverlay({ opponentName, knownCards, unknownCount, onC
               textAlign: 'center', color: 'rgba(255,255,255,0.3)',
               padding: 20, fontSize: 13,
             }}>
-              No cards picked yet
+              {t('winston.noCardsPicked')}
             </div>
           )}
           {totalKnown === 0 && unknownCount > 0 && (
@@ -832,7 +835,7 @@ function OpponentKnownCardsOverlay({ opponentName, knownCards, unknownCount, onC
               textAlign: 'center', color: 'rgba(255,255,255,0.3)',
               padding: 20, fontSize: 13,
             }}>
-              No known cards — opponent picked {unknownCount} card{unknownCount !== 1 ? 's' : ''} from piles you haven't seen
+              {t('winston.noKnownCards', { count: unknownCount })}
             </div>
           )}
           {/* Unknown cards count */}
@@ -846,7 +849,7 @@ function OpponentKnownCardsOverlay({ opponentName, knownCards, unknownCount, onC
               fontSize: 12,
               textAlign: 'center',
             }}>
-              + {unknownCount} unknown card{unknownCount !== 1 ? 's' : ''} from piles you haven't seen
+              {t('winston.unknownCards', { count: unknownCount })}
             </div>
           )}
         </div>

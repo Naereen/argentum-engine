@@ -16,8 +16,10 @@ import {
 import { ReplayPlayer, type ReplayMetadata } from './ReplayPlayer'
 import { PageShell, pageStyles } from '@/components/ui/PageShell'
 import styles from './Replay.module.css'
+import { useTranslation } from 'react-i18next'
 
 export function ReplayPage() {
+  const { t } = useTranslation()
   const { gameId } = useParams<{ gameId: string }>()
   const navigate = useNavigate()
   const location = useLocation()
@@ -25,7 +27,7 @@ export function ReplayPage() {
   const [snapshots, setSnapshots] = useState<SpectatorStateUpdate[]>([])
   const [metadata, setMetadata] = useState<ReplayMetadata | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<'notFound' | 'loadFailed' | null>(null)
 
   useEffect(() => {
     if (!gameId) return
@@ -39,8 +41,8 @@ export function ReplayPage() {
         if (!response.ok) {
           setError(
             response.status === 404
-              ? 'Replay not found. It may have expired or the game ID is invalid.'
-              : 'Failed to load replay.',
+              ? 'notFound'
+              : 'loadFailed',
           )
           setLoading(false)
           return
@@ -50,7 +52,7 @@ export function ReplayPage() {
         setMetadata(data.metadata)
         setSnapshots(reconstructSnapshots(data.initialSnapshot, data.deltas))
       } catch {
-        if (!cancelled) setError('Failed to load replay.')
+        if (!cancelled) setError('loadFailed')
       }
       if (!cancelled) setLoading(false)
     }
@@ -67,20 +69,20 @@ export function ReplayPage() {
 
   if (loading || error) {
     return (
-      <PageShell title="Replay" width="narrow" plain>
+      <PageShell title={t('replay.title')} width="narrow" plain>
         <div className={styles.stateCenter}>
           <section className={`${pageStyles.panel} ${styles.stateCard}`} aria-live="polite">
             {loading ? (
               <>
                 <span className={styles.spinner} aria-hidden />
-                <p className={styles.stateText}>Loading replay…</p>
+                <p className={styles.stateText}>{t('replay.loading')}</p>
               </>
             ) : (
               <>
-                <h1 className={styles.stateTitle}>Replay unavailable</h1>
-                <p className={styles.stateText}>{error}</p>
+                <h1 className={styles.stateTitle}>{t('replay.unavailable')}</h1>
+                <p className={styles.stateText}>{error === 'notFound' ? t('replay.notFound') : t('replay.loadFailed')}</p>
                 <button type="button" onClick={goBack} className={pageStyles.buttonPrimary}>
-                  {canGoBack ? 'Go back' : 'Back to home'}
+                  {canGoBack ? t('replay.goBack') : t('replay.home')}
                 </button>
               </>
             )}

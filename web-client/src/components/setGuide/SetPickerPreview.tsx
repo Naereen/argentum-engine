@@ -9,14 +9,16 @@ import type { AvailableSet } from '@/types/messages'
 import { ColorPips, MechanicChips, RatingMeters, ThemeTags, TryIf } from './SetProfileParts'
 import { setProfile } from './setProfiles'
 import styles from './SetGuide.module.css'
+import { useTranslation } from 'react-i18next'
 
 export function SetPickerPreview({ set }: { set: AvailableSet | undefined }) {
+  const { t } = useTranslation()
   if (!set) {
     return (
       <p className={styles.previewEmpty}>
-        Point at a set to see what it is about and how it plays.
+        {t('setGuide.previewPrompt')}
         <br />
-        <a href="/sets" target="_blank" rel="noopener" className={styles.introLink}>Compare every set in the Set guide ↗</a>
+        <a href="/sets" target="_blank" rel="noopener" className={styles.introLink}>{t('setGuide.compareLink')}</a>
       </p>
     )
   }
@@ -30,7 +32,7 @@ export function SetPickerPreview({ set }: { set: AvailableSet | undefined }) {
         <div>
           <h4 className={styles.previewName}>{set.name}</h4>
           <span className={styles.meta}>
-            {[year, set.implementedCount != null ? `${set.implementedCount} cards` : null].filter(Boolean).join(' · ')}
+            {[year, set.implementedCount != null ? t('setGuide.cardCount', { count: set.implementedCount }) : null].filter(Boolean).join(' · ')}
           </span>
         </div>
       </div>
@@ -43,24 +45,24 @@ export function SetPickerPreview({ set }: { set: AvailableSet | undefined }) {
           <p className={styles.previewText}>{p.gameplay}</p>
           <MechanicChips mechanics={p.mechanics} />
           {archetypes.length > 0 && (
-            <ul className={styles.previewArchetypes} aria-label="Archetypes">
+            <ul className={styles.previewArchetypes} aria-label={t('setGuide.archetypes')}>
               {archetypes.slice(0, 5).map((a) => (
                 <li key={a.name}>
                   <ColorPips colors={a.colors} size={12} /> {a.name}
                 </li>
               ))}
-              {archetypes.length > 5 && <li className={styles.meta}>and {archetypes.length - 5} more</li>}
+              {archetypes.length > 5 && <li className={styles.meta}>{t('setGuide.andMore', { count: archetypes.length - 5 })}</li>}
             </ul>
           )}
           <a href={`/sets?set=${encodeURIComponent(set.code)}`} target="_blank" rel="noopener" className={styles.introLink}>
-            More in the Set guide ↗
+            {t('setGuide.moreInGuide')}
           </a>
         </>
       ) : (
         <p className={styles.previewText}>
           {set.partial
-            ? 'Only part of this set is implemented, so its boosters draw from the cards that exist.'
-            : 'No guide has been written for this set yet.'}
+            ? t('setGuide.partialSet')
+            : t('setGuide.noSetGuide')}
         </p>
       )}
     </div>

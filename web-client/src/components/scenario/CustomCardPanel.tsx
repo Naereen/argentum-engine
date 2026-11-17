@@ -15,6 +15,7 @@ import type { AssayCompileResponse } from './types'
 import type { CustomCard } from './builderState'
 import { customCardImageUri } from './customCardJson'
 import styles from './ScenarioBuilder.module.css'
+import { useTranslation } from 'react-i18next'
 
 const PLACEHOLDER = `{
   "name": "Argentum Sentinel",
@@ -26,10 +27,10 @@ const PLACEHOLDER = `{
 }`
 
 /** The verdict vocabulary is the touchstone's; these are only how each one reads on screen. */
-const VERDICT_LABEL: Record<string, string> = {
+const VERDICT_KEY: Record<string, 'read' | 'respelled' | 'notRead' | 'ambiguous' | 'mismatch'> = {
   ROUND_TRIP: 'read',
-  VARIANT: 'read (respelled)',
-  DECLINED: 'not read',
+  VARIANT: 'respelled',
+  DECLINED: 'notRead',
   AMBIGUOUS: 'ambiguous',
   MISMATCH: 'mismatch',
 }
@@ -55,6 +56,7 @@ export function CustomCardPanel({
   /** Where `onPlace` will put it, e.g. "Player 1's battlefield" — the button is otherwise mute. */
   placeHint: string
 }) {
+  const { t } = useTranslation()
   const [json, setJson] = useState('')
   const [checking, setChecking] = useState(false)
   const [result, setResult] = useState<AssayCompileResponse | null>(null)
@@ -72,18 +74,17 @@ export function CustomCardPanel({
       })
       if (res.status === 404) {
         setError(
-          'This server has custom cards switched off. Start it with game.dev-endpoints.enabled=true ' +
-            '(GAME_DEV_ENDPOINTS_ENABLED=true) to compile cards with Assay.',
+          t('scenario.custom.serverDisabled'),
         )
         return
       }
       if (!res.ok) {
-        setError(`Assay request failed (HTTP ${res.status}).`)
+        setError(t('scenario.custom.requestFailed', { status: res.status }))
         return
       }
       setResult((await res.json()) as AssayCompileResponse)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Could not reach the server.')
+      setError(e instanceof Error ? e.message : t('scenario.custom.couldNotReachServer'))
     } finally {
       setChecking(false)
     }
@@ -101,9 +102,7 @@ export function CustomCardPanel({
   return (
     <div className={styles.jsonDrawer}>
       <span className={styles.hint}>
-        Paste a card from Scryfall, or write one by hand — Assay reads the Oracle text into a real
-        card. Every line has to be readable before it can be played. Lines are shown as Assay
-        normalizes them, where <code>~</code> stands for the card’s own name.
+        {t('scenario.custom.intro')}
       </span>
 
       <textarea
@@ -121,16 +120,16 @@ export function CustomCardPanel({
           disabled={!json.trim() || checking}
           onClick={() => void check()}
         >
-          {checking ? 'Reading…' : 'Check with Assay'}
+          {checking ? t('scenario.custom.reading') : t('scenario.custom.check')}
         </button>
         <button
           type="button"
           className={styles.ghostBtn}
           disabled={!result?.compiled}
           onClick={addCompiled}
-          title={result?.compiled ? 'Make this card available to the scenario' : 'Check the card first'}
+          title={result?.compiled ? t('scenario.custom.makeAvailable') : t('scenario.custom.checkFirst')}
         >
-          Add to scenario
+          {t('scenario.custom.addToScenario')}
         </button>
       </div>
 
@@ -140,8 +139,8 @@ export function CustomCardPanel({
         <div className={styles.assayResult}>
           <div className={result.compiled ? styles.assayHeadOk : styles.assayHeadBad}>
             {result.compiled
-              ? `${result.cardName} — read whole, ready to play`
-              : `${result.cardName ?? 'This card'} did not compile`}
+              ? t('scenario.custom.compiledReady', { name: result.cardName })
+              : t('scenario.custom.didNotCompile', { name: result.cardName ?? t('scenario.custom.thisCard') })}
           </div>
 
           {/* The card's own art, when the pasted object carries `image_uris` — it is what the
@@ -155,11 +154,16 @@ export function CustomCardPanel({
               {result.lines.map((line) => (
                 <li key={line.index}>
                   <span className={verdictClass(line.verdict)}>
-                    {VERDICT_LABEL[line.verdict] ?? line.verdict.toLowerCase()}
+                    {(() => {
+                      const verdictKey = VERDICT_KEY[line.verdict]
+                      return verdictKey
+                        ? t(`scenario.custom.verdict.${verdictKey}`)
+                        : line.verdict.toLowerCase()
+                    })()}
                   </span>
-                  <span className={styles.assayLineText}>{line.text || '(blank)'}</span>
+                  <span className={styles.assayLineText}>{line.text || t('scenario.custom.blank')}</span>
                   {line.printed && (
-                    <span className={styles.assayPrinted}>canonical: {line.printed}</span>
+                    <span className={styles.assayPrinted}>{t('scenario.custom.canonical', { text: line.printed })}</span>
                   )}
                   {line.explanation && <pre className={styles.assayCaret}>{line.explanation}</pre>}
                 </li>
@@ -188,7 +192,7 @@ export function CustomCardPanel({
 
       {cards.length > 0 && (
         <div className={styles.customCardList}>
-          <span className={styles.smallLabel}>In this scenario</span>
+          <span className={styles.smallLabel}>{t('scenario.custom.inScenario')}</span>
           {cards.map((card) => (
             <div key={card.name} className={styles.customCardRow}>
               {customCardImageUri(card.json) && (
@@ -203,17 +207,17 @@ export function CustomCardPanel({
                 type="button"
                 className={styles.ghostBtn}
                 onClick={() => onPlace(card.name)}
-                title={`Add to ${placeHint}`}
+                title={t('scenario.custom.addToPlace', { place: placeHint })}
               >
-                Add to {placeHint}
+                {t('scenario.custom.addToPlace', { place: placeHint })}
               </button>
               <button
                 type="button"
                 className={styles.dangerBtn}
                 onClick={() => onRemove(card.name)}
-                title="Remove the card and every copy of it on the board"
+                title={t('scenario.custom.removeAllCopies')}
               >
-                Remove
+                {t('scenario.remove')}
               </button>
             </div>
           ))}

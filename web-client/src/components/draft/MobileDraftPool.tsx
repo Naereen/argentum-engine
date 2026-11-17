@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { SealedCardInfo } from '@/types'
 import { getCardImageUrl } from '@/utils/cardImages.ts'
 import { groupPool, getCmc, type PoolGrouping } from './draftPool'
+import { useTranslation } from 'react-i18next'
 
 /** Which half of the phone draft screen is showing. */
 export type MobileDraftTab = 'pack' | 'pool'
@@ -10,8 +11,8 @@ const GROUP_DOT: Record<string, string> = {
   W: '#f9faf4', U: '#0e68ab', B: '#6a6a6a', R: '#d32f2f', G: '#388e3c', M: '#ffd700', C: '#888',
 }
 
-const GROUPINGS: ReadonlyArray<readonly [PoolGrouping, string]> = [
-  ['color', 'Color'], ['type', 'Type'], ['curve', 'Curve'],
+const GROUPINGS: ReadonlyArray<readonly [PoolGrouping, 'groupColor' | 'groupType' | 'groupCurve']> = [
+  ['color', 'groupColor'], ['type', 'groupType'], ['curve', 'groupCurve'],
 ]
 
 /**
@@ -32,6 +33,7 @@ export function MobilePoolView({
   onGroupingChange: (grouping: PoolGrouping) => void
   onPreview: (card: SealedCardInfo) => void
 }) {
+  const { t } = useTranslation()
   const groups = useMemo(() => groupPool(cards, grouping), [cards, grouping])
   const newestPicks = useMemo(
     () => new Set(cards.slice(-Math.max(1, picksPerRound)).map((c) => c.name)),
@@ -51,7 +53,7 @@ export function MobilePoolView({
   if (cards.length === 0) {
     return (
       <div style={{ padding: '48px 16px', textAlign: 'center', color: '#666', fontSize: 14 }}>
-        Cards you pick will show up here.
+        {t('draft.cardsPickedHere')}
       </div>
     )
   }
@@ -60,9 +62,9 @@ export function MobilePoolView({
     <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
       {/* Stats strip */}
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14 }}>
-        <PoolStat value={stats.creatures} label="Creatures" color="#8bc34a" />
-        <PoolStat value={stats.spells} label="Spells" color="#4fc3f7" />
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 34, marginLeft: 'auto' }} aria-label="Mana curve">
+        <PoolStat value={stats.creatures} label={t('draft.creatures')} color="#8bc34a" />
+        <PoolStat value={stats.spells} label={t('draft.spells')} color="#4fc3f7" />
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 34, marginLeft: 'auto' }} aria-label={t('draft.manaCurve')}>
           {stats.curve.map((count, cmc) => (
             <div key={cmc} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 13 }}>
               <span style={{ color: '#888', fontSize: 8, lineHeight: '10px' }}>{count || ''}</span>
@@ -81,7 +83,7 @@ export function MobilePoolView({
       </div>
 
       {/* Grouping chips */}
-      <div style={{ display: 'flex', gap: 6 }} role="group" aria-label="Group pool by">
+      <div style={{ display: 'flex', gap: 6 }} role="group" aria-label={t('draft.groupPoolBy')}>
         {GROUPINGS.map(([value, label]) => {
           const active = value === grouping
           return (
@@ -99,7 +101,7 @@ export function MobilePoolView({
                 cursor: 'pointer',
               }}
             >
-              {label}
+              {t(`draft.${label}`)}
             </button>
           )
         })}
@@ -171,6 +173,8 @@ function StackedPoolCard({
   isNewest: boolean
   onClick: () => void
 }) {
+  const { t } = useTranslation()
+
   return (
     <button
       onClick={onClick}
@@ -204,7 +208,7 @@ function StackedPoolCard({
       />
       {(count > 1 || isNewest) && (
         <span style={{ position: 'absolute', top: 3, right: 3, display: 'flex', gap: 2 }}>
-          {isNewest && <PoolCardBadge background="#4fc3f7">NEW</PoolCardBadge>}
+          {isNewest && <PoolCardBadge background="#4fc3f7">{t('draft.new')}</PoolCardBadge>}
           {count > 1 && <PoolCardBadge background="#ffd54f">×{count}</PoolCardBadge>}
         </span>
       )}
@@ -232,6 +236,7 @@ function PoolCardBadge({ background, children }: { background: string; children:
 
 /** Full-screen card view for a tapped pool card. Tapping anywhere closes it. */
 export function MobileCardPreview({ card, onClose }: { card: SealedCardInfo; onClose: () => void }) {
+  const { t } = useTranslation()
   return (
     <div
       onClick={onClose}
@@ -255,7 +260,7 @@ export function MobileCardPreview({ card, onClose }: { card: SealedCardInfo; onC
         alt={card.name}
         style={{ width: 'min(86vw, 380px)', aspectRatio: '488 / 680', borderRadius: 14, objectFit: 'cover' }}
       />
-      <span style={{ color: '#888', fontSize: 13 }}>Tap anywhere to close</span>
+      <span style={{ color: '#888', fontSize: 13 }}>{t('draft.tapToClose')}</span>
     </div>
   )
 }
@@ -290,9 +295,10 @@ export function MobileDraftTabBar({
   /** Picked-count text for the Pool tab, e.g. "17 / 45". */
   pickedLabel: string
 }) {
+  const { t } = useTranslation()
   const tabs: ReadonlyArray<readonly [MobileDraftTab, string, string | null]> = [
-    ['pack', 'Pack', null],
-    ['pool', 'Pool', pickedLabel],
+    ['pack', t('draft.pack'), null],
+    ['pool', t('draft.pool'), pickedLabel],
   ]
   return (
     <div
@@ -338,7 +344,7 @@ export function MobileDraftTabBar({
             </span>
             {value === 'pack' && packsWaiting > 0 && (
               <span
-                aria-label={`${packsWaiting} ${packsWaiting === 1 ? 'pack' : 'packs'} waiting`}
+                aria-label={t('draft.packsWaiting', { count: packsWaiting })}
                 style={{
                   position: 'absolute',
                   top: 3,

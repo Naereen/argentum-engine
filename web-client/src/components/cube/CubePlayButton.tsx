@@ -4,6 +4,7 @@
  * home screen (`playCube.ts`) and goes there; the lobby opens with the cube already on the table.
  */
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import type { SharedCube } from '@/api/account'
 import { cubeOpponentRange, cubePlayRecipe, queueCubePlay, type CubePlayFormat, type CubePlayWith } from './playCube'
@@ -19,6 +20,7 @@ interface CubePlayButtonProps {
 }
 
 export function CubePlayButton({ cube, blockedReason = null, className, panelAlign = 'start' }: CubePlayButtonProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [format, setFormat] = useState<CubePlayFormat>('DRAFT')
@@ -61,12 +63,12 @@ export function CubePlayButton({ cube, blockedReason = null, className, panelAli
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        Play
+        {t('cubeUi.play')}
       </button>
       {open && (
-        <div className={styles.playPanel} data-align={panelAlign} role="dialog" aria-label={`Play ${cube.name}`}>
+        <div className={styles.playPanel} data-align={panelAlign} role="dialog" aria-label={t('cubeUi.playNamedCube', { name: cube.name })}>
           <div className={styles.playRow}>
-            <span className={styles.playLabel} id="cube-play-format">Format</span>
+            <span className={styles.playLabel} id="cube-play-format">{t('cubeUi.format')}</span>
             <div className={styles.segmented} role="radiogroup" aria-labelledby="cube-play-format">
               {(['DRAFT', 'SEALED'] as const).map((value) => (
                 <button
@@ -77,13 +79,13 @@ export function CubePlayButton({ cube, blockedReason = null, className, panelAli
                   className={styles.segment}
                   onClick={() => setFormat(value)}
                 >
-                  {value === 'DRAFT' ? 'Booster draft' : 'Sealed'}
+                  {value === 'DRAFT' ? t('cubeUi.boosterDraft') : t('cubeUi.sealed')}
                 </button>
               ))}
             </div>
           </div>
           <div className={styles.playRow}>
-            <span className={styles.playLabel} id="cube-play-with">Players</span>
+            <span className={styles.playLabel} id="cube-play-with">{t('cubeUi.players')}</span>
             <div className={styles.segmented} role="radiogroup" aria-labelledby="cube-play-with">
               {(['FRIENDS', 'AI'] as const).map((value) => (
                 <button
@@ -94,14 +96,14 @@ export function CubePlayButton({ cube, blockedReason = null, className, panelAli
                   className={styles.segment}
                   onClick={() => setPlayWith(value)}
                 >
-                  {value === 'FRIENDS' ? 'With friends' : 'Against AI'}
+                  {value === 'FRIENDS' ? t('cubeUi.withFriends') : t('cubeUi.againstAi')}
                 </button>
               ))}
             </div>
           </div>
           {playWith === 'AI' && range.max > range.min && (
             <label className={styles.playRow}>
-              <span className={styles.playLabel}>AI opponents</span>
+              <span className={styles.playLabel}>{t('cubeUi.aiOpponents')}</span>
               <input
                 className={styles.opponentInput}
                 type="number"
@@ -114,11 +116,11 @@ export function CubePlayButton({ cube, blockedReason = null, className, panelAli
           )}
           <p className={styles.playHint}>
             {playWith === 'FRIENDS'
-              ? 'Opens a lobby with this cube loaded. Share its invite code; you start when everyone is in.'
-              : 'Opens a lobby with this cube loaded and starts as soon as the AI players are seated.'}
+              ? t('cubeUi.friendsLaunchHint')
+              : t('cubeUi.aiLaunchHint')}
           </p>
           <button type="button" className={styles.playGo} onClick={launch}>
-            Open lobby
+            {t('cubeUi.openLobby')}
           </button>
         </div>
       )}

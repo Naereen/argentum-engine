@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useGameStore } from '@/store/gameStore.ts'
 import { useConnectName } from '@/store/useConnectName'
 import { EntryCard } from '@/components/lobby/EntryCard'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Entry point for the /tournament/:lobbyId route.
@@ -15,6 +16,7 @@ import { EntryCard } from '@/components/lobby/EntryCard'
  * Once lobby state is received, navigates to "/" where the normal lobby/tournament UI takes over.
  */
 export function TournamentEntryPage() {
+  const { t } = useTranslation()
   const { lobbyId } = useParams<{ lobbyId: string }>()
   const navigate = useNavigate()
 
@@ -31,7 +33,7 @@ export function TournamentEntryPage() {
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('argentum-player-name') || '')
   const [joining, setJoining] = useState(false)
   const [tournamentInfo, setTournamentInfo] = useState<{ exists: boolean; state: string; playerCount: number; format: string } | null>(null)
-  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [fetchError, setFetchError] = useState<'notFound' | 'notActive' | null>(null)
   const hasJoinedRef = useRef(false)
   const hasConnectedRef = useRef(false)
 
@@ -40,11 +42,11 @@ export function TournamentEntryPage() {
     if (!lobbyId) return
     fetch(`/api/tournaments/${lobbyId}/status`)
       .then((res) => {
-        if (!res.ok) throw new Error('Tournament not found')
+        if (!res.ok) throw new Error('notFound')
         return res.json()
       })
       .then((data) => setTournamentInfo(data))
-      .catch(() => setFetchError('Tournament not found or no longer active.'))
+      .catch(() => setFetchError('notActive'))
   }, [lobbyId])
 
   // Auto-connect anyone who already has a name — stored, or a signed-in account's display name.
@@ -90,24 +92,28 @@ export function TournamentEntryPage() {
   }
 
   // Show error if lobby not found via REST or WebSocket error
-  const errorMessage = fetchError || (lastError?.message?.toLowerCase().includes('lobby') || lastError?.message?.toLowerCase().includes('not found') ? lastError.message : null)
+  const errorMessage = fetchError
+    ? t(fetchError === 'notFound' ? 'tournamentEntry.notFound' : 'tournamentEntry.notActive')
+    : lastError?.message?.toLowerCase().includes('lobby') || lastError?.message?.toLowerCase().includes('not found')
+      ? lastError.message
+      : null
 
   // Only a visitor with no name at all is asked for one; everyone else is mid-connect above.
   const showNameEntry = !errorMessage && connectionStatus === 'disconnected' && !connectName && !nameResolving
 
   return (
     <EntryCard
-      kicker="Tournament invite"
-      title="Join the tournament"
+      kicker={t('tournamentEntry.kicker')}
+      title={t('tournamentEntry.title')}
       code={lobbyId}
       facts={tournamentInfo ? [
-        { label: 'Format', value: tournamentInfo.format },
-        { label: 'Status', value: tournamentInfo.state.replace(/_/g, ' ').toLowerCase() },
-        { label: 'Players', value: tournamentInfo.playerCount },
+        { label: t('tournamentEntry.format'), value: tournamentInfo.format },
+        { label: t('tournamentEntry.status'), value: tournamentInfo.state.replace(/_/g, ' ').toLowerCase() },
+        { label: t('tournamentEntry.players'), value: tournamentInfo.playerCount },
       ] : undefined}
       error={errorMessage}
-      nameEntry={showNameEntry ? { value: playerName, onChange: setPlayerName, onSubmit: handleConnect, submitLabel: 'Join tournament' } : undefined}
-      progressText={joining ? 'Joining tournament…' : 'Connecting…'}
+      nameEntry={showNameEntry ? { value: playerName, onChange: setPlayerName, onSubmit: handleConnect, submitLabel: t('tournamentEntry.join') } : undefined}
+      progressText={joining ? t('tournamentEntry.joining') : t('tournamentEntry.connecting')}
     />
   )
 }

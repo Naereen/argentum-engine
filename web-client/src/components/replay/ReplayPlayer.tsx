@@ -27,6 +27,7 @@ import { replayExportUrl } from '@/replay/replayFile.ts'
 import styles from './Replay.module.css'
 import { BrandMark, PLAIN_BACKDROP } from '../ui/PageShell'
 import { SeatPortrait } from '../game/SeatPortrait'
+import { useTranslation } from 'react-i18next'
 
 const HEADER_HEIGHT = 55
 const AUTOPLAY_INTERVAL_MS = 1000
@@ -59,6 +60,7 @@ export function ReplayPlayer({
   /** The Argentum mark — straight back to the landing screen, as on every other page. */
   onHome: () => void
 }) {
+  const { t } = useTranslation()
   const [currentStep, setCurrentStep] = useState(0)
   const [autoPlay, setAutoPlay] = useState(false)
   /**
@@ -198,12 +200,12 @@ export function ReplayPlayer({
   const handleShareAsScenario = () =>
     copyToClipboard(
       buildReplayScenarioUrl(window.location.origin, gameId, currentStep),
-      'Copy this scenario link',
+      t('replay.copyScenarioPrompt'),
       setScenarioCopied,
     )
 
   const handleShareReplay = () =>
-    copyToClipboard(`${window.location.origin}/replay/${gameId}`, 'Copy this replay link', setReplayCopied)
+    copyToClipboard(`${window.location.origin}/replay/${gameId}`, t('replay.copyReplayPrompt'), setReplayCopied)
 
   const handleDownloadSnapshot = async () => {
     // Download the frame's full game state as a file you can reload from the Scenario Builder.
@@ -250,23 +252,23 @@ export function ReplayPlayer({
     >
       <div className={styles.container} style={{ background: PLAIN_BACKDROP }}>
         <div ref={headerRef} className={styles.toolbar}>
-          <button type="button" onClick={onHome} className={styles.brand} aria-label="Argentum — home" title="Home">
+          <button type="button" onClick={onHome} className={styles.brand} aria-label={t('replay.homeAria')} title={t('replay.home')}>
             <BrandMark size={28} />
           </button>
           <button type="button" onClick={onExit} className={styles.back} aria-label="Back">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 18l-6-6 6-6" /></svg>
-            <span className={styles.backLabel}>Back</span>
+            <span className={styles.backLabel}>{t('replay.back')}</span>
           </button>
           <div className={styles.transport}>
-            <button type="button" onClick={() => goToStep(currentStep - 1)} disabled={currentStep === 0} className={styles.iconButton} title="Previous (Left Arrow)" aria-label="Previous step">
+            <button type="button" onClick={() => goToStep(currentStep - 1)} disabled={currentStep === 0} className={styles.iconButton} title={t('replay.previousTitle')} aria-label={t('replay.previousStep')}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M6 6h2v12H6zM9.5 12l8.5 6V6z" /></svg>
             </button>
-            <button type="button" onClick={() => setAutoPlay(!autoPlay)} className={styles.playButton} title="Play/Pause (Space)" aria-label={autoPlay ? 'Pause' : 'Play'}>
+            <button type="button" onClick={() => setAutoPlay(!autoPlay)} className={styles.playButton} title={t('replay.playPauseTitle')} aria-label={autoPlay ? t('replay.pause') : t('replay.play')}>
               {autoPlay
                 ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg>
                 : <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M8 5v14l11-7z" /></svg>}
             </button>
-            <button type="button" onClick={() => goToStep(currentStep + 1)} disabled={currentStep >= snapshots.length - 1} className={styles.iconButton} title="Next (Right Arrow)" aria-label="Next step">
+            <button type="button" onClick={() => goToStep(currentStep + 1)} disabled={currentStep >= snapshots.length - 1} className={styles.iconButton} title={t('replay.nextTitle')} aria-label={t('replay.nextStep')}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z" /></svg>
             </button>
           </div>
@@ -278,7 +280,7 @@ export function ReplayPlayer({
               value={currentStep}
               onChange={(e) => goToStep(Number(e.target.value))}
               className={styles.scrubber}
-              aria-label="Replay position"
+              aria-label={t('replay.position')}
               style={{ '--progress': `${snapshots.length > 1 ? (currentStep / (snapshots.length - 1)) * 100 : 100}%` } as React.CSSProperties}
             />
             <span className={styles.stepCounter}>
@@ -293,9 +295,9 @@ export function ReplayPlayer({
             />
           <div className={styles.info}>
             <span className={styles.kicker}>
-              {isMultiplayerReplay ? `Replay · ${allSeats.length} players` : 'Replay'}
-              {fromFile ? ' · from file' : ''}
-              {metadata?.winnerName && <span className={styles.winner}> · {metadata.winnerName} won</span>}
+              {isMultiplayerReplay ? t('replay.players', { count: allSeats.length }) : t('replay.title')}
+              {fromFile ? t('replay.fromFile') : ''}
+              {metadata?.winnerName && <span className={styles.winner}>{t('replay.winner', { name: metadata.winnerName })}</span>}
             </span>
             <span className={styles.matchup} title={matchupLabel}>{matchupLabel}</span>
           </div>
@@ -311,7 +313,7 @@ export function ReplayPlayer({
           */}
           {metadata?.degradedReason && (
             <span className={styles.badge} title={metadata.degradedReason}>
-              {metadata.fidelity === 'DIVERGED' ? 'From archive' : 'Partial recording'}
+              {metadata.fidelity === 'DIVERGED' ? t('replay.fromArchive') : t('replay.partialRecording')}
             </span>
           )}
           {!isMobile && (stateReproducible || !fromFile) && (
@@ -322,17 +324,17 @@ export function ReplayPlayer({
                     type="button"
                     onClick={() => void handleShareAsScenario()}
                     className={styles.action}
-                    title="Copy a short link that drops you into this exact position — full board, hands, libraries, stack, targets and mana — to play it out yourself or against the AI."
+                    title={t('replay.shareScenarioTitle')}
                   >
-                    {scenarioCopied ? 'Copied!' : 'Share as scenario'}
+                    {scenarioCopied ? t('replay.copied') : t('replay.shareScenario')}
                   </button>
                   <button
                     type="button"
                     onClick={() => void handleDownloadSnapshot()}
                     className={styles.action}
-                    title="Download this exact position as a snapshot file you can reload later from the Scenario Builder ('Load file')."
+                    title={t('replay.saveSnapshotTitle')}
                   >
-                    {downloadError ? 'Failed' : downloaded ? 'Saved!' : 'Save snapshot'}
+                    {downloadError ? t('replay.failed') : downloaded ? t('replay.saved') : t('replay.saveSnapshot')}
                   </button>
                 </>
               )}
@@ -343,12 +345,12 @@ export function ReplayPlayer({
                     href={replayExportUrl(gameId)}
                     download
                     className={styles.action}
-                    title="Download this game's replay file — its seed, decks and every action — to keep, or to watch later with 'Open replay file'."
+                    title={t('replay.exportTitle')}
                   >
-                    Export
+                    {t('replay.export')}
                   </a>
-                  <button type="button" onClick={() => void handleShareReplay()} className={styles.actionPrimary} title="Copy a link to this replay">
-                    {replayCopied ? 'Link copied' : 'Share replay'}
+                  <button type="button" onClick={() => void handleShareReplay()} className={styles.actionPrimary} title={t('replay.shareReplayTitle')}>
+                    {replayCopied ? t('replay.linkCopied') : t('replay.shareReplay')}
                   </button>
                 </>
               )}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore, type DeckBuildingState } from '@/store/gameStore.ts'
 import { fetchAdvisors, type AdvisorInfo } from '@/api/aiAssist'
 import { sameDeck } from '@/store/slices/assistDeck'
@@ -81,6 +82,7 @@ export function AssistToolbar({
   /** Phones: icon-only labels so the group fits on one line. */
   compact: boolean
 }) {
+  const { t } = useTranslation()
   const autoBuildDeck = useGameStore((s) => s.autoBuildDeck)
   const scoreDeckCards = useGameStore((s) => s.scoreDeckCards)
   const clearDeckCardScores = useGameStore((s) => s.clearDeckCardScores)
@@ -90,10 +92,10 @@ export function AssistToolbar({
   const { engines, advisorId, setAdvisorId } = useDeckbuildEngines()
 
   const engine = advisorId ?? undefined
-  const buildLabel = hasCards ? 'Complete deck' : 'Auto-build'
+  const buildLabel = hasCards ? t('sealedAssist.completeDeck') : t('sealedAssist.autoBuild')
 
   return (
-    <div className={styles.group} role="group" aria-label="AI assistance">
+    <div className={styles.group} role="group" aria-label={t('sealedAssist.aiAssistance')}>
       {!compact && (
         <span className={styles.tag} aria-hidden>
           <SparkleIcon size={12} /> AI
@@ -104,8 +106,8 @@ export function AssistToolbar({
           className={styles.select}
           value={advisorId ?? ''}
           onChange={(e) => setAdvisorId(e.target.value)}
-          aria-label="AI engine for Auto-build and card scores"
-          title="Engine used by Auto-build and card scores"
+          aria-label={t('sealedAssist.engineLabel')}
+          title={t('sealedAssist.engineTitle')}
           disabled={busy}
         >
           {engines.map((a) => (
@@ -123,8 +125,8 @@ export function AssistToolbar({
         aria-label={buildLabel}
         title={
           hasCards
-            ? 'Keep the cards you picked and fill the rest of the deck from your pool, lands included'
-            : 'Build the best deck it can from your pool, lands included'
+            ? t('sealedAssist.completeDeckTitle')
+            : t('sealedAssist.autoBuildTitle')
         }
       >
         {busy && task === 'build' ? <span className={styles.spinner} aria-hidden /> : <WandIcon />}
@@ -136,15 +138,15 @@ export function AssistToolbar({
         aria-pressed={hasScores}
         onClick={() => (hasScores ? clearDeckCardScores() : void scoreDeckCards(engine))}
         disabled={busy}
-        aria-label="Card scores"
+        aria-label={t('sealedAssist.cardScores')}
         title={
           hasScores
-            ? 'Hide the score badges'
-            : 'Rate every card in your pool from 0 to 100, using your deck so far for colour context'
+            ? t('sealedAssist.hideScoreBadges')
+            : t('sealedAssist.rateCardsTitle')
         }
       >
         {busy && task === 'score' ? <span className={styles.spinner} aria-hidden /> : <GaugeIcon />}
-        {!compact && 'Card scores'}
+        {!compact && t('sealedAssist.cardScores')}
       </button>
       {!compact && <HelpTip topicId="draft-assist" size="sm" />}
     </div>
@@ -152,6 +154,7 @@ export function AssistToolbar({
 }
 
 export function AssistStrip({ state }: { state: DeckBuildingState }) {
+  const { t } = useTranslation()
   const { engines, advisorId } = useDeckbuildEngines()
   // Only worth naming when there is a choice of engine.
   const engineName = engines.length > 1 ? engines.find((e) => e.id === advisorId)?.name ?? null : null
@@ -167,6 +170,11 @@ export function AssistStrip({ state }: { state: DeckBuildingState }) {
   const hasScores = useGameStore((s) => s.deckCardScores != null)
   const scoreDeckCards = useGameStore((s) => s.scoreDeckCards)
   const scoresStale = useScoresStale(state)
+  const friendlyErrorText = error && (/disabled|not enabled|403/i.test(error)
+    ? t('sealedAssist.disabledError')
+    : /failed to fetch|network/i.test(error)
+      ? t('sealedAssist.networkError')
+      : error)
 
   const current = useMemo(() => ({ deck: state.deck, landCounts: state.landCounts }), [state.deck, state.landCounts])
   // Undo only while the deck is still exactly what the AI left — after a hand edit it would wipe the edit.
@@ -178,8 +186,8 @@ export function AssistStrip({ state }: { state: DeckBuildingState }) {
         <span className={styles.section}>
           <span className={styles.spinner} aria-hidden />
           {task === 'score'
-            ? `Scoring every card in your pool${engineName ? ` with ${engineName}` : ''}…`
-            : `Building your deck${engineName ? ` with ${engineName}` : ''}…`}
+            ? engineName ? t('sealedAssist.scoringWithEngine', { engine: engineName }) : t('sealedAssist.scoring')
+            : engineName ? t('sealedAssist.buildingWithEngine', { engine: engineName }) : t('sealedAssist.building')}
         </span>
       </div>
     )
@@ -192,8 +200,8 @@ export function AssistStrip({ state }: { state: DeckBuildingState }) {
     <div className={styles.strip} data-tone={error ? 'error' : undefined} role="status" aria-live="polite">
       {error && (
         <span className={styles.section}>
-          <span className={styles.error}>{friendlyError(error)}</span>
-          <button type="button" className={styles.close} onClick={clearError} aria-label="Dismiss">×</button>
+          <span className={styles.error}>{friendlyErrorText}</span>
+          <button type="button" className={styles.close} onClick={clearError} aria-label={t('sealedAssist.dismiss')}>×</button>
         </span>
       )}
 
@@ -210,21 +218,21 @@ export function AssistStrip({ state }: { state: DeckBuildingState }) {
 
       {hasScores && (
         <span className={styles.section}>
-          <span className={styles.label}>Card scores</span>
+          <span className={styles.label}>{t('sealedAssist.cardScores')}</span>
           <span className={styles.legend}>
-            <LegendItem tone="strong" text="70+ strong" />
-            <LegendItem tone="playable" text="45+ playable" />
-            <LegendItem tone="weak" text="weak" />
+            <LegendItem tone="strong" text={t('sealedAssist.strongScore')} />
+            <LegendItem tone="playable" text={t('sealedAssist.playableScore')} />
+            <LegendItem tone="weak" text={t('sealedAssist.weakScore')} />
           </span>
           {scoresStale ? (
             <>
-              <span className={styles.muted}>· your deck changed since</span>
+              <span className={styles.muted}>· {t('sealedAssist.deckChangedSince')}</span>
               <button type="button" className={styles.link} onClick={() => void scoreDeckCards(advisorId ?? undefined)}>
-                Re-score
+                {t('sealedAssist.rescore')}
               </button>
             </>
           ) : (
-            <span className={styles.muted}>· hover a card for why</span>
+            <span className={styles.muted}>· {t('sealedAssist.hoverForReason')}</span>
           )}
         </span>
       )}
@@ -247,6 +255,10 @@ function BuildChoices({
   onUndo: () => void
   onDismiss: () => void
 }) {
+  const { t } = useTranslation()
+  const explanation = result.advisorId === 'draftsim'
+    ? t('sealedAssist.draftsimRating')
+    : t('sealedAssist.ratingSum')
   const multiple = result.options.length > 1
   if (!multiple) {
     // One candidate: nothing to choose between, so a sentence rather than a lone chip.
@@ -254,28 +266,28 @@ function BuildChoices({
     const score = option.score != null ? formatBuildScore(result.advisorId, option.score) : null
     return (
       <span className={styles.section}>
-        <span className={styles.label}>Auto-build</span>
+        <span className={styles.label}>{t('sealedAssist.autoBuild')}</span>
         {option.colors.length > 0 && (
           <span className={styles.pips}>
             {option.colors.map((c) => <ManaSymbol key={c} symbol={c} size={14} />)}
           </span>
         )}
-        <span>{option.archetype ? `Built a ${option.archetype} deck` : 'Deck built'}</span>
+        <span>{option.archetype ? t('sealedAssist.builtArchetype', { archetype: option.archetype }) : t('sealedAssist.deckBuilt')}</span>
         {score && (
-          <span className={styles.muted} title={scoreExplanation(result.advisorId)}>
-            · rated <span className={styles.chipScore}>{score}</span>
+          <span className={styles.muted} title={explanation}>
+            · {t('sealedAssist.rated')} <span className={styles.chipScore}>{score}</span>
           </span>
         )}
         {canUndo ? (
-          <button type="button" className={styles.link} onClick={onUndo} title="Put back the deck you had before Auto-build">
-            Undo
+          <button type="button" className={styles.link} onClick={onUndo} title={t('sealedAssist.undoTitle')}>
+            {t('sealedAssist.undo')}
           </button>
         ) : !isApplied(0) && (
-          <button type="button" className={styles.link} onClick={() => onPick(0)} title="Throw away your edits and use this build again">
-            Re-apply
+          <button type="button" className={styles.link} onClick={() => onPick(0)} title={t('sealedAssist.reapplyTitle')}>
+            {t('sealedAssist.reapply')}
           </button>
         )}
-        <button type="button" className={styles.close} onClick={onDismiss} aria-label="Dismiss Auto-build" title="Dismiss">
+        <button type="button" className={styles.close} onClick={onDismiss} aria-label={t('sealedAssist.dismissAutoBuild')} title={t('sealedAssist.dismiss')}>
           ×
         </button>
       </span>
@@ -283,11 +295,11 @@ function BuildChoices({
   }
   return (
     <span className={styles.section}>
-      <span className={styles.label}>Builds</span>
+      <span className={styles.label}>{t('sealedAssist.builds')}</span>
       {result.options.map((option, i) => {
         const applied = isApplied(i)
         const score = option.score != null ? formatBuildScore(result.advisorId, option.score) : null
-        const name = option.archetype ?? (option.colors.length > 0 ? null : `Build ${i + 1}`)
+        const name = option.archetype ?? (option.colors.length > 0 ? null : t('sealedAssist.buildNumber', { number: i + 1 }))
         return (
           <button
             key={i}
@@ -297,8 +309,8 @@ function BuildChoices({
             onClick={() => onPick(i)}
             title={
               applied
-                ? 'This build is your deck'
-                : `Replace your deck with this build${score ? ` — ${scoreExplanation(result.advisorId)}` : ''}`
+                ? t('sealedAssist.thisIsYourDeck')
+                : score ? t('sealedAssist.replaceDeckWithRatedBuild', { explanation }) : t('sealedAssist.replaceDeckWithBuild')
             }
           >
             {option.colors.length > 0 && (
@@ -312,11 +324,11 @@ function BuildChoices({
         )
       })}
       {canUndo && (
-        <button type="button" className={styles.link} onClick={onUndo} title="Put back the deck you had before Auto-build">
-          Undo
+        <button type="button" className={styles.link} onClick={onUndo} title={t('sealedAssist.undoTitle')}>
+          {t('sealedAssist.undo')}
         </button>
       )}
-      <button type="button" className={styles.close} onClick={onDismiss} aria-label="Dismiss Auto-build" title="Dismiss">
+      <button type="button" className={styles.close} onClick={onDismiss} aria-label={t('sealedAssist.dismissAutoBuild')} title={t('sealedAssist.dismiss')}>
         ×
       </button>
     </span>
@@ -336,19 +348,6 @@ function LegendItem({ tone, text }: { tone: ScoreTone; text: string }) {
 /** Draftsim reports a 0–10 deck score; the heuristic engine a raw rating sum. */
 function formatBuildScore(advisorId: string, score: number): string {
   return advisorId === 'draftsim' ? `${score.toFixed(1)}/10` : `${Math.round(score)} pts`
-}
-
-function scoreExplanation(advisorId: string): string {
-  return advisorId === 'draftsim'
-    ? 'Draftsim deck rating out of 10'
-    : 'sum of the card ratings; only comparable between builds'
-}
-
-/** The store keeps the raw message; give the common ones a sentence a player can act on. */
-function friendlyError(message: string): string {
-  if (/disabled|not enabled|403/i.test(message)) return 'AI assistance is turned off for this lobby.'
-  if (/failed to fetch|network/i.test(message)) return 'Couldn’t reach the server — check your connection and try again.'
-  return message
 }
 
 // ── Icons (16px, stroke = currentColor) ─────────────────────────────────

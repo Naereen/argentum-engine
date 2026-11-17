@@ -8,6 +8,7 @@ import { JumpstartPackExplorer } from './JumpstartPackExplorer'
 import { ColorPips, CurveBars, RarityDot } from './JumpstartPackParts'
 import { colorsLabel, faceCard, mergeColors, summarizePack, type PackSummary } from './jumpstartPack'
 import styles from './JumpstartOverlay.module.css'
+import { useTranslation } from 'react-i18next'
 
 function PackArt({ pack, className }: { pack: JumpstartOffer; className: string | undefined }) {
   const face = faceCard(pack.cards)
@@ -23,20 +24,21 @@ function DeckSlot({ pack, label, tone, ghost, onView }: {
   ghost: boolean
   onView?: (() => void) | undefined
 }) {
+  const { t } = useTranslation()
   const summary = useMemo(() => pack ? summarizePack(pack.cards) : null, [pack])
   if (!pack || !summary) return <div className={`${styles.slot} ${styles.slotEmpty}`}>
     <span className={styles.slotLabel}>{label}</span>
-    <span className={styles.slotPlaceholder}>Not chosen yet</span>
+    <span className={styles.slotPlaceholder}>{t('draft.notChosen')}</span>
   </div>
   return <div className={`${styles.slot} ${tone === 'base' ? styles.slotBase : styles.slotPack} ${ghost ? styles.slotGhost : ''}`}>
     <PackArt pack={pack} className={styles.slotArt} />
     <div className={styles.slotText}>
-      <span className={styles.slotLabel}>{ghost ? 'Considering' : label}</span>
+      <span className={styles.slotLabel}>{ghost ? t('draft.considering') : label}</span>
       <strong>{pack.theme}</strong>
       <ColorPips colors={summary.colors} size={15} />
     </div>
     <div className={styles.slotActions}>
-      {onView && <button className={styles.slotView} onClick={onView} aria-label={`View ${pack.theme}`}>View</button>}
+      {onView && <button className={styles.slotView} onClick={onView} aria-label={t('draft.viewPack', { theme: pack.theme })}>{t('draft.view')}</button>}
     </div>
   </div>
 }
@@ -53,29 +55,30 @@ function DeckBar({ slots, ghosts, locked, onView, confirm }: {
   onView: (slot: 0 | 1) => void
   confirm: ReactNode
 }) {
+  const { t } = useTranslation()
   const [first, second] = slots
   const parts = useMemo(() => [first, second].filter((p): p is JumpstartOffer => p !== undefined)
     .map((p) => summarizePack(p.cards)), [first, second])
   const colors = mergeColors(...parts.map((p) => p.colors))
   const total = (key: keyof Pick<PackSummary, 'creatures' | 'spells' | 'lands'>) => parts.reduce((n, p) => n + p[key], 0)
   const complete = parts.length === 2
-  return <section className={styles.deckBar} aria-label="Your deck">
+  return <section className={styles.deckBar} aria-label={t('draft.yourDeck')}>
     <div className={styles.slots}>
-      <DeckSlot pack={first} label="First pack" tone="base" ghost={ghosts[0]}
+      <DeckSlot pack={first} label={t('draft.firstPack')} tone="base" ghost={ghosts[0]}
         onView={first && !ghosts[0] ? () => onView(0) : undefined} />
       <span className={styles.plus} aria-hidden>+</span>
-      <DeckSlot pack={second} label="Second pack" tone="pack" ghost={ghosts[1]}
+      <DeckSlot pack={second} label={t('draft.secondPack')} tone="pack" ghost={ghosts[1]}
         onView={second && !ghosts[1] ? () => onView(1) : undefined} />
     </div>
     <div className={styles.deckSummary}>
       <div className={styles.deckStats}>
-        <span className={styles.slotLabel}>{complete ? (locked ? 'Your 40-card deck' : 'Together they make') : 'Your deck'}</span>
+        <span className={styles.slotLabel}>{complete ? (locked ? t('draft.yourFortyCardDeck') : t('draft.togetherMake')) : t('draft.yourDeck')}</span>
         {parts.length > 0 ? <>
           <div className={styles.deckColors}><ColorPips colors={colors} size={16} /><strong>{colorsLabel(colors)}</strong></div>
-          <span className={styles.deckCounts}>{total('creatures')} creatures · {total('spells')} spells · {total('lands')} lands</span>
+          <span className={styles.deckCounts}>{t('draft.packComposition', { creatures: total('creatures'), spells: total('spells'), lands: total('lands') })}</span>
         </> : <>
-          <div className={styles.deckColors}><strong className={styles.deckEmpty}>Two packs, forty cards</strong></div>
-          <span className={styles.deckCounts}>Hover a pack to preview it here.</span>
+          <div className={styles.deckColors}><strong className={styles.deckEmpty}>{t('draft.twoPacksFortyCards')}</strong></div>
+          <span className={styles.deckCounts}>{t('draft.hoverToPreview')}</span>
         </>}
         {confirm}
       </div>
@@ -96,6 +99,7 @@ function OfferCard({ offer, partner, tone, selected, disabled, onChoose, onExplo
   onExplore: () => void
   onPreview: (previewing: boolean) => void
 }) {
+  const { t } = useTranslation()
   const summary = useMemo(() => summarizePack(offer.cards), [offer])
   const partnerColors = useMemo(() => partner ? summarizePack(partner.cards).colors : undefined, [partner])
   const paired = partnerColors && partner?.id !== offer.id ? mergeColors(partnerColors, summary.colors) : undefined
@@ -106,22 +110,22 @@ function OfferCard({ offer, partner, tone, selected, disabled, onChoose, onExplo
       <PackArt pack={offer} className={styles.art} />
       <span className={styles.artPips}><ColorPips colors={summary.colors} size={20} /></span>
       {paired && <span className={styles.pairBadge}>Makes {colorsLabel(paired)}</span>}
-      <span className={styles.packLabel}>20 cards · lands included</span>
+      <span className={styles.packLabel}>{t('draft.cardsIncludingLands')}</span>
     </button>
     <div className={styles.packBody}>
       <h2>{offer.theme}</h2>
-      <ul className={styles.highlights} aria-label="Notable cards">
+      <ul className={styles.highlights} aria-label={t('draft.notableCards')}>
         {summary.highlights.slice(0, 3).map((card) => <li key={card.name}><RarityDot card={card} /><span>{card.name}</span></li>)}
       </ul>
       <div className={styles.packStats}>
         <CurveBars curve={summary.curve} />
-        <span>{summary.creatures} creatures<br />{summary.spells} spells</span>
+        <span>{t('draft.packStats', { creatures: summary.creatures, spells: summary.spells })}</span>
       </div>
       <div className={styles.packActions}>
-        <button className={styles.explore} onClick={onExplore}>Explore this pack</button>
+        <button className={styles.explore} onClick={onExplore}>{t('draft.explorePack')}</button>
         <button className={`${styles.choose} ${selected ? styles.chosen : ''}`} disabled={disabled} onClick={onChoose}
           aria-pressed={selected}>
-          {selected ? '✓ Chosen' : `Choose ${offer.theme}`}
+          {selected ? t('draft.chosen') : t('draft.chooseTheme', { theme: offer.theme })}
         </button>
       </div>
     </div>
@@ -136,6 +140,7 @@ type Explorer = { from: Row | 'chosen'; index: number }
  * legality, offers and deck assembly all come from the server.
  */
 export function JumpstartOverlay() {
+  const { t } = useTranslation()
   const lobby = useGameStore((s) => s.lobbyState)
   const pick = useGameStore((s) => s.pickJumpstartPacks)
   const leave = useGameStore((s) => s.leaveLobby)
@@ -175,39 +180,38 @@ export function JumpstartOverlay() {
     pick(first.id, second.id)
   }
   const explorerPacks = explorer?.from === 'chosen' ? chosen : explorer ? rows[explorer.from] : []
-  const table = lobby.settings.gameMode === 'FREE_FOR_ALL' ? `Free-for-All · ${lobby.players.length} players` : null
+  const table = lobby.settings.gameMode === 'FREE_FOR_ALL' ? t('draft.freeForAll', { count: lobby.players.length }) : null
   const confirmButton = ready ? null : <button className={styles.confirm} disabled={!first || !second || !canPick} onClick={confirm}>
-    {pending ? 'Building your deck…' : first && second ? `Play ${first.theme} + ${second.theme}` : 'Choose both packs'}
+    {pending ? t('draft.buildingDeck') : first && second ? t('draft.playPacks', { first: first.theme, second: second.theme }) : t('draft.chooseBoth')}
   </button>
   return (
     <div className={styles.overlay}>
       <main className={styles.content}>
         <header className={styles.header}>
           <div>
-            <span className={styles.eyebrow}>JUMP IN</span>
+            <span className={styles.eyebrow}>{t('draft.jumpIn')}</span>
             <span className={styles.setName}>{[setName, table].filter(Boolean).join(' · ')}</span>
           </div>
           <div className={styles.headerEnd}>
-            <button className={styles.leave} onClick={leave}>Leave lobby</button>
+            <button className={styles.leave} onClick={leave}>{t('draft.leaveLobby')}</button>
             <ChatButton className={`${styles.leave} ${styles.chat}`} />
           </div>
         </header>
-        <h1>{ready ? 'Two themes. One deck. Let’s play.' : 'Choose two themes'}</h1>
+        <h1>{ready ? t('draft.twoThemesOneDeck') : t('draft.chooseTwoThemes')}</h1>
         <p className={styles.intro}>
-          {ready ? 'Your 40-card deck is ready. The game starts when everyone has chosen.'
-            : 'Pick one pack from each row — together they make your 40-card deck, all the lands included. Hover a pack to see the pair it would make, or explore it card by card.'}
+          {ready ? t('draft.deckReady') : t('draft.choosePackPrompt')}
         </p>
-        {ready && <span className={styles.srOnly} aria-label="Chosen themes">{state.selectedPacks.map((name) => `✓ ${name}`).join(' ')}</span>}
+        {ready && <span className={styles.srOnly} aria-label={t('draft.chosenThemes')}>{state.selectedPacks.map((name) => `✓ ${name}`).join(' ')}</span>}
         <div className={styles.deckBarDock}>
           <DeckBar slots={slots} ghosts={ghosts} locked={ready} confirm={confirmButton}
             onView={(slot) => ready ? setExplorer({ from: 'chosen', index: slot })
               : setExplorer({ from: slot, index: rows[slot].findIndex((o) => o.id === choice[slot]) })} />
         </div>
-        {connection !== 'connected' && <p role="status" className={styles.intro}>Reconnecting… Your choices are saved.</p>}
+        {connection !== 'connected' && <p role="status" className={styles.intro}>{t('draft.reconnectingSaved')}</p>}
         {error && <p className={styles.error} role="alert">{error.message}</p>}
-        {!ready && ([0, 1] as const).map((row) => <section key={row} aria-label={row === 0 ? 'First pack' : 'Second pack'}>
+        {!ready && ([0, 1] as const).map((row) => <section key={row} aria-label={row === 0 ? t('draft.firstPack') : t('draft.secondPack')}>
           <h2 className={`${styles.rowHeading} ${row === 0 ? styles.rowBase : styles.rowPack}`}>
-            {row === 0 ? 'First pack' : 'Second pack'}
+            {row === 0 ? t('draft.firstPack') : t('draft.secondPack')}
           </h2>
           <div className={styles.packs} aria-busy={pending}>
             {rows[row].map((offer, i) => <OfferCard key={`${row}-${offer.id}`}
@@ -219,17 +223,17 @@ export function JumpstartOverlay() {
                 on ? { row, id: offer.id } : prev?.row === row && prev.id === offer.id ? null : prev)} />)}
           </div>
         </section>)}
-        {ready && <section className={styles.waiting} aria-label="Player readiness">
-          <h2>At the table</h2>
+        {ready && <section className={styles.waiting} aria-label={t('draft.playerReadiness')}>
+          <h2>{t('draft.atTable')}</h2>
           <ul>{lobby.players.map((player) => <li key={player.playerId}>
-            <span>{player.playerName}{player.isAi ? ' · AI' : ''}</span>
+            <span>{player.playerName}{player.isAi ? ` · ${t('scenario.ai')}` : ''}</span>
             <span className={player.deckSubmitted ? styles.ready : styles.picking}>
-              {player.deckSubmitted ? '✓ Ready to play' : 'Choosing themes…'}
+              {player.deckSubmitted ? t('draft.readyToPlay') : t('draft.choosingThemes')}
             </span>
           </li>)}</ul>
-          <p role="status">Waiting for the rest of the table</p>
+          <p role="status">{t('draft.waitingForTable')}</p>
         </section>}
-        <p className={styles.note}>Published Jumpstart packs · One pack from each row · No deckbuilding</p>
+        <p className={styles.note}>{t('draft.jumpstartRules')}</p>
       </main>
       {explorer && explorerPacks[explorer.index] && <JumpstartPackExplorer
         packs={explorerPacks}

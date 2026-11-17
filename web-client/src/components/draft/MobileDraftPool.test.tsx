@@ -1,6 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
+import { I18nextProvider } from 'react-i18next'
 import type { SealedCardInfo } from '@/types'
+import i18n from '@/i18n'
 import { MobileDraftTabBar, MobilePoolView } from './MobileDraftPool'
 
 vi.mock('@/utils/cardImages.ts', () => ({
@@ -12,6 +14,8 @@ function card(name: string, manaCost: string, typeLine: string): SealedCardInfo 
 }
 
 const noop = () => {}
+const render = (node: React.ReactNode) =>
+  renderToStaticMarkup(<I18nextProvider i18n={i18n}>{node}</I18nextProvider>)
 
 describe('MobilePoolView', () => {
   const pool = [
@@ -22,7 +26,7 @@ describe('MobilePoolView', () => {
   ]
 
   it('shows every drafted card as an image, with a column per color', () => {
-    const html = renderToStaticMarkup(
+    const html = render(
       <MobilePoolView cards={pool} picksPerRound={1} grouping="color" onGroupingChange={noop} onPreview={noop} />,
     )
     expect(html).toContain('White 1')
@@ -33,7 +37,7 @@ describe('MobilePoolView', () => {
   })
 
   it('marks duplicates with a count and the newest pick as NEW', () => {
-    const html = renderToStaticMarkup(
+    const html = render(
       <MobilePoolView cards={pool} picksPerRound={1} grouping="color" onGroupingChange={noop} onPreview={noop} />,
     )
     expect(html).toContain('aria-label="Shock ×2"')
@@ -44,7 +48,7 @@ describe('MobilePoolView', () => {
   })
 
   it('marks every card from the latest pick as NEW in pick-2 formats', () => {
-    const html = renderToStaticMarkup(
+    const html = render(
       <MobilePoolView cards={pool} picksPerRound={2} grouping="color" onGroupingChange={noop} onPreview={noop} />,
     )
     // The last two picks were Shock and Sparksmith; Glory Seeker was earlier.
@@ -54,7 +58,7 @@ describe('MobilePoolView', () => {
   })
 
   it('shows the creature/spell split and marks the active grouping', () => {
-    const html = renderToStaticMarkup(
+    const html = render(
       <MobilePoolView cards={pool} picksPerRound={1} grouping="type" onGroupingChange={noop} onPreview={noop} />,
     )
     expect(html).toMatch(/>2<\/span><span[^>]*>Creatures</)
@@ -64,7 +68,7 @@ describe('MobilePoolView', () => {
   })
 
   it('shows an empty state before the first pick', () => {
-    const html = renderToStaticMarkup(
+    const html = render(
       <MobilePoolView cards={[]} picksPerRound={1} grouping="color" onGroupingChange={noop} onPreview={noop} />,
     )
     expect(html).toContain('Cards you pick will show up here.')
@@ -73,7 +77,7 @@ describe('MobilePoolView', () => {
 
 describe('MobileDraftTabBar', () => {
   it('shows the picked count on Pool and badges waiting packs on Pack', () => {
-    const html = renderToStaticMarkup(
+    const html = render(
       <MobileDraftTabBar tab="pool" onChange={noop} packsWaiting={2} pickedLabel="17 / 45" />,
     )
     expect(html).toContain('17 / 45')
@@ -82,7 +86,7 @@ describe('MobileDraftTabBar', () => {
   })
 
   it('hides the badge when no pack is waiting', () => {
-    const html = renderToStaticMarkup(
+    const html = render(
       <MobileDraftTabBar tab="pack" onChange={noop} packsWaiting={0} pickedLabel="3" />,
     )
     expect(html).not.toContain('waiting')

@@ -8,6 +8,7 @@
 import { Link } from 'react-router-dom'
 import { MISSIONS, learnHref, type Mission, type MissionFrame, type MissionId } from '@/learn/missions'
 import styles from './learn.module.css'
+import { useTranslation } from 'react-i18next'
 
 /** The one glyph in each card's art box — mana-font's symbol for what the mission is about. */
 const ART_GLYPH: Record<MissionId, string> = {
@@ -18,12 +19,12 @@ const ART_GLYPH: Record<MissionId, string> = {
   'real-game': 'ms-planeswalker',
 }
 
-const TYPE_LINE: Record<MissionId, string> = {
-  'first-steps': 'Mission — Lands & creatures',
-  blocking: 'Mission — Combat',
-  instants: 'Mission — The stack',
-  removal: 'Mission — Answers',
-  'real-game': 'Game — Full rules',
+const TYPE_LINE: Record<MissionId, 'firstSteps' | 'blocking' | 'instants' | 'removal' | 'realGame'> = {
+  'first-steps': 'firstSteps',
+  blocking: 'blocking',
+  instants: 'instants',
+  removal: 'removal',
+  'real-game': 'realGame',
 }
 
 /** Frames light enough to need dark text. */
@@ -44,6 +45,7 @@ function MissionCardFrame({
   next: boolean
   later: boolean
 }) {
+  const { t } = useTranslation()
   const dark = !LIGHT_FRAMES.has(mission.frame)
   const cls = [
     styles.card,
@@ -57,7 +59,11 @@ function MissionCardFrame({
       to={learnHref(mission.id)}
       className={cls}
       style={{ ['--frame' as string]: frameVar(mission.frame) }}
-      aria-label={`Mission ${mission.number}: ${mission.title}${done ? ' (complete)' : ''}`}
+      aria-label={t('learnPage.missionAria', {
+        number: mission.number,
+        title: mission.title,
+        status: done ? t('learnPage.completeStatus') : '',
+      })}
     >
       {done && <span className={styles.cardSeal} aria-hidden="true">✓</span>}
       <div className={styles.cardTitle}>
@@ -67,7 +73,7 @@ function MissionCardFrame({
       <div className={styles.cardArt}>
         <i className={`ms ${ART_GLYPH[mission.id]}`} aria-hidden="true" />
       </div>
-      <div className={styles.cardType}>{TYPE_LINE[mission.id]}</div>
+      <div className={styles.cardType}>{t(`learnPage.missionTypes.${TYPE_LINE[mission.id]}`)}</div>
       <div className={styles.cardText}>{mission.blurb}</div>
       <div className={styles.cardFoot}>
         <span>{mission.number} / {MISSIONS.length}</span>
@@ -88,9 +94,10 @@ function slotStyle(i: number, n: number): Record<string, string> {
 }
 
 export function MissionHand({ completed, next }: { completed: readonly MissionId[]; next: MissionId | undefined }) {
+  const { t } = useTranslation()
   const nextNumber = MISSIONS.find((m) => m.id === next)?.number ?? Infinity
   return (
-    <div className={styles.hand} role="list" aria-label="Missions">
+    <div className={styles.hand} role="list" aria-label={t('learnPage.missionList')}>
       {MISSIONS.map((mission, i) => {
         const done = completed.includes(mission.id)
         const isNext = mission.id === next
@@ -108,8 +115,9 @@ export function MissionHand({ completed, next }: { completed: readonly MissionId
 }
 
 export function MiniHand({ current, completed }: { current: MissionId; completed: readonly MissionId[] }) {
+  const { t } = useTranslation()
   return (
-    <nav className={styles.miniHand} aria-label="All missions">
+    <nav className={styles.miniHand} aria-label={t('learnPage.allMissionsNavigation')}>
       {MISSIONS.map((mission) => {
         const dark = !LIGHT_FRAMES.has(mission.frame)
         const cls = [
@@ -124,8 +132,8 @@ export function MiniHand({ current, completed }: { current: MissionId; completed
             to={learnHref(mission.id)}
             className={cls}
             style={{ ['--frame' as string]: frameVar(mission.frame) }}
-            title={`${mission.number}. ${mission.title}`}
-            aria-label={`Mission ${mission.number}: ${mission.title}`}
+            title={t('learnPage.missionAria', { number: mission.number, title: mission.title, status: '' })}
+            aria-label={t('learnPage.missionAria', { number: mission.number, title: mission.title, status: '' })}
           >
             {mission.number}
           </Link>

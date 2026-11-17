@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore, type DeckBuildingState } from '@/store/gameStore.ts'
 import type { SealedCardInfo } from '@/types'
 import { useResponsive } from '@/hooks/useResponsive.ts'
@@ -68,6 +69,7 @@ export function DeckBuilderOverlay() {
  * Waiting screen shown to the first player while waiting for opponent.
  */
 function WaitingForOpponent({ setName }: { setName: string }) {
+  const { t } = useTranslation()
   const sessionId = useGameStore((state) => state.sessionId)
   const cancelGame = useGameStore((state) => state.cancelGame)
   const responsive = useResponsive()
@@ -94,10 +96,10 @@ function WaitingForOpponent({ setName }: { setName: string }) {
       }}
     >
       <h2 className={ls.title} style={{ fontSize: responsive.isMobile ? 22 : 30, whiteSpace: 'normal', textAlign: 'center' }}>
-        Sealed Draft - {setName}
+        {t('sealedDeck.waitingTitle', { set: setName })}
       </h2>
       <p style={{ color: '#888', margin: 0, fontSize: responsive.fontSize.large }}>
-        Waiting for opponent to join...
+        {t('sealedDeck.waitingForOpponent')}
       </p>
       <div
         style={{
@@ -111,7 +113,7 @@ function WaitingForOpponent({ setName }: { setName: string }) {
         }}
       >
         <p style={{ color: '#aaa', margin: 0, fontSize: responsive.fontSize.normal }}>
-          Session ID:
+          {t('sealedDeck.sessionId')}
         </p>
         <code
           style={{
@@ -127,11 +129,11 @@ function WaitingForOpponent({ setName }: { setName: string }) {
           {sessionId}
         </code>
         <p style={{ color: '#666', margin: 0, fontSize: responsive.fontSize.small }}>
-          Share this ID with your opponent
+          {t('sealedDeck.shareSessionId')}
         </p>
       </div>
       <button type="button" onClick={cancelGame} className={ls.leave} style={{ marginTop: 8 }}>
-        Cancel Game
+        {t('common.cancel')}
       </button>
     </div>
   )
@@ -141,6 +143,7 @@ function WaitingForOpponent({ setName }: { setName: string }) {
  * Main deck builder interface.
  */
 function DeckBuilder({ state }: { state: DeckBuildingState }) {
+  const { t } = useTranslation()
   const responsive = useResponsive()
   const addCardToDeck = useGameStore((s) => s.addCardToDeck)
   const storedDeckCardScores = useGameStore((s) => s.deckCardScores)
@@ -591,8 +594,8 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
       <div className={ls.header}>
         <div className={ls.headerGroup}>
           <h2 className={ls.title}>
-            Deck Builder - {state.setNames.join(' + ')}
-            {state.poolPlay ? ' (Pool Play)' : ''}
+            {t('sealedDeck.title')} · {state.setNames.join(' + ')}
+            {state.poolPlay ? ` (${t('sealedDeck.poolPlay')})` : ''}
           </h2>
           <SetSynergiesButton
             setCodes={state.setCodes}
@@ -611,15 +614,15 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
 
         <div className={ls.headerGroup}>
           {state.opponentReady && (
-            <span className={ls.pill} data-tone="good">Opponent ready</span>
+            <span className={ls.pill} data-tone="good">{t('sealedDeck.opponentReady')}</span>
           )}
 
-          <span className={ls.pill} data-tone={isValidDeck ? 'good' : undefined} title="Cards in your deck">
+          <span className={ls.pill} data-tone={isValidDeck ? 'good' : undefined} title={t('sealedDeck.cardsInDeck')}>
             {totalCount} / {requiredSize}
           </span>
           {isCommanderShape && !isSubmitted && state.commander == null && (
             <div
-              title="Click the crown next to a legendary creature in your deck to designate it as your commander."
+              title={t('sealedDeck.pickCommanderTitle')}
               style={{
                 padding: responsive.isMobile ? '4px 10px' : '6px 14px',
                 fontSize: responsive.isMobile ? 11 : 12,
@@ -630,12 +633,12 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                 fontWeight: 600,
               }}
             >
-              ♛ Pick a commander
+              ♛ {t('sealedDeck.pickCommander')}
             </div>
           )}
           {isCommanderShape && !isSubmitted && state.commander != null && (
             <div
-              title={`${commanders.length > 1 ? 'Commanders' : 'Commander'}: ${commanders.join(' and ')}`}
+              title={`${commanders.length > 1 ? t('sealedDeck.commanders') : t('sealedDeck.commander')}: ${commanders.join(` ${t('sealedDeck.and')} `)}`}
               style={{
                 padding: responsive.isMobile ? '4px 10px' : '6px 14px',
                 fontSize: responsive.isMobile ? 11 : 12,
@@ -656,7 +659,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
 
           {isSubmitted ? (
             <button type="button" onClick={unsubmitDeck} className={ls.button}>
-              Edit Deck
+              {t('sealedDeck.editDeck')}
             </button>
           ) : (
             <button
@@ -666,12 +669,12 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                 isValidDeck
                   ? undefined
                   : isCommanderShape && state.commander == null
-                  ? 'Designate a commander first — click the crown ♛ on a legendary creature in your deck'
-                  : `Deck needs at least ${requiredSize} cards`
+                  ? t('sealedDeck.designateCommanderFirst')
+                  : t('sealedDeck.minimumDeckSize', { count: requiredSize })
               }
               className={ls.primary}
             >
-              Submit Deck
+              {t('sealedDeck.submitDeck')}
             </button>
           )}
 
@@ -689,26 +692,26 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                   })
                 )
               }
-              title="Copy this deck in MTG Arena format"
+              title={t('sealedDeck.copyArenaFormat')}
               className={ls.button}
             >
-              Export
+              {t('sealedDeck.export')}
             </button>
           )}
 
           {isInLobby ? (
             isHost ? (
               <button type="button" onClick={stopLobby} className={ls.leave}>
-                Stop Game
+                {t('sealedDeck.stopGame')}
               </button>
             ) : (
               <button type="button" onClick={leaveLobby} className={ls.leave}>
-                Leave
+                {t('common.leave')}
               </button>
             )
           ) : (
             <button type="button" onClick={cancelGame} className={ls.leave}>
-              Cancel Game
+              {t('common.cancel')}
             </button>
           )}
           <ChatButton className={`${ls.button} ${ls.iconButton}`} />
@@ -777,11 +780,11 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                   cursor: 'pointer',
                 }}
               >
-                {mobileFiltersOpen ? 'Hide filters ▴' : `Sort & filter${colorFilter.size > 0 || typeFilter || searchText ? ' •' : ''} ▾`}
+                {mobileFiltersOpen ? t('sealedDeck.hideFilters') : `${t('sealedDeck.sortAndFilter')}${colorFilter.size > 0 || typeFilter || searchText ? ' •' : ''} ▾`}
               </button>
             )}
             {(!responsive.isMobile || mobileFiltersOpen) && (<>
-            <span style={{ color: '#888', fontSize: 12 }}>Sort:</span>
+            <span style={{ color: '#888', fontSize: 12 }}>{t('sealedDeck.sort')}:</span>
             {(['color', 'cmc', 'rarity'] as const).map((option) => (
               <button
                 key={option}
@@ -797,15 +800,15 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                   textTransform: 'capitalize',
                 }}
               >
-                {option}
+                {t(`sealedDeck.sortBy.${option}`)}
               </button>
             ))}
 
             <div style={{ width: 1, height: 18, backgroundColor: 'rgba(255, 255, 255, 0.12)', margin: '0 4px' }} />
 
-            <span style={{ color: '#888', fontSize: 12 }}>Filter:</span>
+            <span style={{ color: '#888', fontSize: 12 }}>{t('sealedDeck.filter')}:</span>
             <ColorModeSegmented mode={colorMode} onChange={setColorMode} />
-            {COLOR_FILTER_OPTIONS.map(({ key, label }) => {
+            {COLOR_FILTER_OPTIONS.map(({ key, labelKey }) => {
               const active = colorFilter.has(key)
               return (
                 <button
@@ -818,7 +821,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                       return next
                     })
                   }}
-                  title={label}
+                  title={t(labelKey)}
                   style={{
                     width: 28,
                     height: 28,
@@ -834,7 +837,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                     padding: 0,
                   }}
                 >
-                  <ManaSymbol symbol={key === 'M' ? 'WUBRG' : key} size={20} />
+                  <ManaSymbol symbol={key} size={20} />
                 </button>
               )
             })}
@@ -843,8 +846,8 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                 onClick={() => setRestrictToCommanderIdentity((v) => !v)}
                 title={
                   restrictToCommanderIdentity
-                    ? `Showing only cards inside ${commanders.join(' and ')}'s colour identity. Click to show the full pool.`
-                    : `Restrict the pool to cards inside ${commanders.join(' and ')}'s colour identity.`
+                    ? t('sealedDeck.showCommanderIdentityOnly', { commanders: commanders.join(` ${t('sealedDeck.and')} `) })
+                    : t('sealedDeck.restrictToCommanderIdentity', { commanders: commanders.join(` ${t('sealedDeck.and')} `) })
                 }
                 style={{
                   padding: '3px 10px',
@@ -857,7 +860,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                   fontWeight: 600,
                 }}
               >
-                ♛ Identity {restrictToCommanderIdentity ? 'on' : 'off'}
+                ♛ {t('sealedDeck.identityFilter')} {restrictToCommanderIdentity ? t('sealedDeck.identityOn') : t('sealedDeck.identityOff')}
               </button>
             )}
             {colorFilter.size > 0 && (
@@ -873,14 +876,14 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                   cursor: 'pointer',
                 }}
               >
-                Clear
+                {t('common.clear')}
               </button>
             )}
 
             <div style={{ width: 1, height: 18, backgroundColor: 'rgba(255, 255, 255, 0.12)', margin: '0 4px' }} />
 
-            <span style={{ color: '#888', fontSize: 12 }}>Type:</span>
-            {TYPE_FILTER_OPTIONS.map(({ key, label }) => (
+            <span style={{ color: '#888', fontSize: 12 }}>{t('sealedDeck.type')}:</span>
+            {TYPE_FILTER_OPTIONS.map(({ key, labelKey }) => (
               <button
                 key={key}
                 onClick={() => setTypeFilter(typeFilter === key ? null : key)}
@@ -894,7 +897,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                   cursor: 'pointer',
                 }}
               >
-                {label}
+                {t(labelKey)}
               </button>
             ))}
 
@@ -915,7 +918,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
             >
             <div
               role="radiogroup"
-              aria-label="Search mode"
+              aria-label={t('sealedDeck.searchMode')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -925,7 +928,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                 flexShrink: 0,
               }}
             >
-              {SEARCH_MODE_OPTIONS.map(({ mode, label, hint }) => {
+              {SEARCH_MODE_OPTIONS.map(({ mode, labelKey, hintKey }) => {
                 const active = searchMode === mode
                 return (
                   <button
@@ -934,7 +937,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                     role="radio"
                     aria-checked={active}
                     onClick={() => changeSearchMode(mode)}
-                    title={hint}
+                    title={t(hintKey)}
                     style={{
                       padding: '1px 6px',
                       fontSize: 11,
@@ -947,7 +950,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                       cursor: 'pointer',
                     }}
                   >
-                    {label}
+                    {t(labelKey)}
                   </button>
                 )
               })}
@@ -958,13 +961,13 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                 type="text"
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
-                placeholder={searchMode === 'scryfall' ? 't:creature cmc<=3 o:flying' : 'Search name, type, or text…'}
+                placeholder={searchMode === 'scryfall' ? 't:creature cmc<=3 o:flying' : t('sealedDeck.searchPlaceholder')}
                 title={searchMode === 'scryfall'
                   ? (searchQuery.explanation
                     ? `Cards where ${searchQuery.explanation}`
                     : 'Scryfall-style search: t:, o:, c:, cmc:, pow:, r:, kw:, is:, or / - / ( ). Click ? for the syntax.')
                   : 'Matches card name, type line, or rules text'}
-                aria-label="Search pool"
+                aria-label={t('sealedDeck.searchPool')}
                 aria-invalid={searchQuery.errors.length > 0}
                 aria-describedby={searchQuery.errors.length > 0 ? 'pool-search-errors' : undefined}
                 style={{
@@ -1033,7 +1036,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                         <button
                           type="button"
                           onClick={() => setSearchText(applyFix(searchText, e.fix!))}
-                          title="Apply this fix"
+                          title={t('sealedDeck.applyFix')}
                           style={{
                             marginLeft: 'auto',
                             flexShrink: 0,
@@ -1046,7 +1049,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                             cursor: 'pointer',
                           }}
                         >
-                          Use <code style={{ color: '#4fc3f7' }}>{e.fix.text}</code>
+                          {t('sealedDeck.useFix')} <code style={{ color: '#4fc3f7' }}>{e.fix.text}</code>
                         </button>
                       ) : e.suggestion ? (
                         <span>{e.suggestion}</span>
@@ -1059,8 +1062,8 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
             </div>
             <button
               onClick={() => setSearchHelpOpen((v) => !v)}
-              title="How search works"
-              aria-label="Show search help"
+              title={t('sealedDeck.searchHelpTitle')}
+              aria-label={t('sealedDeck.showSearchHelp')}
               type="button"
               style={{
                 width: 20,
@@ -1095,11 +1098,13 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
               style={{ color: '#666', fontSize: 12, marginLeft: 'auto' }}
               title={
                 state.poolPlay
-                  ? `Pool Play: the whole cube is available, up to ${state.maxCopiesPerCard ?? POOL_PLAY_COPY_CAP} copies of any card`
+                  ? t('sealedDeck.poolPlayLimit', { count: state.maxCopiesPerCard ?? POOL_PLAY_COPY_CAP })
                   : undefined
               }
             >
-              {state.poolPlay ? `Cube: ${totalPoolCards} cards` : `Pool: ${totalPoolCards}`}
+              {state.poolPlay
+                ? t('sealedDeck.cubeCount', { count: totalPoolCards })
+                : t('sealedDeck.poolCount', { count: totalPoolCards })}
             </span>
           </div>
 
@@ -1457,17 +1462,17 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
             }}
           >
             <span style={{ color: '#ccc', fontSize: 13, fontWeight: 600 }}>
-              Your Deck
+              {t('sealedDeck.yourDeck')}
             </span>
             <span style={{ color: '#888', fontSize: 11 }}>
-              ({spellCount} spells + {landCount} lands)
+              {t('sealedDeck.deckComposition', { spells: spellCount, lands: landCount })}
             </span>
             {deckSearchMatches && (
               <span
-                title="Cards in your deck matching the pool search"
+                title={t('sealedDeck.deckCardsMatchingSearch')}
                 style={{ color: '#4fc3f7', fontSize: 11 }}
               >
-                {deckSearchMatches.copies} match search
+                {t('sealedDeck.matchSearch', { count: deckSearchMatches.copies })}
               </span>
             )}
             {!isSubmitted && totalCount > 0 && (
@@ -1484,7 +1489,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                   cursor: 'pointer',
                 }}
               >
-                Clear
+                {t('common.clear')}
               </button>
             )}
           </div>
@@ -1525,7 +1530,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
             <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
               <div style={{ padding: '0 12px 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ color: '#666', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
-                  Basic Lands
+                  {t('sealedDeck.basicLands')}
                 </span>
                 {!isSubmitted && state.deck.length > 0 && (
                   <button
@@ -1540,7 +1545,7 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
                       cursor: 'pointer',
                     }}
                   >
-                    Suggest
+                    {t('sealedDeck.suggestLands')}
                   </button>
                 )}
               </div>
@@ -1592,10 +1597,10 @@ function DeckBuilder({ state }: { state: DeckBuildingState }) {
             gap: 6,
           }}
         >
-          <span>Deck submitted!</span>
+          <span>{t('sealedDeck.deckSubmitted')}</span>
           {!state.opponentReady && (
             <span style={{ fontSize: responsive.fontSize.small, opacity: 0.9 }}>
-              Opponent is still building their deck
+              {t('sealedDeck.opponentBuilding')}
               <AnimatedDots />
             </span>
           )}
@@ -1631,6 +1636,7 @@ function ArenaExportModal({
   responsive: ReturnType<typeof useResponsive>
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
 
   const copy = useCallback(() => {
@@ -1691,11 +1697,11 @@ function ArenaExportModal({
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ color: 'white', fontWeight: 600, fontSize: responsive.fontSize.large }}>
-            Export — MTG Arena format
+            {t('sealedDeck.exportArenaTitle')}
           </span>
           <button
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.close')}
             style={{
               background: 'none',
               border: 'none',
@@ -1741,7 +1747,7 @@ function ArenaExportModal({
               fontWeight: 600,
             }}
           >
-            Download .txt
+            {t('sealedDeck.downloadText')}
           </button>
           <button
             onClick={copy}
@@ -1756,7 +1762,7 @@ function ArenaExportModal({
               fontWeight: 600,
             }}
           >
-            {copied ? 'Copied!' : 'Copy to clipboard'}
+            {copied ? t('sealedDeck.copied') : t('sealedDeck.copyToClipboard')}
           </button>
         </div>
       </div>
@@ -2262,25 +2268,25 @@ function RaritySectionHeader({ rarity, count }: { rarity: string; count: number 
 // Constants
 
 const COLOR_FILTER_OPTIONS = [
-  { key: 'W', label: 'White' },
-  { key: 'U', label: 'Blue' },
-  { key: 'B', label: 'Black' },
-  { key: 'R', label: 'Red' },
-  { key: 'G', label: 'Green' },
-  { key: 'C', label: 'Colorless' },
-]
+  { key: 'W', labelKey: 'sealedDeck.white' },
+  { key: 'U', labelKey: 'sealedDeck.blue' },
+  { key: 'B', labelKey: 'sealedDeck.black' },
+  { key: 'R', labelKey: 'sealedDeck.red' },
+  { key: 'G', labelKey: 'sealedDeck.green' },
+  { key: 'C', labelKey: 'sealedDeck.colorless' },
+] as const
 
 const TYPE_FILTER_OPTIONS = [
-  { key: 'creature', label: 'Creature' },
-  { key: 'instant', label: 'Instant' },
-  { key: 'sorcery', label: 'Sorcery' },
-  { key: 'enchantment', label: 'Enchantment' },
-  { key: 'artifact', label: 'Artifact' },
+  { key: 'creature', labelKey: 'sealedDeck.creature' },
+  { key: 'instant', labelKey: 'sealedDeck.instant' },
+  { key: 'sorcery', labelKey: 'sealedDeck.sorcery' },
+  { key: 'enchantment', labelKey: 'sealedDeck.enchantment' },
+  { key: 'artifact', labelKey: 'sealedDeck.artifact' },
   // Substring filter against the type line — matches "Legendary Creature ...",
   // "Legendary Planeswalker — ...", "Legendary Artifact", etc. Useful as a
   // commander-shortlist filter in Commander Draft / Sealed lobbies.
-  { key: 'legendary', label: 'Legendary' },
-]
+  { key: 'legendary', labelKey: 'sealedDeck.legendary' },
+] as const
 
 const MANA_COLORS: Record<string, string> = {
   W: '#f9faf4',
@@ -2348,10 +2354,11 @@ function ColorModeSegmented({
   mode: ColorOp
   onChange: (op: ColorOp) => void
 }) {
+  const { t } = useTranslation()
   const options: Array<{ op: ColorOp; label: string; title: string }> = [
-    { op: ':', label: 'Includes', title: 'Cards that include the chosen colour(s)' },
-    { op: '=', label: 'Exactly', title: 'Cards whose colour identity is exactly the chosen set' },
-    { op: '<=', label: 'At most', title: 'Cards whose colour identity is a subset of the chosen set' },
+    { op: ':', label: t('sealedDeck.includes'), title: t('sealedDeck.includesTitle') },
+    { op: '=', label: t('sealedDeck.exactly'), title: t('sealedDeck.exactlyTitle') },
+    { op: '<=', label: t('sealedDeck.atMost'), title: t('sealedDeck.atMostTitle') },
   ]
   return (
     <div
@@ -2472,24 +2479,23 @@ type SearchMode = 'simple' | 'scryfall'
 
 const SEARCH_MODE_KEY = 'argentum-pool-search-mode'
 
-const SEARCH_MODE_OPTIONS: { mode: SearchMode; label: string; hint: string }[] = [
-  { mode: 'simple', label: 'Simple', hint: 'Plain text: matches name, type line, or rules text' },
-  { mode: 'scryfall', label: 'Scryfall', hint: 'Scryfall query syntax: t:, o:, c:, cmc:, …' },
+const SEARCH_MODE_OPTIONS: { mode: SearchMode; labelKey: 'sealedDeck.simpleSearch' | 'sealedDeck.scryfallSearch'; hintKey: 'sealedDeck.simpleSearchHint' | 'sealedDeck.scryfallSearchHint' }[] = [
+  { mode: 'simple', labelKey: 'sealedDeck.simpleSearch', hintKey: 'sealedDeck.simpleSearchHint' },
+  { mode: 'scryfall', labelKey: 'sealedDeck.scryfallSearch', hintKey: 'sealedDeck.scryfallSearchHint' },
 ]
 
 const EMPTY_QUERY = parseQuery('')
 
 function SearchModeExplainer() {
+  const { t } = useTranslation()
   const term = { color: '#4fc3f7', fontWeight: 600 } as const
   return (
     <div style={{ fontSize: 12, lineHeight: 1.5, color: '#ccc', margin: '4px 0 8px', display: 'grid', gap: 4 }}>
       <div>
-        <span style={term}>Simple</span> — finds cards whose name, type line, or rules text contains
-        what you type. <code>flying</code> matches every card that mentions flying.
+        <span style={term}>{t('sealedDeck.simpleSearch')}</span> — {t('sealedDeck.simpleSearchExplainer')}
       </div>
       <div>
-        <span style={term}>Scryfall</span> — reads the query syntax below, so you can combine
-        conditions: <code>t:creature cmc&lt;=3 o:flying</code>. Clicking an example switches to it.
+        <span style={term}>{t('sealedDeck.scryfallSearch')}</span> — {t('sealedDeck.scryfallSearchExplainer')}
       </div>
     </div>
   )

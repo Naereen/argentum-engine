@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import type { GridDraftState } from '@/store/slices'
 import type { SealedCardInfo, LobbySettings } from '@/types'
@@ -40,18 +41,6 @@ function getSelectionIndices(selection: SelectionType): number[] {
   }
 }
 
-/** Get display label for a selection */
-function getSelectionLabel(selection: SelectionType): string {
-  switch (selection) {
-    case 'ROW_0': return 'Row 1'
-    case 'ROW_1': return 'Row 2'
-    case 'ROW_2': return 'Row 3'
-    case 'COL_0': return 'Col 1'
-    case 'COL_1': return 'Col 2'
-    case 'COL_2': return 'Col 3'
-  }
-}
-
 /** Detect which row/column selection matches the removed indices */
 function detectSelection(
   removedIndices: number[],
@@ -70,6 +59,7 @@ function detectSelection(
 }
 
 function GridDrafter({ gridState, settings }: { gridState: GridDraftState; settings: LobbySettings }) {
+  const { t } = useTranslation()
   const responsive = useResponsive()
   const gridDraftPick = useGameStore((s) => s.gridDraftPick)
   const leaveLobby = useGameStore((s) => s.leaveLobby)
@@ -83,6 +73,10 @@ function GridDrafter({ gridState, settings }: { gridState: GridDraftState; setti
   // Phones only: whether the picked-cards pool replaces the piles. Desktop always shows both.
   const [showPickedCards, setShowPickedCards] = useState(false)
   const [viewingOpponent, setViewingOpponent] = useState<string | null>(null)
+  const selectionLabel = (selection: SelectionType) => {
+    const number = selection.endsWith('0') ? 1 : selection.endsWith('1') ? 2 : 3
+    return t(selection.startsWith('ROW_') ? 'gridDraft.row' : 'gridDraft.column', { number })
+  }
 
   const dfc = useDfcHoverFlip(hoveredCard)
   const resetDfcFlip = dfc.resetFlip
@@ -334,9 +328,9 @@ function GridDrafter({ gridState, settings }: { gridState: GridDraftState; setti
       <div className={ls.header}>
         <div className={ls.headerGroup}>
           <h2 className={ls.title}>
-            Grid Draft <span className={ls.titleSub}>· {settings.setNames.join(' + ')}</span>
+            {t('gridDraft.title')} <span className={ls.titleSub}>· {settings.setNames.join(' + ')}</span>
           </h2>
-          <span className={ls.pill}>Grid #{gridState.gridNumber}</span>
+          <span className={ls.pill}>{t('gridDraft.gridNumber', { number: gridState.gridNumber })}</span>
           <SetSynergiesButton setCodes={settings.setCodes} cardPool={gridState.pickedCards} />
         </div>
 
@@ -346,30 +340,30 @@ function GridDrafter({ gridState, settings }: { gridState: GridDraftState; setti
             ...(timerWarning ? { background: 'rgba(233,69,96,0.3)', borderColor: 'rgba(233,69,96,0.5)', color: '#ffd0d8' } : {}),
             animation: timerWarning ? 'pulse 1s infinite' : undefined,
           }}
-          title={gridState.timeRemaining === null ? 'No time limit — take as long as you like' : undefined}>
+          title={gridState.timeRemaining === null ? t('draft.noTimeLimit') : undefined}>
             {gridState.timeRemaining === null ? '\u221e' : `${gridState.timeRemaining}s`}
           </div>
 
           {/* Deck remaining */}
-          <span className={ls.pill} title="Cards left in the main deck">Deck {gridState.mainDeckRemaining}</span>
+          <span className={ls.pill} title={t('draft.cardsLeftInMainDeck')}>{t('draft.deckCount', { count: gridState.mainDeckRemaining })}</span>
 
           {/* Picked count */}
           {/* On phones the Pool button carries the count. */}
-          {!isMobile && <span className={ls.pill} title="Cards you've picked">Picked {gridState.pickedCards.length}</span>}
+          {!isMobile && <span className={ls.pill} title={t('draft.cardsPicked')}>{t('draft.pickedCount', { count: gridState.pickedCards.length })}</span>}
 
           {isMobile && (
             <button type="button" className={ls.button} onClick={() => setShowPickedCards((v) => !v)}>
-              {showPickedCards ? 'Grid' : `Pool (${gridState.pickedCards.length})`}
+              {showPickedCards ? t('gridDraft.grid') : t('draft.poolCount', { count: gridState.pickedCards.length })}
             </button>
           )}
 
           {isHost ? (
             <button type="button" onClick={stopLobby} className={ls.leave}>
-              Stop Draft
+              {t('draft.stopDraft')}
             </button>
           ) : (
             <button type="button" onClick={leaveLobby} className={ls.leave}>
-              Leave
+              {t('common.leave')}
             </button>
           )}
           <ChatButton className={`${ls.button} ${ls.iconButton}`} />
@@ -394,8 +388,8 @@ function GridDrafter({ gridState, settings }: { gridState: GridDraftState; setti
               fontSize: 16, fontWeight: 600,
             }}>
               {gridState.isYourTurn
-                ? 'Your turn — pick a row or column'
-                : `Waiting for ${gridState.activePlayerName}...`}
+                ? t('gridDraft.yourTurn')
+                : t('draft.waitingForPlayer', { name: gridState.activePlayerName })}
             </div>
 
             {/* Last action + last picked cards */}
@@ -455,10 +449,10 @@ function GridDrafter({ gridState, settings }: { gridState: GridDraftState; setti
                       transition: 'background 0.15s',
                     }}
                   >
-                    {name}{isYou ? ' (You)' : ''}
+                    {isYou ? t('gridDraft.playerYou', { name }) : name}
                     {isOpponent && opponentCount != null && (
                       <span style={{ marginLeft: 6, opacity: 0.7 }}>
-                        — {opponentCount} {opponentCount === 1 ? 'card' : 'cards'}
+                        — {t('draft.cardCount', { count: opponentCount })}
                       </span>
                     )}
                   </div>
@@ -504,7 +498,7 @@ function GridDrafter({ gridState, settings }: { gridState: GridDraftState; setti
                         boxShadow: isAnimPick ? '0 0 12px rgba(242,180,92,0.4)' : 'none',
                       }}
                     >
-                      {getSelectionLabel(col)}
+                      {selectionLabel(col)}
                     </button>
                   )
                 })}
@@ -548,7 +542,7 @@ function GridDrafter({ gridState, settings }: { gridState: GridDraftState; setti
                         boxShadow: isAnimRowPick ? '0 0 12px rgba(242,180,92,0.4)' : 'none',
                       }}
                     >
-                      {getSelectionLabel(rowKey)}
+                      {selectionLabel(rowKey)}
                     </button>
 
                     {/* Row cards */}
@@ -654,9 +648,9 @@ function GridDrafter({ gridState, settings }: { gridState: GridDraftState; setti
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 marginBottom: 8,
               }}>
-                <span style={{ color: '#ccc', fontWeight: 600, fontSize: 14 }}>Card Pool</span>
+                <span style={{ color: '#ccc', fontWeight: 600, fontSize: 14 }}>{t('draft.cardPool')}</span>
                 <span style={{ color: '#4fc3f7', fontWeight: 600, fontSize: 13 }}>
-                  {gridState.pickedCards.length} {gridState.pickedCards.length === 1 ? 'card' : 'cards'}
+                  {t('draft.cardCount', { count: gridState.pickedCards.length })}
                 </span>
               </div>
 
@@ -664,11 +658,11 @@ function GridDrafter({ gridState, settings }: { gridState: GridDraftState; setti
               <div style={{ display: 'flex', gap: 14, marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ color: '#6bcb77', fontSize: 14, fontWeight: 700 }}>{creatureCount}</span>
-                  <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10 }}>Creatures</span>
+                  <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10 }}>{t('draft.creatures')}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ color: '#6eb5ff', fontSize: 14, fontWeight: 700 }}>{spellCount}</span>
-                  <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10 }}>Spells</span>
+                  <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10 }}>{t('draft.spells')}</span>
                 </div>
               </div>
 
@@ -708,7 +702,7 @@ function GridDrafter({ gridState, settings }: { gridState: GridDraftState; setti
               {pickedAnalytics.creatureTypes.length > 0 && (
                 <div style={{ marginTop: 8 }}>
                   <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 9, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Top Creature Types
+                    {t('draft.topCreatureTypes')}
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
                     {pickedAnalytics.creatureTypes.slice(0, 6).map(({ type, count, legendaryCount }) => (
@@ -788,7 +782,7 @@ function GridDrafter({ gridState, settings }: { gridState: GridDraftState; setti
                   textAlign: 'center', color: 'rgba(255,255,255,0.3)',
                   padding: 20, fontSize: 13,
                 }}>
-                  No cards picked yet
+                  {t('gridDraft.noCardsPicked')}
                 </div>
               )}
             </div>
@@ -842,6 +836,7 @@ function OpponentCardsOverlay({ playerName, cards, onClose, onHover }: {
   onClose: () => void
   onHover: (card: SealedCardInfo | null, e?: React.MouseEvent) => void
 }) {
+  const { t } = useTranslation()
   const colorGroups = useMemo(() => {
     const groups: Record<string, Array<{ card: SealedCardInfo; count: number }>> = {
       W: [], U: [], B: [], R: [], G: [], M: [], C: [],
@@ -904,10 +899,10 @@ function OpponentCardsOverlay({ playerName, cards, onClose, onHover }: {
         }}>
           <div>
             <div style={{ color: '#fff', fontWeight: 700, fontSize: 15 }}>
-              {playerName}'s Cards
+              {t('gridDraft.opponentCardsTitle', { name: playerName })}
             </div>
             <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 2 }}>
-              {cards.length} cards — {creatureCount}C / {spellCount}S
+              {t('gridDraft.cardStats', { count: cards.length, creatures: creatureCount, spells: spellCount })}
             </div>
           </div>
           <button
@@ -932,7 +927,7 @@ function OpponentCardsOverlay({ playerName, cards, onClose, onHover }: {
           fontWeight: 600,
           textAlign: 'center',
         }}>
-          Viewing opponent's picked cards
+          {t('gridDraft.viewingOpponentCards')}
         </div>
 
         {/* Card list */}
@@ -990,7 +985,7 @@ function OpponentCardsOverlay({ playerName, cards, onClose, onHover }: {
               textAlign: 'center', color: 'rgba(255,255,255,0.3)',
               padding: 20, fontSize: 13,
             }}>
-              No cards picked yet
+              {t('gridDraft.noCardsPicked')}
             </div>
           )}
         </div>

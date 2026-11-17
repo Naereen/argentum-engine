@@ -18,6 +18,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useMatch, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { listBasicLandSets } from '@/api/cubeSets'
 import type { CardSummary } from '@/components/deckbuilder/cardFilter'
 import {
@@ -56,6 +57,7 @@ type Pane = 'cards' | 'filters'
 type SourceDialog = 'set' | 'paste' | null
 
 export function CubeBuilderPage() {
+  const { t } = useTranslation()
   const { cubeId } = useParams<{ cubeId?: string }>()
   const isNew = useMatch('/cubes/new') !== null
   const navigate = useNavigate()
@@ -95,13 +97,13 @@ export function CubeBuilderPage() {
       <PageShell title={<BuilderModeSwitch mode="cube" />}>
         {library.ready ? (
           <div className={p.panel}>
-            <p className={p.empty}>This cube isn’t in your library — it may have been deleted, or saved on another device.</p>
+            <p className={p.empty}>{t('cubeUi.cubeNotInLibrary')}</p>
             <button type="button" className={p.button} onClick={() => navigate('/library?tab=cubes')}>
-              Back to your cubes
+              {t('cubeUi.backToCubes')}
             </button>
           </div>
         ) : (
-          <p className={p.empty}>Loading cube…</p>
+          <p className={p.empty}>{t('cubeUi.loadingCube')}</p>
         )}
       </PageShell>
     )
@@ -132,6 +134,7 @@ function CubeBuilder({
   availableSets: readonly BasicLandSetOption[]
   onSaved: (cube: UnifiedCube) => void
 }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const [search, setSearch] = useSearchParams()
@@ -191,15 +194,15 @@ function CubeBuilder({
         className={editor.titleInput}
         value={draft.name}
         onChange={(e) => draft.setName(e.target.value)}
-        placeholder="Name your cube"
-        aria-label="Cube name"
+        placeholder={t('cubeUi.nameYourCube')}
+        aria-label={t('cubeUi.cubeName')}
       />
       <input
         className={editor.descriptionInput}
         value={draft.description}
         onChange={(e) => draft.setDescription(e.target.value)}
-        placeholder="What it plays like, who it's for"
-        aria-label="Cube description"
+        placeholder={t('cubeUi.cubeDescriptionPlaceholder')}
+        aria-label={t('cubeUi.cubeDescription')}
         maxLength={280}
       />
     </>
@@ -208,21 +211,20 @@ function CubeBuilder({
   const unresolvedWarning = unresolved.length > 0 && (
     <div className={`${editor.warning} ${viewMode === 'cards' ? styles.railWarning : ''}`}>
       <span>
-        <strong>{unresolved.length}</strong> card{unresolved.length === 1 ? ' isn’t' : 's aren’t'} implemented
-        yet, so this cube can’t be played.
+        {t('cubeUi.unresolvedWarning', { count: unresolved.length })}
       </span>
       <button type="button" className={editor.secondaryButton} onClick={draft.dropUnresolved}>
-        Drop {unresolved.length === 1 ? 'it' : 'them'}
+        {t('cubeUi.dropUnresolved', { count: unresolved.length })}
       </button>
     </div>
   )
 
-  const countLabel = `${totalCards} card${totalCards === 1 ? '' : 's'}${
-    entries.length !== totalCards ? ` · ${entries.length} different` : ''
+  const countLabel = `${t('cubeUi.totalCards', { count: totalCards })}${
+    entries.length !== totalCards ? ` · ${t('cubeUi.differentCards', { count: entries.length })}` : ''
   }`
   const clearAll = entries.length > 0 && (
     <button type="button" className={editor.linkButton} onClick={() => draft.setEntries([])}>
-      Clear all
+      {t('cubeUi.clearAll')}
     </button>
   )
 
@@ -249,7 +251,7 @@ function CubeBuilder({
           onChange={(v) => setViewMode(v === 'list' ? 'cube' : 'cards')}
         />
         {/* Narrow screens: one tab bar picks the pane and stands in for the view toggle. */}
-        <div className={db.paneTabs} role="tablist" aria-label="Cube builder panes">
+        <div className={db.paneTabs} role="tablist" aria-label={t('cubeUi.builderPanes')}>
           {(['cards', 'filters'] as const).map((p) => (
             <button
               key={p}
@@ -262,7 +264,7 @@ function CubeBuilder({
                 setPane(p)
               }}
             >
-              {p === 'cards' ? 'Cards' : 'Filters'}
+              {p === 'cards' ? t('cubeUi.cards') : t('cubeUi.filters')}
             </button>
           ))}
           <button
@@ -272,35 +274,35 @@ function CubeBuilder({
             aria-selected={viewMode === 'cube'}
             onClick={() => setViewMode('cube')}
           >
-            Cube <span className={db.paneTabCount}>{totalCards}</span>
+            {t('cubeUi.cube')} <span className={db.paneTabCount}>{totalCards}</span>
           </button>
         </div>
         <div className={db.toolbarSpacer} />
         {toolsOpen && <div className={db.toolsBackdrop} onClick={() => setToolsOpen(false)} aria-hidden />}
         <div className={db.tools} data-open={toolsOpen}>
           <button type="button" className={db.toolButton} onClick={openTool(() => guard(() => navigate('/library?tab=cubes')))}>
-            My cubes
+            {t('cubeUi.myCubes')}
           </button>
           <button type="button" className={db.toolButton} onClick={openTool(() => setDialog('set'))}>
-            Add a set
+            {t('cubeUi.addASet')}
           </button>
           <button type="button" className={db.toolButton} onClick={openTool(() => setDialog('paste'))}>
-            Import
+            {t('cubeUi.import')}
           </button>
           <button
             type="button"
             className={db.toolButton}
             disabled={totalCards === 0}
             onClick={openTool(() => void draft.copyList())}
-            title="Copy the cube as a text list"
+            title={t('cubeUi.copyCubeAsText')}
           >
-            Copy list
+            {t('cubeUi.copyList')}
           </button>
           <button type="button" className={db.toolButton} disabled={totalCards === 0} onClick={openTool(() => setShareOpen(true))}>
-            Share
+            {t('cubeUi.share')}
           </button>
           <button type="button" className={db.toolButton} onClick={openTool(() => guard(() => navigate('/cubes/new')))}>
-            New cube
+            {t('cubeUi.newCube')}
           </button>
         </div>
         <button
@@ -310,7 +312,7 @@ function CubeBuilder({
           aria-expanded={toolsOpen}
           aria-haspopup="menu"
         >
-          More
+          {t('deckbuilder.more')}
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden focusable="false">
             <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -324,13 +326,13 @@ function CubeBuilder({
           disabled={saving || totalCards === 0 || (!dirty && draft.saved !== null)}
           onClick={() => void draft.save()}
         >
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? t('cubeUi.saving') : t('cubeUi.save')}
         </button>
       </div>
 
       {pendingExit && (
         <div className={`${editor.confirmBar} ${styles.banner}`} role="alert">
-          <span>This cube has unsaved changes.</span>
+          <span>{t('cubeUi.unsavedChanges')}</span>
           <button
             type="button"
             className={editor.primaryButton}
@@ -342,7 +344,7 @@ function CubeBuilder({
               }
             }}
           >
-            Save and continue
+            {t('cubeUi.saveAndContinue')}
           </button>
           <button
             type="button"
@@ -352,10 +354,10 @@ function CubeBuilder({
               setPendingExit(null)
             }}
           >
-            Discard changes
+            {t('cubeUi.discardChanges')}
           </button>
           <button type="button" className={editor.linkButton} onClick={() => setPendingExit(null)}>
-            Keep editing
+            {t('cubeUi.keepEditing')}
           </button>
         </div>
       )}
@@ -365,13 +367,13 @@ function CubeBuilder({
         <div className={`${db.workspace} ${db.workspaceDeckMode}`}>
           <aside className={db.left}>
             <CubeRailPreview hover={hover} fallback={firstCard} />
-            <section className={styles.startCard} aria-label="Add a whole set">
-              <span className={styles.startTitle}>Start from a set</span>
+            <section className={styles.startCard} aria-label={t('cubeUi.addWholeSet')}>
+              <span className={styles.startTitle}>{t('cubeUi.startFromSet')}</span>
               <span className={styles.startText}>
-                Add a whole set at its own rarities — then extend it with cards from anywhere.
+                {t('cubeUi.startFromSetHint')}
               </span>
               <button type="button" className={editor.primaryButton} onClick={() => setDialog('set')}>
-                Add a set…
+                {t('cubeUi.addASetEllipsis')}
               </button>
             </section>
           </aside>
@@ -411,8 +413,7 @@ function CubeBuilder({
               emptyHint={
                 <div className={db.deckCentricEmpty}>
                   <p className={db.deckCentricEmptyText}>
-                    This cube is empty. Type a card name above, start from a whole set with{' '}
-                    <strong>Add a set</strong>, or switch to <strong>Search cards</strong> to browse the catalog.
+                    {t('cubeUi.emptyCubeSearchHint')}
                   </p>
                 </div>
               }
@@ -426,13 +427,13 @@ function CubeBuilder({
         <>
         <div className={`${db.workspace} ${styles.workspace}`} data-pane={pane}>
           <aside className={db.left}>
-            <section className={styles.startCard} aria-label="Add a whole set">
-              <span className={styles.startTitle}>Start from a set</span>
+            <section className={styles.startCard} aria-label={t('cubeUi.addWholeSet')}>
+              <span className={styles.startTitle}>{t('cubeUi.startFromSet')}</span>
               <span className={styles.startText}>
-                Add a whole set at its own rarities — then extend it with cards from anywhere.
+                {t('cubeUi.startFromSetHint')}
               </span>
               <button type="button" className={editor.primaryButton} onClick={() => setDialog('set')}>
-                Add a set…
+                {t('cubeUi.addASetEllipsis')}
               </button>
             </section>
             <FilterSection
@@ -491,10 +492,9 @@ function CubeBuilder({
               onRarity={draft.setRarity}
               emptyHint={
                 <>
-                  <p className={editor.emptyTitle}>This cube is empty</p>
+                  <p className={editor.emptyTitle}>{t('cubeUi.emptyTitle')}</p>
                   <p className={editor.hint}>
-                    Click cards in the grid to add them, or start from a whole set with <strong>Add a set</strong>.
-                    A shuffled cube of 360 cards seats 8 players at 3 packs of 15.
+                    {t('cubeUi.emptyGridHint')}
                   </p>
                 </>
               }
@@ -515,12 +515,12 @@ function CubeBuilder({
           <div
             className={styles.dialog}
             role="dialog"
-            aria-label={dialog === 'set' ? 'Add a set' : 'Import a list'}
+            aria-label={dialog === 'set' ? t('cubeUi.addASet') : t('cubeUi.importList')}
           >
             <div className={styles.dialogHeader}>
-              <span className={styles.dialogTitle}>{dialog === 'set' ? 'Add a set' : 'Import a list'}</span>
+              <span className={styles.dialogTitle}>{dialog === 'set' ? t('cubeUi.addASet') : t('cubeUi.importList')}</span>
               <button type="button" className={editor.secondaryButton} onClick={() => setDialog(null)}>
-                Done
+                {t('cubeUi.done')}
               </button>
             </div>
             <div className={styles.dialogBody}>
@@ -578,6 +578,7 @@ function CubeAddSearch({
   onHover: (card: CardSummary) => void
   onAddSet: () => void
 }) {
+  const { t } = useTranslation()
   const [text, setText] = useState('')
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -633,11 +634,11 @@ function CubeAddSearch({
             add(matches[0])
           }
         }}
-        placeholder="Find and add cards to your cube…"
-        aria-label="Find and add cards to your cube"
+        placeholder={t('cubeUi.findAndAddCardsToCube')}
+        aria-label={t('cubeUi.findAndAddCardsToCube')}
       />
-      <button type="button" className={db.addCardBasicsButton} onClick={onAddSet} title="Add a whole set at its own rarities">
-        Add a set…
+      <button type="button" className={db.addCardBasicsButton} onClick={onAddSet} title={t('cubeUi.addWholeSetTitle')}>
+        {t('cubeUi.addASetEllipsis')}
       </button>
       {open && matches.length > 0 && (
         <div className={db.addCardDropdown} role="listbox">
@@ -650,7 +651,7 @@ function CubeAddSearch({
               className={db.addCardResult}
               onClick={() => add(card)}
               onMouseEnter={() => onHover(card)}
-              title={`Add ${card.name}`}
+              title={t('cubeUi.addCardNamed', { name: card.name })}
             >
               <span className={db.addCardResultCount}>{counts[card.name] ?? 0}×</span>
               <span className={db.addCardResultName}>{card.name}</span>

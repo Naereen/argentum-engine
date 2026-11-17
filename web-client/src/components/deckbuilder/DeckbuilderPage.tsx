@@ -11,6 +11,7 @@
  */
 import { memo, startTransition, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   useDeckLibrary,
   commandersOf,
@@ -246,6 +247,7 @@ function commanderPinsOf(deck: CommanderPins): Record<string, PrintingRef> {
 // ---------------------------------------------------------------------------
 
 export function DeckbuilderPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { deckId } = useParams<{ deckId?: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -1099,7 +1101,7 @@ export function DeckbuilderPage() {
   }
 
   const handleSaveAs = async () => {
-    const name = window.prompt('New deck name', `${deckName} (copy)`)
+    const name = window.prompt(t('deckbuilder.newDeckName'), `${deckName} (${t('deckbuilder.copy')})`)
     if (!name || !name.trim()) return
     if (isLoggedIn) {
       await saveToCloud(name.trim())
@@ -1111,7 +1113,7 @@ export function DeckbuilderPage() {
 
   const handleDelete = () => {
     if (!activeDeckId) return
-    if (!window.confirm(`Delete "${deckName}"?`)) return
+    if (!window.confirm(t('deckbuilder.confirmDeleteDeck', { name: deckName }))) return
     deleteDeck(activeDeckId)
     handleNew()
   }
@@ -1212,7 +1214,7 @@ export function DeckbuilderPage() {
       window.setTimeout(() => setShareCopied(false), 2000)
     } catch {
       // Clipboard blocked (e.g. insecure context) — fall back to a copyable prompt.
-      window.prompt('Copy this deck link', url)
+      window.prompt(t('deckbuilder.copyDeckLink'), url)
     }
   }
 
@@ -1264,7 +1266,7 @@ export function DeckbuilderPage() {
   }
 
   const handleDeleteSaved = (deck: UnifiedDeck) => {
-    if (!window.confirm(`Delete "${deck.name}"?`)) return
+    if (!window.confirm(t('deckbuilder.confirmDeleteDeck', { name: deck.name }))) return
     void removeUnifiedDeck(deck)
     if (deck.id === activeDeckId) handleNew()
   }
@@ -1305,7 +1307,7 @@ export function DeckbuilderPage() {
   const handleLoadExample = (ex: ExampleDeck) => {
     if (
       Object.keys(deckCards).length > 0 &&
-      !window.confirm(`Replace your current deck contents with "${ex.name}"?`)
+      !window.confirm(t('deckbuilder.confirmReplaceWithDeck', { name: ex.name }))
     ) {
       return
     }
@@ -1426,7 +1428,7 @@ export function DeckbuilderPage() {
         />
         {/* Narrow screens only: one tab bar picks the pane and stands in for the view toggle, whose
             "Deck" view is a superset of the narrow deck pane — two bars with a "Deck" each was noise. */}
-        <div className={styles.paneTabs} role="tablist" aria-label="Deckbuilder panes">
+        <div className={styles.paneTabs} role="tablist" aria-label={t('deckbuilder.panes')}>
           <button
             type="button"
             role="tab"
@@ -1434,7 +1436,7 @@ export function DeckbuilderPage() {
             aria-selected={viewMode === 'cards' && mobilePane !== 'filters'}
             onClick={() => { setViewMode('cards'); setMobilePane('cards') }}
           >
-            Cards
+            {t('deckbuilder.cards')}
           </button>
           <button
             type="button"
@@ -1443,10 +1445,10 @@ export function DeckbuilderPage() {
             aria-selected={viewMode === 'cards' && mobilePane === 'filters'}
             onClick={() => { setViewMode('cards'); setMobilePane('filters') }}
           >
-            Filters
+            {t('deckbuilder.filters')}
           </button>
           <button type="button" role="tab" className={styles.paneTab} aria-selected={viewMode === 'deck'} onClick={() => setViewMode('deck')}>
-            Deck <span className={styles.paneTabCount}>{totalCards}</span>
+            {t('deckbuilder.deck')} <span className={styles.paneTabCount}>{totalCards}</span>
           </button>
         </div>
         <div className={styles.toolbarSpacer} />
@@ -1462,7 +1464,7 @@ export function DeckbuilderPage() {
             }}
             disabled={browserDecks.length === 0}
           >
-            My decks{browserDecks.length > 0 ? ` (${browserDecks.length})` : ''}
+            {t('deckbuilder.myDecks')}{browserDecks.length > 0 ? ` (${browserDecks.length})` : ''}
           </button>
           <button
             type="button"
@@ -1472,9 +1474,9 @@ export function DeckbuilderPage() {
               setExamplesOpen(true)
             }}
             disabled={examples.length === 0}
-            title={examples.length === 0 ? 'Loading examples…' : 'Load a starter deck'}
+            title={examples.length === 0 ? t('deckbuilder.loadingExamples') : t('deckbuilder.loadStarterDeck')}
           >
-            Examples
+            {t('deckbuilder.examples')}
           </button>
           <button
             type="button"
@@ -1484,7 +1486,7 @@ export function DeckbuilderPage() {
               setImportOpen(true)
             }}
           >
-            Import
+            {t('deckbuilder.import')}
           </button>
           <button
             type="button"
@@ -1494,9 +1496,9 @@ export function DeckbuilderPage() {
               setBulkEditOpen(true)
             }}
             disabled={isEmptyDeck}
-            title="Edit the deck as text, or copy it out"
+            title={t('deckbuilder.editDeckAsText')}
           >
-            Edit as text
+            {t('deckbuilder.editAsText')}
           </button>
           <button
             type="button"
@@ -1506,9 +1508,9 @@ export function DeckbuilderPage() {
               void handleShare()
             }}
             disabled={isEmptyDeck}
-            title="Copy a shareable link to this deck"
+            title={t('deckbuilder.copyShareLink')}
           >
-            {shareCopied ? 'Link copied!' : 'Share'}
+            {shareCopied ? t('deckbuilder.linkCopied') : t('deckbuilder.share')}
           </button>
         </div>
         <button
@@ -1518,7 +1520,7 @@ export function DeckbuilderPage() {
           aria-expanded={toolsOpen}
           aria-haspopup="menu"
         >
-          {shareCopied ? 'Link copied!' : 'More'}
+          {shareCopied ? t('deckbuilder.linkCopied') : t('deckbuilder.more')}
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden focusable="false">
             <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -2037,21 +2039,22 @@ function ExampleDecksModal({
   onCancel: () => void
   onLoad: (ex: ExampleDeck) => void
 }) {
+  const { t } = useTranslation()
   return (
     <>
       <div className={styles.importBackdrop} onClick={onCancel} />
-      <div className={styles.importDialog} role="dialog" aria-label="Example decks">
+      <div className={styles.importDialog} role="dialog" aria-label={t('deckbuilder.exampleDecks')}>
         <div className={styles.importHeader}>
-          <strong>Load an example deck</strong>
+          <strong>{t('deckbuilder.loadExampleDeck')}</strong>
           <button className={styles.linkButton} onClick={onCancel} type="button">
-            Close
+            {t('common.close')}
           </button>
         </div>
         <p className={styles.importHint}>
-          Pick a starter list to load into the builder. This replaces the current deck contents.
+          {t('deckbuilder.loadExampleHint')}
         </p>
         {examples.length === 0 ? (
-          <p className={styles.importHint}>No examples available.</p>
+          <p className={styles.importHint}>{t('deckbuilder.noExamples')}</p>
         ) : (
           <div className={styles.browserScroll}>
             <div className={styles.browserGrid}>
@@ -2063,8 +2066,8 @@ function ExampleDecksModal({
                   note={ex.note ?? undefined}
                   {...deckTileModel(ex, catalog)}
                   format={ex.format ?? null}
-                  formatTitle={ex.format ? `Built for ${labelForFormat(ex.format)}` : undefined}
-                  title={`Load ${ex.name} into the builder`}
+                  formatTitle={ex.format ? t('deckbuilder.builtForFormat', { format: labelForFormat(ex.format) }) : undefined}
+                  title={t('deckbuilder.loadDeckByName', { name: ex.name })}
                   onClick={() => onLoad(ex)}
                 />
               ))}
@@ -2073,7 +2076,7 @@ function ExampleDecksModal({
         )}
         <div className={styles.importActions}>
           <button className={styles.secondaryButton} onClick={onCancel} type="button">
-            Cancel
+            {t('common.cancel')}
           </button>
         </div>
       </div>
@@ -2142,6 +2145,7 @@ function ImportDeckModal({
     companion: string | null,
   ) => void
 }) {
+  const { t } = useTranslation()
   const [text, setText] = useState('')
 
   // Re-parse on every keystroke. The catalog is fixed for the modal lifetime,
@@ -2157,7 +2161,7 @@ function ImportDeckModal({
     if (!preview || !canImport) return
     if (
       hasExisting &&
-      !window.confirm('Replace your current deck contents with the imported list?')
+      !window.confirm(t('deckbuilder.confirmReplaceWithImport'))
     ) {
       return
     }
@@ -2184,11 +2188,11 @@ function ImportDeckModal({
   return (
     <>
       <div className={styles.importBackdrop} onClick={onCancel} />
-      <div className={styles.importDialog} role="dialog" aria-label="Import deck">
+      <div className={styles.importDialog} role="dialog" aria-label={t('deckbuilder.importDeck')}>
         <div className={styles.importHeader}>
-          <strong>Import deck</strong>
+          <strong>{t('deckbuilder.importDeck')}</strong>
           <button className={styles.linkButton} onClick={onCancel} type="button">
-            Close
+            {t('common.close')}
           </button>
         </div>
         <p className={styles.importHint}>
@@ -2214,7 +2218,7 @@ function ImportDeckModal({
         {preview && <ImportPreview preview={preview} />}
         <div className={styles.importActions}>
           <button className={styles.secondaryButton} onClick={onCancel} type="button">
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             className={styles.primaryButton}
@@ -2222,8 +2226,8 @@ function ImportDeckModal({
             disabled={!canImport}
             type="button"
           >
-            Import
-            {preview ? ` (${preview.resolved.totalCards} cards)` : ''}
+            {t('deckbuilder.import')}
+            {preview ? ` (${t('deckbuilder.cardCount', { count: preview.resolved.totalCards })})` : ''}
           </button>
         </div>
       </div>
@@ -2364,6 +2368,7 @@ function BulkEditDeckModal({
   onClose: () => void
   onApply: (cards: Record<string, number>, commanders: readonly string[]) => void
 }) {
+  const { t } = useTranslation()
   const [format, setFormat] = useState<ExportFormat>('arena')
 
   const rendered = useMemo(
@@ -2386,7 +2391,7 @@ function BulkEditDeckModal({
     if (next === format) return
     if (
       dirty &&
-      !window.confirm('Switching format will discard your edits. Continue?')
+      !window.confirm(t('deckbuilder.confirmDiscardTextEdits'))
     ) {
       return
     }
@@ -2407,7 +2412,7 @@ function BulkEditDeckModal({
 
   const handleApply = () => {
     if (!preview || !canApply) return
-    if (!window.confirm('Replace your current deck contents with this list?')) return
+    if (!window.confirm(t('deckbuilder.confirmReplaceWithList'))) return
     const merged = { ...preview.resolved.deckCards, ...preview.resolved.unmatchedCards }
     onApply(merged, preview.commanders)
   }
@@ -2417,15 +2422,15 @@ function BulkEditDeckModal({
   return (
     <>
       <div className={styles.importBackdrop} onClick={onClose} />
-      <div className={styles.importDialog} role="dialog" aria-label="Bulk edit / export deck">
+      <div className={styles.importDialog} role="dialog" aria-label={t('deckbuilder.bulkEditExport')}>
         <div className={styles.importHeader}>
-          <strong>Bulk edit / export deck</strong>
+          <strong>{t('deckbuilder.bulkEditExport')}</strong>
           <button className={styles.linkButton} onClick={onClose} type="button">
-            Close
+            {t('common.close')}
           </button>
         </div>
         <div className={styles.formatSwitcher}>
-          <span className={styles.formatSwitcherLabel}>Format</span>
+          <span className={styles.formatSwitcherLabel}>{t('deckbuilder.format')}</span>
           {EXPORT_FORMATS.map((f) => (
             <button
               key={f.value}
@@ -2441,9 +2446,7 @@ function BulkEditDeckModal({
           ))}
         </div>
         <p className={styles.importHint}>
-          {formatHint} Paste lists from any of the three formats — the parser detects them all.
-          Edit the text and click <strong>Save changes</strong> to apply, or <strong>Copy</strong>{' '}
-          to export.
+          {t('deckbuilder.bulkEditHint', { hint: formatHint })}
         </p>
         <textarea
           className={styles.importTextarea}
@@ -2455,14 +2458,14 @@ function BulkEditDeckModal({
         {preview && <ImportPreview preview={preview} />}
         <div className={styles.importActions}>
           <button className={styles.secondaryButton} onClick={onClose} type="button">
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             className={styles.secondaryButton}
             onClick={handleCopy}
             type="button"
           >
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? t('deckbuilder.copied') : t('deckbuilder.copy')}
           </button>
           <button
             className={styles.primaryButton}
@@ -2470,8 +2473,8 @@ function BulkEditDeckModal({
             disabled={!canApply || !dirty}
             type="button"
           >
-            Save changes
-            {preview && dirty ? ` (${preview.resolved.totalCards} cards)` : ''}
+            {t('deckbuilder.saveChanges')}
+            {preview && dirty ? ` (${t('deckbuilder.cardCount', { count: preview.resolved.totalCards })})` : ''}
           </button>
         </div>
       </div>
@@ -2577,6 +2580,7 @@ function SavedDecksSummary({
   activeDeckId: string | null
   onOpen: () => void
 }) {
+  const { t } = useTranslation()
   const active = useMemo(() => decks.find((d) => d.id === activeDeckId) ?? null, [decks, activeDeckId])
   const legalityInput = useMemo(
     () => (active ? { [active.id]: active.cards } : {}),
@@ -2586,12 +2590,12 @@ function SavedDecksSummary({
   const activeFormats = active ? (legalityMap[active.id] ?? []) : []
   return (
     <section className={styles.section}>
-      <h2 className={styles.sectionLabel}>My decks</h2>
+      <h2 className={styles.sectionLabel}>{t('deckbuilder.myDecks')}</h2>
       <div className={styles.savedSummary}>
         <div className={styles.savedSummaryActive}>
           {active ? (
             <>
-              <span className={styles.savedSummaryLabel}>Editing</span>
+              <span className={styles.savedSummaryLabel}>{t('deckbuilder.editing')}</span>
               <span className={styles.savedSummaryName}>{active.name}</span>
               {activeFormats.length > 0 && (
                 <FormatLegalityBadges formats={activeFormats} />
@@ -2599,17 +2603,17 @@ function SavedDecksSummary({
             </>
           ) : (
             <>
-              <span className={styles.savedSummaryLabel}>Editing</span>
-              <span className={styles.savedSummaryNameMuted}>Unsaved deck</span>
+              <span className={styles.savedSummaryLabel}>{t('deckbuilder.editing')}</span>
+              <span className={styles.savedSummaryNameMuted}>{t('deckbuilder.unsavedDeck')}</span>
             </>
           )}
         </div>
         {/* Nothing to browse is a note, not a disabled button. */}
         {decks.length === 0 ? (
-          <span className={styles.savedNone}>No saved decks yet</span>
+          <span className={styles.savedNone}>{t('deckbuilder.noSavedDecks')}</span>
         ) : (
-          <button className={styles.savedBrowseButton} onClick={onOpen} type="button" title="Browse saved decks">
-            {`Browse decks (${decks.length}) →`}
+          <button className={styles.savedBrowseButton} onClick={onOpen} type="button" title={t('deckbuilder.browseSavedDecks')}>
+            {t('deckbuilder.browseDecksCount', { count: decks.length })}
           </button>
         )}
       </div>
@@ -2660,6 +2664,7 @@ function SavedDecksBrowser({
   onRename: (d: UnifiedDeck) => void
   onDelete: (d: UnifiedDeck) => void
 }) {
+  const { t } = useTranslation()
   const [filter, setFilter] = useState('')
   const [sort, setSort] = useState<DecksBrowserSort>('updated')
   const [colorFilter, setColorFilter] = useState<Set<string>>(new Set())
@@ -2747,18 +2752,18 @@ function SavedDecksBrowser({
   return (
     <>
       <div className={styles.browserBackdrop} onClick={onClose} />
-      <div className={styles.browserDialog} role="dialog" aria-label="Saved decks">
+      <div className={styles.browserDialog} role="dialog" aria-label={t('deckbuilder.savedDecks')}>
         <header className={styles.browserHeader}>
           <div>
-            <strong className={styles.browserTitle}>Saved decks</strong>
+            <strong className={styles.browserTitle}>{t('deckbuilder.savedDecks')}</strong>
             <span className={styles.browserSubtitle}>
               {filtered.length === decks.length
-                ? `${decks.length} deck${decks.length === 1 ? '' : 's'}`
-                : `${filtered.length} of ${decks.length}`}
+                ? t('deckbuilder.deckCount', { count: decks.length })
+                : t('deckbuilder.filteredDeckCount', { shown: filtered.length, total: decks.length })}
             </span>
           </div>
           <button className={styles.linkButton} onClick={onClose} type="button">
-            Close (Esc)
+            {t('deckbuilder.closeEsc')}
           </button>
         </header>
 
@@ -2767,21 +2772,21 @@ function SavedDecksBrowser({
             className={styles.browserSearch}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Search decks by name or note…"
+            placeholder={t('deckbuilder.searchDecksByNameOrNote')}
             autoFocus
           />
           <select
             className={styles.sortSelect}
             value={sort}
             onChange={(e) => setSort(e.target.value as DecksBrowserSort)}
-            aria-label="Sort decks"
+            aria-label={t('deckbuilder.sortDecks')}
           >
-            <option value="updated">Recently updated</option>
-            <option value="name">Name (A→Z)</option>
-            <option value="size">Card count</option>
-            <option value="colors">Colour</option>
+            <option value="updated">{t('deckbuilder.recentlyUpdated')}</option>
+            <option value="name">{t('deckbuilder.nameAZ')}</option>
+            <option value="size">{t('deckbuilder.cardCountSort')}</option>
+            <option value="colors">{t('deckbuilder.colour')}</option>
           </select>
-          <div className={styles.browserColorChips} role="group" aria-label="Filter by colour">
+          <div className={styles.browserColorChips} role="group" aria-label={t('deckbuilder.filterByColour')}>
             {COLOR_TOKENS.map(({ label, key }) => {
               const active = colorFilter.has(key)
               return (
@@ -2803,8 +2808,8 @@ function SavedDecksBrowser({
               onClick={() => toggleColor('COLORLESS')}
               type="button"
               aria-pressed={colorFilter.has('COLORLESS')}
-              aria-label="Colourless"
-              title="colourless"
+              aria-label={t('deckbuilder.colourless')}
+              title={t('deckbuilder.colourless').toLowerCase()}
             >
               <ManaSymbol symbol="C" size={18} />
             </button>
@@ -2955,16 +2960,17 @@ function DeckFormatPicker({
   activeFormat: string | null
   onChange: (value: string | null) => void
 }) {
+  const { t } = useTranslation()
   const value = activeFormat ? activeFormat.toLowerCase() : ''
   return (
-    <label className={styles.formatPickerRow} title="Pick a format to validate this deck against and highlight illegal cards.">
-      <span className={styles.formatPickerLabel}>Format</span>
+    <label className={styles.formatPickerRow} title={t('deckbuilder.validateFormatHint')}>
+      <span className={styles.formatPickerLabel}>{t('deckbuilder.format')}</span>
       <select
         className={styles.formatPickerSelect}
         value={value}
         onChange={(e) => onChange(e.target.value || null)}
       >
-        <option value="">No format</option>
+        <option value="">{t('deckbuilder.noFormat')}</option>
         {FORMAT_TOKENS.map(({ value: v, label }) => (
           <option key={v} value={v}>{label}</option>
         ))}
@@ -3609,6 +3615,7 @@ function AddCardSearch({
   onAdd: (card: CardSummary) => void
   onSuggestBasics: () => void
 }) {
+  const { t } = useTranslation()
   const [text, setText] = useState('')
   const [open, setOpen] = useState(false)
   const [hoverCard, setHoverCard] = useState<CardSummary | null>(null)
@@ -3690,17 +3697,17 @@ function AddCardSearch({
             handleAdd(matches[0]!)
           }
         }}
-        placeholder="Find and add cards to your deck…"
-        aria-label="Find and add cards to your deck"
+        placeholder={t('deckbuilder.findAndAddCardsToDeck')}
+        aria-label={t('deckbuilder.findAndAddCardsToDeck')}
       />
       <button
         type="button"
         className={styles.addCardBasicsButton}
         onClick={onSuggestBasics}
         disabled={Object.keys(deckCards).length === 0}
-        title="Auto-fill basic lands (Plains, Island, Swamp, Mountain, Forest) from your deck's mana curve and color requirements"
+        title={t('deckbuilder.suggestBasicLandsHint')}
       >
-        Suggest basic lands
+        {t('deckbuilder.suggestBasicLands')}
       </button>
       {open && matches.length > 0 && (
         <div className={styles.addCardDropdown} role="listbox">
@@ -4232,4 +4239,3 @@ function byCmcThenName(a: { name: string; card: CardSummary | undefined }, b: { 
   if (ac !== bc) return ac - bc
   return a.name.localeCompare(b.name)
 }
-

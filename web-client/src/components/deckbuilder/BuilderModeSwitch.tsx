@@ -10,6 +10,7 @@
  */
 import { useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import styles from './BuilderModeSwitch.module.css'
 
 export type BuilderMode = 'deck' | 'cube'
@@ -88,6 +89,7 @@ export function BuilderModeSwitch({
 }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { t } = useTranslation()
 
   // Remember this mode's current place, so coming back lands on it.
   useEffect(() => {
@@ -110,12 +112,12 @@ export function BuilderModeSwitch({
         to={`/library?tab=${mode === 'deck' ? 'decks' : 'cubes'}`}
         className={styles.library}
         onClick={() => onLeave?.()}
-        title={mode === 'deck' ? 'All your decks' : 'All your cubes'}
+        title={mode === 'deck' ? t('deckbuilder.allDecks') : t('deckbuilder.allCubes')}
       >
-        Decks &amp; Cubes
+        {t('deckbuilder.decksAndCubes')}
       </Link>
       <span className={styles.sep} aria-hidden>/</span>
-    <div className={styles.switch} role="tablist" aria-label="Build">
+    <div className={styles.switch} role="tablist" aria-label={t('deckbuilder.build')}>
       {(['deck', 'cube'] as const).map((m) => (
         <button
           key={m}
@@ -125,7 +127,7 @@ export function BuilderModeSwitch({
           className={styles.option}
           onClick={() => go(m)}
         >
-          {m === 'deck' ? 'Deck builder' : 'Cube builder'}
+          {m === 'deck' ? t('deckbuilder.deckBuilder') : t('deckbuilder.cubeBuilder')}
         </button>
       ))}
     </div>

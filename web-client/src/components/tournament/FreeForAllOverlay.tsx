@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore, type FfaState } from '@/store/gameStore.ts'
 import { ReplayViewer, type GameSummary } from '../admin/ReplayViewer'
 import type { ReplayData } from '@/replay/reconstructSnapshots.ts'
@@ -11,6 +12,7 @@ import { randomBackground } from '@/utils/background'
  * usual share/replays/deck/leave toolbar. During a game the board renders instead.
  */
 export function FreeForAllOverlay({ ffaState }: { ffaState: FfaState }) {
+  const { t } = useTranslation()
   const playerId = useGameStore((state) => state.playerId)
   const lobbyState = useGameStore((state) => state.lobbyState)
   const deckBuildingState = useGameStore((state) => state.deckBuildingState)
@@ -71,22 +73,22 @@ export function FreeForAllOverlay({ ffaState }: { ffaState: FfaState }) {
       {/* ── Header ── */}
       <div className={styles.trnHeader}>
         <div className={styles.trnHeaderTop}>
-          <h1 className={styles.trnTitle}>Free-for-All</h1>
+          <h1 className={styles.trnTitle}>{t('ffa.title')}</h1>
           <span className={styles.trnRound}>
             {gameInProgress
-              ? `Game ${ffaState.gameNumber} in progress`
+              ? t('ffa.gameInProgress', { number: ffaState.gameNumber })
               : ffaState.gamesPlayed > 0
-                ? `After game ${ffaState.gamesPlayed}`
-                : 'Waiting to start'}
+                ? t('ffa.afterGame', { number: ffaState.gamesPlayed })
+                : t('ffa.waitingToStart')}
           </span>
         </div>
         <div className={styles.trnToolbar}>
           <button onClick={copyShareLink} className={styles.trnToolbarBtn}>
-            {linkCopied ? 'Copied!' : 'Share Link'}
+            {linkCopied ? t('ffa.copied') : t('ffa.shareLink')}
           </button>
           {ffaState.gamesPlayed > 0 && (
             <button onClick={() => setShowReplays(true)} className={styles.trnToolbarBtn}>
-              Replays
+              {t('ffa.replays')}
             </button>
           )}
           {gameInProgress && isSpectator && ffaState.currentGameSessionId && (
@@ -94,7 +96,7 @@ export function FreeForAllOverlay({ ffaState }: { ffaState: FfaState }) {
               onClick={() => spectateGame(ffaState.currentGameSessionId!)}
               className={styles.trnToolbarBtn}
             >
-              Watch Game
+              {t('ffa.watchGame')}
             </button>
           )}
         </div>
@@ -109,22 +111,22 @@ export function FreeForAllOverlay({ ffaState }: { ffaState: FfaState }) {
               disabled={isPlayerReady}
               className={styles.readyButton}
             >
-              {isPlayerReady ? '✓ Ready' : ffaState.gamesPlayed > 0 ? 'Play Again' : 'Ready'}
+              {isPlayerReady ? t('ffa.ready') : ffaState.gamesPlayed > 0 ? t('ffa.playAgain') : t('ffa.ready')}
             </button>
             {!lobbyState?.settings.jumpstartActive && !isPlayerReady && deckBuildingState && (
               <button onClick={unsubmitDeck} className={styles.editDeckButton}>
-                Edit Deck
+                {t('ffa.editDeck')}
               </button>
             )}
             <span className={styles.readyCount}>
-              {readyCount}/{totalPlayers} ready
+              {t('ffa.readyCount', { ready: readyCount, total: totalPlayers })}
             </span>
           </div>
         </div>
       )}
       {gameInProgress && !isSpectator && (
         <div className={`${styles.statusBoxWaiting} ${styles.trnSection}`}>
-          Game in progress...
+          {t('ffa.gameInProgressStatus')}
         </div>
       )}
 
@@ -135,8 +137,8 @@ export function FreeForAllOverlay({ ffaState }: { ffaState: FfaState }) {
             <thead className={styles.standingsHeader}>
               <tr>
                 <th className={styles.standingsTh}>#</th>
-                <th className={styles.standingsThLeft}>Player</th>
-                <th className={styles.standingsTh}>Result</th>
+                <th className={styles.standingsThLeft}>{t('ffa.player')}</th>
+                <th className={styles.standingsTh}>{t('ffa.result')}</th>
               </tr>
             </thead>
             <tbody>
@@ -158,10 +160,10 @@ export function FreeForAllOverlay({ ffaState }: { ffaState: FfaState }) {
                       <span className={styles.standingsPlayerName} title={standing.playerName}>
                         {standing.playerName}
                       </span>
-                      {isMe && <span className={styles.meIndicator}>(you)</span>}
+                      {isMe && <span className={styles.meIndicator}>{t('ffa.you')}</span>}
                     </td>
                     <td className={styles.standingsTd}>
-                      {standing.placement === 1 ? 'Winner' : `${ordinal(standing.placement)} place`}
+                      {standing.placement === 1 ? t('ffa.winner') : t('ffa.place', { number: standing.placement })}
                     </td>
                   </tr>
                 )
@@ -172,7 +174,7 @@ export function FreeForAllOverlay({ ffaState }: { ffaState: FfaState }) {
       )}
       {!ffaState.standings && !gameInProgress && (
         <div className={`${styles.statusBoxWaiting} ${styles.trnSection}`}>
-          Waiting for all players to be ready...
+          {t('ffa.waitingForPlayers')}
         </div>
       )}
 
@@ -180,31 +182,21 @@ export function FreeForAllOverlay({ ffaState }: { ffaState: FfaState }) {
       <div className={styles.trnSection} style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
         {!confirmLeave ? (
           <button onClick={() => setConfirmLeave(true)} className={styles.trnLeave}>
-            Leave
+            {t('common.leave')}
           </button>
         ) : (
           <>
             <button onClick={leaveTournament} className={styles.trnLeaveConfirm}>
-              Confirm Leave
+              {t('ffa.confirmLeave')}
             </button>
             <button onClick={() => setConfirmLeave(false)} className={styles.trnToolbarBtn}>
-              Cancel
+              {t('common.cancel')}
             </button>
           </>
         )}
       </div>
     </div>
   )
-}
-
-function ordinal(n: number): string {
-  if (n % 100 >= 11 && n % 100 <= 13) return `${n}th`
-  switch (n % 10) {
-    case 1: return `${n}st`
-    case 2: return `${n}nd`
-    case 3: return `${n}rd`
-    default: return `${n}th`
-  }
 }
 
 /** The card art behind a tint, as on the landing screen; the tint is darker since this is a table. */

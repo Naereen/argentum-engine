@@ -8,6 +8,7 @@
  */
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { sharedCubePath } from '@/api/account'
 import { LoginModal } from '@/components/auth/LoginModal'
 import { useAuthStore } from '@/store/authStore'
@@ -39,6 +40,7 @@ export function ShareCubeDialog({
   unshare,
   onClose,
 }: ShareCubeDialogProps) {
+  const { t } = useTranslation()
   const accountsEnabled = useAuthStore((s) => s.accountsEnabled)
   const [code, setCode] = useState<string | null>(saved?.shareCode ?? null)
   const [busy, setBusy] = useState(false)
@@ -55,7 +57,7 @@ export function ShareCubeDialog({
       setCopied(what)
       window.setTimeout(() => setCopied(null), 1800)
     } catch {
-      setError('Your browser blocked the clipboard — select the text and copy it yourself.')
+      setError(t('cubeUi.clipboardBlocked'))
     }
   }
 
@@ -65,7 +67,7 @@ export function ShareCubeDialog({
     try {
       await action()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setError(err instanceof Error ? err.message : t('cubeUi.somethingWentWrong'))
     } finally {
       setBusy(false)
     }
@@ -76,7 +78,7 @@ export function ShareCubeDialog({
     run(async () => {
       let target = saved
       if ((dirty || !inCloud) && onSave) target = await onSave()
-      if (!target || target.cloudId == null) throw new Error('Save the cube to your account first')
+      if (!target || target.cloudId == null) throw new Error(t('cubeUi.saveCubeToAccountFirst'))
       const shareCode = await share(target)
       setCode(shareCode)
       await copy(`${window.location.origin}${sharedCubePath(shareCode)}`, 'link')
@@ -92,47 +94,43 @@ export function ShareCubeDialog({
     <>
       <div className={styles.shareBackdrop} onClick={onClose} />
       <div className={styles.shareDialog} role="dialog" aria-modal="true" aria-labelledby="share-cube-title">
-        <h2 id="share-cube-title" className={styles.shareTitle}>Share this cube</h2>
+        <h2 id="share-cube-title" className={styles.shareTitle}>{t('cubeUi.shareThisCube')}</h2>
 
         {!accountsEnabled ? (
           <p className={styles.shareBody}>
-            This server doesn’t keep accounts, so cubes can’t be shared by link here. Copy the list instead —
-            a friend can paste it into their own cube editor.
+            {t('cubeUi.accountsDisabledShareHint')}
           </p>
         ) : !isLoggedIn ? (
           <>
             <p className={styles.shareBody}>
-              A share link opens on your friend’s machine, so the cube has to live in your account. Sign in and
-              it is saved there — your cubes on this device come along.
+              {t('cubeUi.signInShareHint')}
             </p>
             <button type="button" className={styles.primaryButton} onClick={() => setLoginOpen(true)}>
-              Sign in to share by link
+              {t('cubeUi.signInToShare')}
             </button>
           </>
         ) : url ? (
           <>
             <p className={styles.shareBody}>
-              Anyone with the link can view this cube, save a copy and play it. It always shows your latest saved
-              version{dirty ? ' — save your changes for them to appear' : ''}.
+              {t(dirty ? 'cubeUi.sharedLatestDirty' : 'cubeUi.sharedLatest')}
             </p>
             <div className={styles.shareLinkRow}>
-              <input className={styles.input} value={url} readOnly aria-label="Share link" onFocus={(e) => e.target.select()} />
+              <input className={styles.input} value={url} readOnly aria-label={t('cubeUi.shareLink')} onFocus={(e) => e.target.select()} />
               <button type="button" className={styles.primaryButton} onClick={() => void copy(url, 'link')}>
-                {copied === 'link' ? 'Copied' : 'Copy link'}
+                {copied === 'link' ? t('cubeUi.copied') : t('cubeUi.copyLink')}
               </button>
             </div>
             <button type="button" className={styles.linkButton} disabled={busy} onClick={() => void revoke()}>
-              Stop sharing — the link stops working
+              {t('cubeUi.stopSharing')}
             </button>
           </>
         ) : (
           <>
             <p className={styles.shareBody}>
-              Create a link anyone can open to view this cube, save a copy and play it. It always shows your latest
-              saved version, and you can turn it off at any time.
+              {t('cubeUi.createShareHint')}
             </p>
             <button type="button" className={styles.primaryButton} disabled={busy} onClick={() => void createLink()}>
-              {busy ? 'Creating link…' : dirty || !inCloud ? 'Save and create link' : 'Create link'}
+              {busy ? t('cubeUi.creatingLink') : dirty || !inCloud ? t('cubeUi.saveAndCreateLink') : t('cubeUi.createLink')}
             </button>
           </>
         )}
@@ -141,10 +139,10 @@ export function ShareCubeDialog({
 
         <div className={styles.shareFooter}>
           <button type="button" className={styles.secondaryButton} onClick={() => void copy(text, 'text')}>
-            {copied === 'text' ? 'List copied' : 'Copy as text list'}
+            {copied === 'text' ? t('cubeUi.listCopied') : t('cubeUi.copyAsTextList')}
           </button>
           <button type="button" className={styles.secondaryButton} onClick={onClose}>
-            Done
+            {t('cubeUi.done')}
           </button>
         </div>
       </div>

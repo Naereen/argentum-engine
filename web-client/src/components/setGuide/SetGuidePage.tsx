@@ -20,7 +20,6 @@ import {
   GUIDE_SORTS,
   MAX_COMPARE,
   QUICK_FILTERS,
-  RATINGS,
   sortGuideSets,
   toGuideSets,
   type GuideSet,
@@ -29,10 +28,12 @@ import {
 } from './setGuideModel'
 import { SET_THEMES, type SetTheme } from './setProfiles'
 import styles from './SetGuide.module.css'
+import { useTranslation } from 'react-i18next'
 
 type View = 'grid' | 'map'
 
 export function SetGuidePage() {
+  const { t } = useTranslation()
   const [params, setParams] = useSearchParams()
   const [sets, setSets] = useState<GuideSet[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -104,17 +105,16 @@ export function SetGuidePage() {
   }
 
   return (
-    <PageShell title="Set guide" width="wide">
+    <PageShell title={t('setGuide.title')} width="wide">
       <div className={styles.intro}>
         <div>
-          <h1 className={pageStyles.h1}>Find a set to play</h1>
+          <h1 className={pageStyles.h1}>{t('setGuide.heading')}</h1>
           <p className={pageStyles.lede}>
-            {sets ? `${sets.length} sets` : 'Every set'} are ready for sealed and draft. Each plays differently — see how its games
-            unfold, what wins them and what its mechanics do, and compare power, speed and complexity.
+            {sets ? t('setGuide.intro', { count: sets.length }) : t('setGuide.introAll')}
           </p>
         </div>
         <Link to="/set-completion" className={styles.introLink}>
-          Implementation progress →
+          {t('setGuide.implementationProgress')}
         </Link>
       </div>
 
@@ -123,13 +123,13 @@ export function SetGuidePage() {
           <input
             type="search"
             className={`${pageStyles.input} ${styles.search}`}
-            placeholder="Search sets, mechanics, themes…"
+            placeholder={t('setGuide.searchPlaceholder')}
             value={search}
             spellCheck={false}
             onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search sets"
+            aria-label={t('setGuide.searchAria')}
           />
-          <div className={pageStyles.tabs} role="tablist" aria-label="View">
+          <div className={pageStyles.tabs} role="tablist" aria-label={t('setGuide.viewAria')}>
             {(['grid', 'map'] as const).map((v) => (
               <button
                 key={v}
@@ -139,40 +139,40 @@ export function SetGuidePage() {
                 aria-selected={view === v}
                 onClick={() => setParam('view', v === 'grid' ? null : v)}
               >
-                {v === 'grid' ? 'Sets' : 'Map'}
+                {v === 'grid' ? t('setGuide.sets') : t('setGuide.map')}
               </button>
             ))}
           </div>
           {view === 'grid' && (
             <label className={styles.sortLabel}>
-              <span>Sort</span>
+              <span>{t('setGuide.sort')}</span>
               <select
                 className={`${pageStyles.input} ${styles.sortSelect}`}
                 value={sort}
                 onChange={(e) => setParam('sort', e.target.value === 'newest' ? null : e.target.value)}
               >
                 {GUIDE_SORTS.map((s) => (
-                  <option key={s.id} value={s.id}>{s.label}</option>
+                  <option key={s.id} value={s.id}>{t(`setGuide.sorts.${s.id}`)}</option>
                 ))}
               </select>
             </label>
           )}
         </div>
-        <div className={styles.filterGroup} aria-label="Quick filters">
+        <div className={styles.filterGroup} aria-label={t('setGuide.quickFilters')}>
           {QUICK_FILTERS.map((q) => (
             <button key={q.id} type="button" className={styles.filterChip} aria-pressed={quick.has(q.id)} onClick={() => toggle(setQuick, q.id)}>
-              {q.label}
+              {t(`setGuide.filters.${q.id}`)}
             </button>
           ))}
           <span className={styles.filterDivider} aria-hidden />
-          {SET_THEMES.map((t) => (
-            <button key={t.id} type="button" className={styles.filterChip} data-kind="theme" title={t.hint} aria-pressed={themes.has(t.id)} onClick={() => toggle(setThemes, t.id)}>
-              {t.label}
+          {SET_THEMES.map((theme) => (
+            <button key={theme.id} type="button" className={styles.filterChip} data-kind="theme" title={t(`setGuide.themes.${theme.id}.hint`)} aria-pressed={themes.has(theme.id)} onClick={() => toggle(setThemes, theme.id)}>
+              {t(`setGuide.themes.${theme.id}.label`)}
             </button>
           ))}
           {filtersActive && (
             <button type="button" className={styles.clearFilters} onClick={clearFilters}>
-              Clear
+              {t('setGuide.clear')}
             </button>
           )}
         </div>
@@ -181,10 +181,10 @@ export function SetGuidePage() {
       {error ? (
         <div className={pageStyles.panel} role="alert">{error}</div>
       ) : !sets ? (
-        <div className={pageStyles.empty}>Loading sets…</div>
+        <div className={pageStyles.empty}>{t('setGuide.loading')}</div>
       ) : shown.length === 0 ? (
         <div className={`${pageStyles.panel} ${pageStyles.empty}`}>
-          No set matches all of those. <button type="button" className={styles.linkButton} onClick={clearFilters}>Clear the filters</button>
+          {t('setGuide.noMatches')} <button type="button" className={styles.linkButton} onClick={clearFilters}>{t('setGuide.clearFilters')}</button>
         </div>
       ) : view === 'map' ? (
         <SetMap sets={shown} onOpen={(code) => setParam('set', code)} />
@@ -204,11 +204,11 @@ export function SetGuidePage() {
       )}
 
       {compareSets.length > 0 && (
-        <div className={styles.tray} role="region" aria-label="Sets to compare">
+        <div className={styles.tray} role="region" aria-label={t('setGuide.compareTray')}>
           <ul className={styles.trayIcons}>
             {compareSets.map((s) => (
               <li key={s.code}>
-                <button type="button" className={styles.trayChip} onClick={() => toggleCompare(s.code)} title={`Remove ${s.name}`}>
+                <button type="button" className={styles.trayChip} onClick={() => toggleCompare(s.code)} title={t('setGuide.removeSet', { name: s.name })}>
                   <SetIcon code={s.code} />
                   <span>{s.name}</span>
                   <span aria-hidden className={styles.trayX}>×</span>
@@ -217,7 +217,7 @@ export function SetGuidePage() {
             ))}
           </ul>
           <span className={styles.trayHint}>
-            {compareSets.length < 2 ? 'Add another set to compare' : `${compareSets.length} of ${MAX_COMPARE}`}
+            {compareSets.length < 2 ? t('setGuide.addAnother') : t('setGuide.compareCount', { count: compareSets.length, max: MAX_COMPARE })}
           </span>
           <button
             type="button"
@@ -225,7 +225,7 @@ export function SetGuidePage() {
             disabled={compareSets.length < 2}
             onClick={() => setParam('comparing', '1')}
           >
-            Compare
+            {t('setGuide.compareSets')}
           </button>
         </div>
       )}
@@ -264,6 +264,7 @@ function SetTile({
   onOpen: () => void
   onToggleCompare: () => void
 }) {
+  const { t } = useTranslation()
   const p = set.profile
   return (
     <li className={styles.tile} data-comparing={comparing}>
@@ -274,7 +275,7 @@ function SetTile({
         <div className={styles.tileTitle}>
           <h2 className={styles.tileName}>{set.name}</h2>
           <span className={styles.meta}>
-            {[set.year, `${set.cardCount} cards`, set.extension ? 'Extension' : null].filter(Boolean).join(' · ')}
+            {[set.year, t('setGuide.cardCount', { count: set.cardCount }), set.extension ? t('setGuide.extension') : null].filter(Boolean).join(' · ')}
           </span>
         </div>
         <button
@@ -283,9 +284,9 @@ function SetTile({
           aria-pressed={comparing}
           disabled={!comparing && compareFull}
           onClick={onToggleCompare}
-          title={comparing ? 'Remove from comparison' : compareFull ? `You can compare up to ${MAX_COMPARE} sets` : 'Add to comparison'}
+          title={comparing ? t('setGuide.removeFromCompare') : compareFull ? t('setGuide.compareLimit', { count: MAX_COMPARE }) : t('setGuide.addToCompare')}
         >
-          {comparing ? '✓ Comparing' : '+ Compare'}
+          {comparing ? `✓ ${t('setGuide.comparing')}` : `+ ${t('setGuide.compare')}`}
         </button>
       </div>
       {p ? (
@@ -296,7 +297,7 @@ function SetTile({
           <ThemeTags themes={p.themes} single />
         </>
       ) : (
-        <p className={`${styles.tagline} ${pageStyles.muted}`}>No guide written yet.</p>
+        <p className={`${styles.tagline} ${pageStyles.muted}`}>{t('setGuide.noProfile')}</p>
       )}
     </li>
   )
@@ -307,28 +308,26 @@ function SetTile({
  * so sets that share a cell sit together in it rather than overlapping.
  */
 function SetMap({ sets, onOpen }: { sets: readonly GuideSet[]; onOpen: (code: string) => void }) {
+  const { t } = useTranslation()
   const profiled = sets.filter((s) => s.profile)
-  const speed = RATINGS.find((r) => r.key === 'speed')!
-  const complexity = RATINGS.find((r) => r.key === 'complexity')!
-  const power = RATINGS.find((r) => r.key === 'power')!
   const steps = [1, 2, 3, 4, 5] as const
   return (
     <div className={`${pageStyles.panel} ${styles.map}`}>
       <div className={styles.mapLegend}>
-        <span className={styles.mapLegendLabel}>Power</span>
+        <span className={styles.mapLegendLabel}>{t('setGuide.mapLegendPower')}</span>
         {steps.map((v) => (
           <span key={v} className={styles.mapLegendItem}>
             <span className={styles.mapSwatch} data-power={v} />
-            {power.words[v - 1]}
+            {t(`setGuide.ratings.power.words.word${v}`)}
           </span>
         ))}
       </div>
       <div className={styles.mapFrame}>
-        <span className={styles.mapAxisY}>Complexity →</span>
+        <span className={styles.mapAxisY}>{t('setGuide.complexity')} →</span>
         <div className={styles.mapBoard}>
           {[...steps].reverse().map((c) => (
             <div key={c} className={styles.mapRow}>
-              <span className={styles.mapRowLabel}>{complexity.words[c - 1]}</span>
+              <span className={styles.mapRowLabel}>{t(`setGuide.ratings.complexity.words.word${c}`)}</span>
               {steps.map((sp) => (
                 <div key={sp} className={styles.mapCell}>
                   {profiled
@@ -341,7 +340,7 @@ function SetMap({ sets, onOpen }: { sets: readonly GuideSet[]; onOpen: (code: st
                         data-power={s.profile!.power}
                         onClick={() => onOpen(s.code)}
                         title={`${s.name} — ${s.profile!.tagline}`}
-                        aria-label={`${s.name}: ${speed.words[sp - 1]}, ${complexity.words[c - 1]}, ${power.words[s.profile!.power - 1]} power`}
+                        aria-label={`${s.name}: ${t(`setGuide.ratings.speed.words.word${sp}`)}, ${t(`setGuide.ratings.complexity.words.word${c}`)}, ${t(`setGuide.ratings.power.words.word${s.profile!.power}`)} ${t('setGuide.power')}`}
                       >
                         <SetIcon code={s.code} />
                         <span className={styles.mapDotCode}>{s.code}</span>
@@ -354,12 +353,12 @@ function SetMap({ sets, onOpen }: { sets: readonly GuideSet[]; onOpen: (code: st
           <div className={styles.mapRow} aria-hidden>
             <span className={styles.mapRowLabel} />
             {steps.map((sp) => (
-              <span key={sp} className={styles.mapColLabel}>{speed.words[sp - 1]}</span>
+              <span key={sp} className={styles.mapColLabel}>{t(`setGuide.ratings.speed.words.word${sp}`)}</span>
             ))}
           </div>
         </div>
       </div>
-      <span className={styles.mapAxisX}>Speed →</span>
+      <span className={styles.mapAxisX}>{t('setGuide.speed')} →</span>
     </div>
   )
 }

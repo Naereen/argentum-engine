@@ -16,8 +16,9 @@ import {
 import { useDfcHoverFlip } from '@/components/ui/useDfcHoverFlip'
 import { getCardImageUrl } from '@/utils/cardImages'
 import type { BuilderSeat, BuilderState } from './builderState'
-import { PILE_ZONES, SCENARIO_ZONES, ZONE_LABEL, type ScenarioBattlefieldCard, type ScenarioZone } from './types'
+import { PILE_ZONES, SCENARIO_ZONES, type ScenarioBattlefieldCard, type ScenarioZone } from './types'
 import styles from './ScenarioBuilder.module.css'
+import { useTranslation } from 'react-i18next'
 
 export interface BoardTarget {
   seatId: string
@@ -103,18 +104,19 @@ function SeatPanel({
   canRemove: boolean
   onHover: (name: string | null) => void
 }) {
+  const { t } = useTranslation()
   const smallZones = SCENARIO_ZONES.filter((z) => z !== 'battlefield')
   return (
     <section className={isActivePlayer ? styles.seatActive : styles.seat}>
       <header className={styles.seatHead}>
         <span className={styles.seatBadge}>
-          Seat {seatNumber}
-          {isActivePlayer ? ' · active' : ''}
+          {t('scenario.seatNumber', { number: seatNumber })}
+          {isActivePlayer ? t('scenario.active') : ''}
         </span>
         <input
           className={styles.nameInput}
           value={seat.name}
-          aria-label={`Seat ${seatNumber} name`}
+          aria-label={t('scenario.seatName', { number: seatNumber })}
           onChange={(e) => props.onSeatPatch(seat.id, { name: e.target.value })}
         />
         <div className={styles.lifeWrap}>
@@ -122,7 +124,7 @@ function SeatPanel({
           <button
             type="button"
             className={styles.stepBtn}
-            aria-label={`Lower ${seat.name}'s life`}
+            aria-label={t('scenario.lowerLife', { name: seat.name })}
             onClick={() => props.onSeatPatch(seat.id, { life: seat.life - 1 })}
           >
             −
@@ -131,13 +133,13 @@ function SeatPanel({
             type="number"
             className={styles.lifeInput}
             value={seat.life}
-            aria-label={`${seat.name} life total`}
+            aria-label={t('scenario.lifeTotal', { name: seat.name })}
             onChange={(e) => props.onSeatPatch(seat.id, { life: Number(e.target.value) })}
           />
           <button
             type="button"
             className={styles.stepBtn}
-            aria-label={`Raise ${seat.name}'s life`}
+            aria-label={t('scenario.raiseLife', { name: seat.name })}
             onClick={() => props.onSeatPatch(seat.id, { life: seat.life + 1 })}
           >
             +
@@ -147,18 +149,18 @@ function SeatPanel({
           type="button"
           className={styles.ghostBtn}
           onClick={() => props.onClearSeat(seat.id)}
-          title="Empty every zone for this seat"
+          title={t('scenario.clearAllZones')}
         >
-          Clear
+          {t('scenario.clear')}
         </button>
         {canRemove && (
           <button
             type="button"
             className={styles.ghostBtn}
             onClick={() => props.onRemoveSeat(seat.id)}
-            title="Remove this seat from the pod"
+            title={t('scenario.removeSeatHint')}
           >
-            Remove seat
+            {t('scenario.removeSeat')}
           </button>
         )}
       </header>
@@ -194,6 +196,7 @@ function ZonePanel({
   small?: boolean
   onHover: (name: string | null) => void
 }) {
+  const { t } = useTranslation()
   const { dragActive, dropHandlers } = useCardDropZone((payload) =>
     props.onDropCard(payload, seat.id, zone),
   )
@@ -238,7 +241,7 @@ function ZonePanel({
       <div
         className={isTarget ? styles.zoneHeadActive : styles.zoneHead}
         onClick={() => props.onTargetChange({ seatId: seat.id, zone })}
-        title="Click to make this the target for cards clicked in the browser"
+        title={t('scenario.zoneTargetHint')}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
@@ -248,25 +251,25 @@ function ZonePanel({
           }
         }}
       >
-        {ZONE_LABEL[zone]} <span className={styles.zoneCount}>{total}</span>
+        {t(`scenario.zoneNames.${zone}`)} <span className={styles.zoneCount}>{total}</span>
         {total > 0 && (
           <button
             type="button"
             className={styles.zoneClear}
-            title={`Empty ${ZONE_LABEL[zone].toLowerCase()}`}
+            title={t('scenario.emptyZone', { zone: t(`scenario.zoneNames.${zone}`).toLowerCase() })}
             onClick={(e) => {
               e.stopPropagation()
               props.onClearZone(seat.id, zone)
             }}
           >
-            clear
+            {t('scenario.clearZone')}
           </button>
         )}
       </div>
       <div className={styles.zoneCards}>
         {entries.length === 0 && (
           <span className={styles.zoneEmpty}>
-            {isTarget ? 'Click cards to add them here' : 'Drop cards here'}
+            {isTarget ? t('scenario.cardClickHint') : t('scenario.cardDropHint')}
           </span>
         )}
         {entries.map((entry) => (
@@ -316,6 +319,7 @@ function ScenarioCard({
   onEdit?: (() => void) | undefined
   onQuickPatch?: ((patch: Partial<ScenarioBattlefieldCard>) => void) | undefined
 }) {
+  const { t } = useTranslation()
   const [imgFailed, setImgFailed] = useState(false)
   const card = entry.card
   const counters = card?.counters ?? {}
@@ -337,7 +341,7 @@ function ScenarioCard({
         e.preventDefault()
         onRemove()
       }}
-      title={onEdit ? `${entry.name} — click to edit, right-click to remove` : `${entry.name} — right-click to remove`}
+      title={onEdit ? t('scenario.editCardHint', { name: entry.name }) : t('scenario.removeCardHint', { name: entry.name })}
     >
       {imgFailed ? (
         // No art for this printing (or the CDN 404'd) — the name still has to be readable,
@@ -366,7 +370,7 @@ function ScenarioCard({
             <button
               type="button"
               className={styles.toolBtn}
-              title="Toggle tapped"
+              title={t('scenario.toggleTapped')}
               onClick={(e) => {
                 e.stopPropagation()
                 onQuickPatch({ tapped: !card?.tapped })
@@ -377,7 +381,7 @@ function ScenarioCard({
             <button
               type="button"
               className={styles.toolBtn}
-              title="Add a +1/+1 counter"
+              title={t('scenario.addCounter')}
               onClick={(e) => {
                 e.stopPropagation()
                 onQuickPatch({
@@ -392,7 +396,7 @@ function ScenarioCard({
         <button
           type="button"
           className={`${styles.toolBtn} ${styles.toolBtnDanger}`}
-          title="Remove"
+          title={t('scenario.remove')}
           onClick={(e) => {
             e.stopPropagation()
             onRemove()

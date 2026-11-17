@@ -21,7 +21,6 @@ import { ScenarioBoard, type BoardTarget } from './ScenarioBoard'
 import { CustomCardPanel } from './CustomCardPanel'
 import { customCardSummary } from './customCardJson'
 import {
-  MODE_HINT,
   PHASES,
   addCardToZone,
   addCustomCard,
@@ -49,14 +48,15 @@ import {
   encodeScenario,
 } from './shareScenario'
 import {
-  ZONE_LABEL,
   type ScenarioCreateResponse,
   type ScenarioMode,
   type ScenarioSpec,
   type ScenarioZone,
+  SCENARIO_ZONES,
 } from './types'
 import { BrandMark, PLAIN_BACKDROP, pageStyles } from '@/components/ui/PageShell'
 import styles from './ScenarioBuilder.module.css'
+import { useTranslation } from 'react-i18next'
 
 /** A plain dark backdrop: the builder is a board full of cards, and card art behind it is noise. */
 const pageBackground = { backgroundImage: PLAIN_BACKDROP }
@@ -70,6 +70,7 @@ const MIN_BOARD = 380
 const COPY_OPTIONS = [1, 2, 3, 4, 10, 20, 40]
 
 export function ScenarioBuilderPage() {
+  const { t } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
   const { catalog, setInfos, index, loading, error: catalogError } = useCardCatalog()
 
@@ -115,27 +116,30 @@ export function ScenarioBuilderPage() {
     (card: CardSummary) => {
       if (!targetSeat) return
       addCard(card.name, targetSeat.id, target.zone, copies)
-      setStatus(
-        `${copies > 1 ? `${copies}× ` : ''}${card.name} → ${targetSeat.name}’s ${ZONE_LABEL[target.zone].toLowerCase()}.`,
-      )
+      setStatus(t(copies > 1 ? 'scenario.cardsAdded' : 'scenario.cardAdded', {
+        count: copies,
+        name: card.name,
+        seat: targetSeat.name,
+        zone: t(`scenario.zoneNames.${target.zone}`),
+      }))
     },
-    [addCard, copies, target.zone, targetSeat],
+    [addCard, copies, target.zone, targetSeat, t],
   )
 
   const handleAddCustomCard = useCallback(
     (card: CustomCard) => {
       commit((prev) => addCustomCard(prev, card))
-      setStatus(`${card.name} compiled — add it to a zone from the custom cards panel.`)
+      setStatus(t('scenario.customCardAdded', { name: card.name }))
     },
-    [commit],
+    [commit, t],
   )
 
   const handleRemoveCustomCard = useCallback(
     (name: string) => {
       commit((prev) => removeCustomCard(prev, name))
-      setStatus(`${name} removed from the scenario.`)
+      setStatus(t('scenario.customCardRemoved', { name }))
     },
-    [commit],
+    [commit, t],
   )
 
   /** Shift/right-click in the browser grid removes the most recent copy of that card. */
@@ -299,7 +303,7 @@ export function ScenarioBuilderPage() {
       const res = await req
       if (!res.ok) {
         setSnapshotLoading(false)
-        setStatus('Failed to load the snapshot.')
+        setStatus(t('scenario.snapshotFailed'))
         return
       }
       const data = (await res.json()) as ScenarioCreateResponse
@@ -308,9 +312,9 @@ export function ScenarioBuilderPage() {
       window.location.href = `/?token=${encodeURIComponent(human.token)}`
     } catch {
       setSnapshotLoading(false)
-      setStatus('Failed to load the snapshot.')
+      setStatus(t('scenario.snapshotFailed'))
     }
-  }, [])
+  }, [t])
 
   const snapshotLoadedRef = useRef(false)
   useEffect(() => {
@@ -349,9 +353,9 @@ export function ScenarioBuilderPage() {
     void decodeScenario(code).then((spec) => {
       if (spec) {
         applySpec(spec)
-        setStatus('Loaded shared scenario.')
+        setStatus(t('scenario.sharedLoaded'))
       } else {
-        setStatus('Could not read the shared scenario link.')
+        setStatus(t('scenario.sharedLoadFailed'))
       }
       // Strip the param so a refresh doesn't reload it over edits.
       setSearchParams(
@@ -363,7 +367,7 @@ export function ScenarioBuilderPage() {
         { replace: true },
       )
     })
-  }, [searchParams, setSearchParams, applySpec])
+  }, [searchParams, setSearchParams, applySpec, t])
 
   // --- actions -------------------------------------------------------------
 
@@ -373,12 +377,12 @@ export function ScenarioBuilderPage() {
     try {
       const parsed = JSON.parse(jsonText) as ScenarioSpec
       applySpec(parsed)
-      setStatus('Loaded scenario from JSON.')
+      setStatus(t('scenario.jsonLoaded'))
       setErrors([])
     } catch {
-      setStatus('Invalid JSON.')
+      setStatus(t('scenario.invalidJson'))
     }
-  }, [jsonText, applySpec])
+  }, [jsonText, applySpec, t])
 
   const handleShowJson = useCallback(() => {
     setJsonText(JSON.stringify(currentSpec(), null, 2))
@@ -396,7 +400,7 @@ export function ScenarioBuilderPage() {
         try {
           parsed = JSON.parse(text)
         } catch {
-          setStatus('Invalid JSON file.')
+          setStatus(t('scenario.invalidJsonFile'))
           return
         }
         if (parsed && typeof parsed === 'object' && 'entities' in parsed && 'zones' in parsed) {
@@ -412,12 +416,12 @@ export function ScenarioBuilderPage() {
         } else {
           // Name-based scenario → load into the editable builder.
           applySpec(parsed as ScenarioSpec)
-          setStatus('Loaded scenario from file.')
+          setStatus(t('scenario.fileLoaded'))
           setErrors([])
         }
       })()
     },
-    [applySpec, jumpInto],
+    [applySpec, jumpInto, t],
   )
 
   const handleShare = useCallback(async () => {
@@ -425,16 +429,16 @@ export function ScenarioBuilderPage() {
     const url = buildScenarioUrl(window.location.origin, code)
     try {
       await navigator.clipboard.writeText(url)
-      setStatus('Share link copied to clipboard.')
+      setStatus(t('scenario.linkCopied'))
     } catch {
-      window.prompt('Copy this scenario link', url)
+      window.prompt(t('scenario.copyScenarioPrompt'), url)
     }
-  }, [currentSpec])
+  }, [currentSpec, t])
 
   const handleStart = useCallback(async () => {
     setStarting(true)
     setErrors([])
-    setStatus('Creating scenario…')
+    setStatus(t('scenario.creating'))
     try {
       const res = await fetch('/api/scenarios', {
         method: 'POST',
@@ -446,7 +450,7 @@ export function ScenarioBuilderPage() {
         const msgs =
           body && typeof body === 'object' && Array.isArray((body as { errors?: unknown }).errors)
             ? ((body as { errors: string[] }).errors)
-            : [`Request failed (HTTP ${res.status})`]
+            : [t('scenario.requestFailed', { status: res.status })]
         setErrors(msgs)
         setStatus(null)
         setStarting(false)
@@ -459,11 +463,11 @@ export function ScenarioBuilderPage() {
       // Full navigation so the app makes a clean token-based connect to the new session.
       window.location.href = `/?token=${encodeURIComponent(human.token)}`
     } catch (e: unknown) {
-      setErrors([e instanceof Error ? e.message : 'Failed to create scenario'])
+      setErrors([e instanceof Error ? e.message : t('scenario.createFailed')])
       setStatus(null)
       setStarting(false)
     }
-  }, [currentSpec])
+  }, [currentSpec, t])
 
   // --- derived -------------------------------------------------------------
 
@@ -500,7 +504,7 @@ export function ScenarioBuilderPage() {
   if (snapshotLoading) {
     return (
       <div className={styles.page} style={pageBackground}>
-        <div className={styles.loading}>Loading snapshot…</div>
+        <div className={styles.loading}>{t('scenario.loadingSnapshot')}</div>
       </div>
     )
   }
@@ -509,18 +513,18 @@ export function ScenarioBuilderPage() {
     <div className={styles.page} style={pageBackground}>
       <div className={styles.topbar}>
         <div className={styles.titleGroup}>
-          <Link to="/" className={pageStyles.brand} aria-label="Argentum — home">
+          <Link to="/" className={pageStyles.brand} aria-label={t('scenario.home')}>
             <BrandMark />
             <span className={pageStyles.brandText}>Argentum</span>
           </Link>
           <span className={pageStyles.crumbSep} aria-hidden>/</span>
-          <h1 className={styles.title}>Scenario Builder</h1>
+          <h1 className={styles.title}>{t('scenario.title')}</h1>
           <button
             className={styles.iconBtn}
             onClick={undo}
             disabled={!canUndo}
-            title="Undo (⌘Z)"
-            aria-label="Undo"
+            title={`${t('scenario.undo')} (⌘Z)`}
+            aria-label={t('scenario.undo')}
           >
             ↶
           </button>
@@ -528,8 +532,8 @@ export function ScenarioBuilderPage() {
             className={styles.iconBtn}
             onClick={redo}
             disabled={!canRedo}
-            title="Redo (⇧⌘Z)"
-            aria-label="Redo"
+            title={`${t('scenario.redo')} (⇧⌘Z)`}
+            aria-label={t('scenario.redo')}
           >
             ↷
           </button>
@@ -548,15 +552,15 @@ export function ScenarioBuilderPage() {
         />
         <div className={styles.actions}>
           <ActionButton
-            label="Load file"
-            hint="open a saved snapshot or scenario"
+            label={t('scenario.loadFile')}
+            hint={t('scenario.loadFileHint')}
             onClick={() => fileInputRef.current?.click()}
           />
-          <ActionButton label="View JSON" hint="copy this scenario as text" onClick={handleShowJson} />
-          <ActionButton label="Share" hint="copy an editable link" onClick={() => void handleShare()} />
+          <ActionButton label={t('scenario.viewJson')} hint={t('scenario.copyScenario')} onClick={handleShowJson} />
+          <ActionButton label={t('scenario.share')} hint={t('scenario.copyEditableLink')} onClick={() => void handleShare()} />
           <ActionButton
-            label={starting ? 'Starting…' : 'Start'}
-            hint="play this scenario now"
+            label={starting ? t('scenario.starting') : t('scenario.start')}
+            hint={t('scenario.startHint')}
             primary
             disabled={starting}
             onClick={() => void handleStart()}
@@ -590,17 +594,17 @@ export function ScenarioBuilderPage() {
             onRemove={handleBrowserRemove}
             actionHint={
               <>
-                <kbd>Click</kbd> add · <kbd>Drag</kbd> to any zone
+                <kbd>{t('scenario.click')}</kbd> {t('scenario.addTo').toLowerCase()} · <kbd>{t('scenario.drag')}</kbd> to any zone
               </>
             }
             header={
               <div className={styles.targetRow}>
-                <span className={styles.smallLabel}>Add to</span>
+                <span className={styles.smallLabel}>{t('scenario.addTo')}</span>
                 <select
                   className={styles.select}
                   value={target.seatId}
                   onChange={(e) => setTarget({ ...target, seatId: e.target.value })}
-                  aria-label="Target seat"
+                  aria-label={t('scenario.targetSeat')}
                 >
                   {state.seats.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -612,11 +616,11 @@ export function ScenarioBuilderPage() {
                   className={styles.select}
                   value={target.zone}
                   onChange={(e) => setTarget({ ...target, zone: e.target.value as ScenarioZone })}
-                  aria-label="Target zone"
+                  aria-label={t('scenario.targetZone')}
                 >
-                  {(Object.keys(ZONE_LABEL) as ScenarioZone[]).map((z) => (
+                  {SCENARIO_ZONES.map((z) => (
                     <option key={z} value={z}>
-                      {ZONE_LABEL[z]}
+                      {t(`scenario.zoneNames.${z}`)}
                     </option>
                   ))}
                 </select>
@@ -624,7 +628,7 @@ export function ScenarioBuilderPage() {
                   className={styles.select}
                   value={copies}
                   onChange={(e) => setCopies(Number(e.target.value))}
-                  aria-label="Copies per click"
+                  aria-label={t('scenario.copiesPerClick')}
                 >
                   {COPY_OPTIONS.map((n) => (
                     <option key={n} value={n}>
@@ -642,26 +646,26 @@ export function ScenarioBuilderPage() {
           onMouseDown={() => setDragging(true)}
           role="separator"
           aria-orientation="vertical"
-          aria-label="Resize the card browser"
+          aria-label={t('scenario.resizeBrowser')}
         />
 
         <div className={styles.boardPane}>
           <div className={styles.boardBar}>
             <label className={styles.field}>
-              <span className={styles.smallLabel}>Opponent</span>
+              <span className={styles.smallLabel}>{t('scenario.opponent')}</span>
               <select
                 className={styles.select}
                 value={state.mode}
                 disabled={state.seats.length > 2}
                 onChange={(e) => commit((prev) => ({ ...prev, mode: e.target.value as ScenarioMode }))}
               >
-                <option value="SELF">Yourself (hotseat)</option>
-                <option value="AI">AI</option>
-                <option value="TWO_PLAYER">Two players</option>
+                <option value="SELF">{t('scenario.yourselfHotseat')}</option>
+                <option value="AI">{t('scenario.ai')}</option>
+                <option value="TWO_PLAYER">{t('scenario.twoPlayers')}</option>
               </select>
             </label>
             <label className={styles.field}>
-              <span className={styles.smallLabel}>Phase</span>
+              <span className={styles.smallLabel}>{t('scenario.phase')}</span>
               <select
                 className={styles.select}
                 value={state.phase}
@@ -669,13 +673,13 @@ export function ScenarioBuilderPage() {
               >
                 {PHASES.map((ph) => (
                   <option key={ph} value={ph}>
-                    {ph.replace(/_/g, ' ').toLowerCase()}
+                    {t(`scenario.phases.${ph}`)}
                   </option>
                 ))}
               </select>
             </label>
             <label className={styles.field}>
-              <span className={styles.smallLabel}>Active</span>
+              <span className={styles.smallLabel}>{t('scenario.activePlayer')}</span>
               <select
                 className={styles.select}
                 value={state.activePlayer}
@@ -693,38 +697,38 @@ export function ScenarioBuilderPage() {
               className={styles.ghostBtn}
               onClick={handleAddSeat}
               disabled={state.seats.length >= 4}
-              title="Add a seat (3-4 player pods are hotseat-only)"
+              title={t('scenario.addSeatHint')}
             >
-              + Seat
+              {t('scenario.addSeat')}
             </button>
             {/* Second row: what this setup means on the left, the board tools on the right. */}
             <span className={styles.rowBreak} aria-hidden />
             <span className={styles.modeHint}>
               {state.seats.length > 2
-                ? 'Pods of 3-4 seats always start as hotseat — you control every seat.'
-                : MODE_HINT[state.mode]}
+                ? t('scenario.threeFourSeatsHint')
+                : t(`scenario.modes.${state.mode}`)}
             </span>
             <div className={styles.boardTools}>
               <button
                 type="button"
                 className={styles.ghostBtn}
                 onClick={() => setCustomOpen((o) => !o)}
-                title="Paste a Scryfall card and have Assay compile it for this scenario"
+                title={t('scenario.customCardHint')}
               >
-                {customOpen ? 'Hide custom cards' : `Custom cards${state.customCards.length ? ` (${state.customCards.length})` : ''}`}
+                {customOpen ? t('scenario.hideCustomCards') : `${t('scenario.customCards')}${state.customCards.length ? ` (${state.customCards.length})` : ''}`}
               </button>
               <button type="button" className={styles.ghostBtn} onClick={() => setJsonOpen((o) => !o)}>
-                {jsonOpen ? 'Hide JSON' : 'Edit as JSON'}
+                {jsonOpen ? t('scenario.hideJson') : t('scenario.editJson')}
               </button>
               <button
                 type="button"
                 className={styles.ghostBtn}
                 onClick={() => {
                   reset(emptyBuilderState())
-                  setStatus('Board cleared.')
+                  setStatus(t('scenario.boardCleared'))
                 }}
               >
-                Reset
+                {t('scenario.reset')}
               </button>
             </div>
           </div>
@@ -752,31 +756,37 @@ export function ScenarioBuilderPage() {
               onPlace={(name) => {
                 if (!targetSeat) return
                 addCard(name, targetSeat.id, target.zone, copies)
-                setStatus(
-                  `${copies > 1 ? `${copies}× ` : ''}${name} → ${targetSeat.name}’s ${ZONE_LABEL[target.zone].toLowerCase()}.`,
-                )
+                setStatus(t(copies > 1 ? 'scenario.cardsAdded' : 'scenario.cardAdded', {
+                  count: copies,
+                  name,
+                  seat: targetSeat.name,
+                  zone: t(`scenario.zoneNames.${target.zone}`),
+                }))
               }}
-              placeHint={`${targetSeat?.name ?? 'seat'}’s ${ZONE_LABEL[target.zone].toLowerCase()}`}
+              placeHint={t('scenario.placeHint', {
+                seat: targetSeat?.name ?? t('scenario.seat'),
+                zone: t(`scenario.zoneNames.${target.zone}`),
+              })}
             />
           )}
 
           {jsonOpen && (
             <div className={styles.jsonDrawer}>
               <span className={styles.hint}>
-                Paste a scenario JSON and press “Apply”, or copy the text below to save it.
+                {t('scenario.pasteJsonHint')}
               </span>
               <textarea
                 className={styles.jsonArea}
                 value={jsonText}
-                placeholder="Paste a scenario JSON here…"
+                placeholder={t('scenario.pasteJsonPlaceholder')}
                 onChange={(e) => setJsonText(e.target.value)}
               />
               <div className={styles.jsonActions}>
                 <button type="button" className={styles.ghostBtn} onClick={handleLoadJson}>
-                  Apply to builder
+                  {t('scenario.apply')}
                 </button>
                 <button type="button" className={styles.ghostBtn} onClick={handleShowJson}>
-                  Refresh from board
+                  {t('scenario.refreshFromBoard')}
                 </button>
               </div>
             </div>

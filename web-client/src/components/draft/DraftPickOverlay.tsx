@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore, type DraftState } from '@/store/gameStore.ts'
 import type { SealedCardInfo, LobbySettings } from '@/types'
 import { useResponsive } from '@/hooks/useResponsive.ts'
@@ -28,6 +29,7 @@ export function DraftPickOverlay() {
 }
 
 function DraftPicker({ draftState, settings }: { draftState: DraftState; settings: LobbySettings }) {
+  const { t } = useTranslation()
   const responsive = useResponsive()
   const makePick = useGameStore((s) => s.makePick)
   const leaveLobby = useGameStore((s) => s.leaveLobby)
@@ -266,22 +268,22 @@ function DraftPicker({ draftState, settings }: { draftState: DraftState; setting
             {draftState.currentPack.length > 0 ? (
               <Timer seconds={draftState.timeRemaining} warning={timerWarning} />
             ) : (
-              <span className={ls.pill} data-tone="warn">Waiting...</span>
+              <span className={ls.pill} data-tone="warn">{t('draft.waiting')}</span>
             )}
 
             {/* Picked count */}
-            <span className={ls.pill} title="Cards picked">
+            <span className={ls.pill} title={t('draft.cardsPicked')}>
               {totalPicks != null ? `${totalPicked} / ${totalPicks}` : totalPicked}
             </span>
 
             {/* Leave/Stop button */}
             {isHost ? (
               <button type="button" onClick={stopLobby} className={ls.leave}>
-                Stop Draft
+                {t('draft.stopDraft')}
               </button>
             ) : (
               <button type="button" onClick={leaveLobby} className={ls.leave}>
-                Leave
+                {t('common.leave')}
               </button>
             )}
             <ChatButton className={`${ls.button} ${ls.iconButton}`} />
@@ -317,7 +319,7 @@ function DraftPicker({ draftState, settings }: { draftState: DraftState; setting
             {/* Queued packs indicator — on phones the Pack tab's badge carries this instead */}
             {!responsive.isMobile && draftState.queuedPacks > 0 && draftState.currentPack.length > 0 && (
               <div className={ls.banner}>
-                {draftState.queuedPacks} more {draftState.queuedPacks === 1 ? 'pack' : 'packs'} queued
+                {t('draft.morePacksQueued', { count: draftState.queuedPacks })}
               </div>
             )}
 
@@ -366,8 +368,8 @@ function DraftPicker({ draftState, settings }: { draftState: DraftState; setting
               ) : (
                 <div className={`${ls.panel} ${ls.waiting}`}>
                   <div className={ls.spinner} aria-hidden />
-                  <p className={ls.waitingTitle}>Waiting for next pack...</p>
-                  <p className={ls.waitingText}>Other players are still making their picks</p>
+                  <p className={ls.waitingTitle}>{t('draft.waitingForNextPack')}</p>
+                  <p className={ls.waitingText}>{t('draft.otherPlayersPicking')}</p>
                 </div>
               )}
             </div>
@@ -383,10 +385,10 @@ function DraftPicker({ draftState, settings }: { draftState: DraftState; setting
                   style={{ minWidth: responsive.isMobile ? undefined : 280 }}
                 >
                   {selectedCards.length === picksRequired
-                    ? `Pick ${selectedCards.join(' & ')}`
+                    ? t('draft.pickNamedCards', { cards: selectedCards.join(' & ') })
                     : picksRequired > 1
-                      ? `Select ${picksRequired} cards (${selectedCards.length}/${picksRequired})`
-                      : 'Select a card'}
+                      ? t('draft.selectCardCount', { count: picksRequired, selected: selectedCards.length })
+                      : t('draft.selectACard')}
                 </button>
               </div>
             )}
@@ -478,11 +480,12 @@ function MobileDraftHeader({
   onLeave: () => void
   timerWarning: boolean
 }) {
+  const { t } = useTranslation()
   return (
     <div className={ls.header} style={{ flexDirection: 'column', alignItems: 'stretch', flexWrap: 'nowrap', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <h2 className={ls.title} style={{ flex: 1 }}>
-          Draft - {settings.setNames.join(' + ')}
+          {t('draft.title')} - {settings.setNames.join(' + ')}
         </h2>
         <PackPickIndicator
           packNumber={draftState.packNumber}
@@ -494,7 +497,7 @@ function MobileDraftHeader({
         {draftState.currentPack.length > 0 ? (
           <Timer seconds={draftState.timeRemaining} warning={timerWarning} />
         ) : (
-          <span className={ls.pill} data-tone="warn">Waiting...</span>
+          <span className={ls.pill} data-tone="warn">{t('draft.waiting')}</span>
         )}
         <ChatButton className={`${ls.button} ${ls.iconButton}`} />
       </div>
@@ -502,7 +505,7 @@ function MobileDraftHeader({
         <SetSynergiesButton setCodes={settings.setCodes} cardPool={draftState.pickedCards} />
         {settings.aiAssistEnabled && draftState.currentPack.length > 0 && <SuggestPickControl />}
         <button type="button" onClick={isHost ? onStop : onLeave} className={ls.leave} style={{ marginLeft: 'auto' }}>
-          {isHost ? 'Stop Draft' : 'Leave'}
+          {isHost ? t('draft.stopDraft') : t('common.leave')}
         </button>
       </div>
     </div>
@@ -510,6 +513,7 @@ function MobileDraftHeader({
 }
 
 function PackPickIndicator({ packNumber, pickNumber, totalPacks, picksPerPack, compact = false }: { packNumber: number; pickNumber: number; totalPacks: number; picksPerPack: number | null; compact?: boolean }) {
+  const { t } = useTranslation()
   return (
     <div
       style={{
@@ -524,11 +528,11 @@ function PackPickIndicator({ packNumber, pickNumber, totalPacks, picksPerPack, c
         whiteSpace: compact ? 'nowrap' : undefined,
       }}
     >
-      <span style={{ color: '#9aa3b8', fontSize: 13 }}>Pack</span>
+      <span style={{ color: '#9aa3b8', fontSize: 13 }}>{t('draft.pack')}</span>
       <span style={{ color: '#f2c97a', fontWeight: 700, fontSize: 15 }}>{packNumber}</span>
       <span style={{ color: '#8f98ac', fontSize: 12 }}>/ {totalPacks}</span>
       <span style={{ color: 'rgba(255,255,255,0.2)' }}>·</span>
-      <span style={{ color: '#9aa3b8', fontSize: 13 }}>Pick</span>
+      <span style={{ color: '#9aa3b8', fontSize: 13 }}>{t('draft.pick')}</span>
       <span style={{ color: '#f2c97a', fontWeight: 700, fontSize: 15 }}>{pickNumber}</span>
       {picksPerPack != null && <span style={{ color: '#8f98ac', fontSize: 12 }}>/ {picksPerPack}</span>}
     </div>
@@ -542,6 +546,7 @@ function PassDirectionIndicator({
   playerOrder: Array<{ name: string; isYou: boolean; packCount: number }> | null
   passDirection: 'LEFT' | 'RIGHT'
 }) {
+  const { t } = useTranslation()
   if (!playerOrder) return null
 
   return (
@@ -558,8 +563,8 @@ function PassDirectionIndicator({
     >
       {/* Direction — an arrow, not a word: the strip has to fit a 1366px bar beside everything else. */}
       <span
-        title={`Packs pass ${passDirection === 'LEFT' ? 'left' : 'right'}`}
-        aria-label={`Packs pass ${passDirection === 'LEFT' ? 'left' : 'right'}`}
+        title={t('draft.packsPassDirection', { direction: t(passDirection === 'LEFT' ? 'draft.left' : 'draft.right') })}
+        aria-label={t('draft.packsPassDirection', { direction: t(passDirection === 'LEFT' ? 'draft.left' : 'draft.right') })}
         style={{
           color: '#8f98ac',
           fontSize: 13,
@@ -698,6 +703,7 @@ function PackStackIcon({ count }: { count: number }) {
 
 /** The pick clock. `seconds === null` is an untimed draft, shown as an infinity badge. */
 function Timer({ seconds, warning }: { seconds: number | null; warning: boolean }) {
+  const { t } = useTranslation()
   const [pulse, setPulse] = useState(false)
 
   useEffect(() => {
@@ -731,7 +737,7 @@ function Timer({ seconds, warning }: { seconds: number | null; warning: boolean 
         textAlign: 'center',
         transition: 'background-color 0.2s',
       }}
-      title={seconds === null ? 'No time limit — take as long as you like' : undefined}
+      title={seconds === null ? t('draft.noTimeLimit') : undefined}
     >
       {seconds === null ? '\u221e' : formatTime(seconds)}
     </div>
@@ -912,6 +918,7 @@ function PackCard({
  * tournament has AI assistance enabled.
  */
 function SuggestPickControl() {
+  const { t } = useTranslation()
   const suggestPick = useGameStore((s) => s.suggestPick)
   const clearPickSuggestion = useGameStore((s) => s.clearPickSuggestion)
   const aiAssistBusy = useGameStore((s) => s.aiAssistBusy)
@@ -961,7 +968,7 @@ function SuggestPickControl() {
         <select
           value={advisorId ?? ''}
           onChange={(e) => setAdvisorId(e.target.value)}
-          title="AI engine"
+          title={t('draft.aiEngine')}
           style={{
             padding: '6px 8px',
             fontSize: 13,
@@ -981,15 +988,15 @@ function SuggestPickControl() {
       <button
         onClick={() => void suggestPick(advisorId ?? undefined)}
         disabled={aiAssistBusy}
-        title="Score every card in this pack and highlight the best pick"
+        title={t('draft.scorePack')}
         style={buttonStyle}
       >
-        {aiAssistBusy ? 'Thinking…' : hasSuggestion ? 'Re-suggest' : '✨ Suggest Pick'}
+        {aiAssistBusy ? t('draft.thinking') : hasSuggestion ? t('draft.suggestAgain') : `✨ ${t('draft.suggestPick')}`}
       </button>
       {hasSuggestion && !aiAssistBusy && (
         <button
           onClick={clearPickSuggestion}
-          title="Hide AI scores"
+          title={t('draft.hideAiScores')}
           style={{
             padding: '6px 10px',
             fontSize: 13,
@@ -1000,7 +1007,7 @@ function SuggestPickControl() {
             cursor: 'pointer',
           }}
         >
-          Clear
+          {t('common.clear')}
         </button>
       )}
       {aiAssistError && <span style={{ color: '#ff6b6b', fontSize: 12 }}>{aiAssistError}</span>}
@@ -1021,6 +1028,7 @@ function PickedCardsSidebar({
   onHover: (card: SealedCardInfo | null, e?: React.MouseEvent) => void
   responsive: ReturnType<typeof useResponsive>
 }) {
+  const { t } = useTranslation()
   const colorOrder = ['W', 'U', 'B', 'R', 'G', 'M', 'C']
   const colorNames: Record<string, string> = {
     W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green', M: 'Multicolor', C: 'Colorless',
@@ -1050,10 +1058,10 @@ function PickedCardsSidebar({
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <span style={{ color: '#ccc', fontSize: 14, fontWeight: 600 }}>
-            Card Pool
+            {t('draft.cardPool')}
           </span>
           <span style={{ color: '#4fc3f7', fontSize: 13, fontWeight: 600 }}>
-            {totalPicked} {totalPicked === 1 ? 'card' : 'cards'}
+            {t('draft.cardCount', { count: totalPicked })}
           </span>
         </div>
 
@@ -1061,11 +1069,11 @@ function PickedCardsSidebar({
         <div style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ color: '#8bc34a', fontSize: 14, fontWeight: 700 }}>{analytics.creatures}</span>
-            <span style={{ color: '#666', fontSize: 10 }}>Creatures</span>
+            <span style={{ color: '#666', fontSize: 10 }}>{t('draft.creatures')}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ color: '#4fc3f7', fontSize: 14, fontWeight: 700 }}>{analytics.spells}</span>
-            <span style={{ color: '#666', fontSize: 10 }}>Spells</span>
+            <span style={{ color: '#666', fontSize: 10 }}>{t('draft.spells')}</span>
           </div>
         </div>
 
@@ -1102,7 +1110,7 @@ function PickedCardsSidebar({
         {analytics.creatureTypes.length > 0 && (
           <div style={{ marginTop: 8 }}>
             <div style={{ color: '#666', fontSize: 9, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Top Creature Types
+              {t('draft.topCreatureTypes')}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
               {analytics.creatureTypes.slice(0, 6).map(({ type, count, legendaryCount }) => (
@@ -1131,7 +1139,7 @@ function PickedCardsSidebar({
       <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
         {totalPicked === 0 ? (
           <div style={{ padding: '24px 14px', textAlign: 'center', color: '#555', fontSize: 12 }}>
-            Pick cards to build your pool
+            {t('draft.pickCardsToBuildPool')}
           </div>
         ) : (
           colorOrder.map((color) => {

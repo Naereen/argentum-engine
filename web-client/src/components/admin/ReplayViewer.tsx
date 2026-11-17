@@ -15,6 +15,8 @@ import { uploadReplayFile } from '@/replay/replayFile.ts'
 import { ReplayPlayer, type ReplayMetadata } from '../replay/ReplayPlayer'
 import { PageShell, pageStyles } from '../ui/PageShell'
 import styles from '../replay/Replay.module.css'
+import { useTranslation } from 'react-i18next'
+import i18n from '@/i18n'
 
 // ============================================================================
 // Types
@@ -46,6 +48,7 @@ interface ReplayViewerProps {
 type View = 'list' | 'replay'
 
 export function ReplayViewer({ fetchGames, fetchReplay, onBack }: ReplayViewerProps) {
+  const { t } = useTranslation()
   const [view, setView] = useState<View>('list')
   const [games, setGames] = useState<GameSummary[]>([])
   const [loading, setLoading] = useState(false)
@@ -61,10 +64,10 @@ export function ReplayViewer({ fetchGames, fetchReplay, onBack }: ReplayViewerPr
     try {
       setGames(await fetchGames())
     } catch {
-      setError('Failed to load games')
+      setError(t('replay.loadGamesFailed'))
     }
     setLoading(false)
-  }, [fetchGames])
+  }, [fetchGames, t])
 
   useEffect(() => {
     loadGames()
@@ -80,7 +83,7 @@ export function ReplayViewer({ fetchGames, fetchReplay, onBack }: ReplayViewerPr
       setFileMetadata(null)
       setView('replay')
     } catch {
-      setError('Failed to load replay')
+      setError(t('replay.loadReplayFailed'))
     }
     setLoading(false)
   }
@@ -95,7 +98,7 @@ export function ReplayViewer({ fetchGames, fetchReplay, onBack }: ReplayViewerPr
       setFileMetadata(data.metadata)
       setView('replay')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load replay file')
+      setError(e instanceof Error ? e.message : t('replay.loadReplayFileFailed'))
     }
     setLoading(false)
   }
@@ -145,12 +148,6 @@ interface GameGroup {
 /** How the list is laid out. A flat date order is the default — grouping is opt-in. */
 type ListOrder = 'newest' | 'oldest' | 'tournament'
 
-const ORDER_LABELS: Record<ListOrder, string> = {
-  newest: 'Newest first',
-  oldest: 'Oldest first',
-  tournament: 'By tournament',
-}
-
 function endedAtMillis(game: GameSummary): number {
   const t = Date.parse(game.endedAt)
   return Number.isNaN(t) ? 0 : t
@@ -166,7 +163,7 @@ function sortByEnded(games: GameSummary[], direction: 'asc' | 'desc'): GameSumma
  * Tournaments first, most recently played first, each in the order its games were played (round
  * order); casual games last, newest first.
  */
-function groupByTournament(games: GameSummary[]): GameGroup[] {
+function groupByTournament(games: GameSummary[], casualLabel: string): GameGroup[] {
   const tournamentMap = new Map<string, GameSummary[]>()
   const casual: GameSummary[] = []
 
@@ -188,7 +185,7 @@ function groupByTournament(games: GameSummary[]): GameGroup[] {
     .sort(([, a], [, b]) => latest(b) - latest(a))
     .map(([name, tournamentGames]) => ({ label: name, games: sortByEnded(tournamentGames, 'asc') }))
   if (casual.length > 0) {
-    groups.push({ label: 'Casual Games', games: sortByEnded(casual, 'desc') })
+    groups.push({ label: casualLabel, games: sortByEnded(casual, 'desc') })
   }
   return groups
 }
@@ -210,6 +207,7 @@ function GameListView({
   loading: boolean
   error: string | null
 }) {
+  const { t } = useTranslation()
   const hasTournaments = games.some((g) => g.tournamentName)
   const [order, setOrder] = useState<ListOrder>('newest')
   // "By tournament" is only offered when there is a tournament to group by.
@@ -228,11 +226,11 @@ function GameListView({
         if (home) { e.preventDefault(); e.stopPropagation(); onBack() }
       }}
     >
-      <PageShell title="Replays" width="normal">
+      <PageShell title={t('replay.pluralTitle')} width="normal">
         <div className={styles.listHeader}>
           <div className={styles.listHeading}>
-            <h1 className={pageStyles.h1}>Your replays</h1>
-            <p className={pageStyles.lede}>Watch any finished game again, step by step.</p>
+            <h1 className={pageStyles.h1}>{t('replay.yourReplays')}</h1>
+            <p className={pageStyles.lede}>{t('replay.description')}</p>
           </div>
           <div className={styles.listActions}>
             <input
@@ -255,18 +253,18 @@ function GameListView({
               onClick={() => fileInputRef.current?.click()}
               disabled={loading}
               className={pageStyles.button}
-              title="Watch a replay file exported from any game ('Export' in the replay viewer)."
+              title={t('replay.openFileTitle')}
             >
-              Open file
+              {t('replay.openFile')}
             </button>
             <button type="button" onClick={onReload} disabled={loading} className={pageStyles.button}>
-              {loading ? 'Loading…' : 'Reload'}
+              {loading ? t('replay.loadingGames') : t('replay.reload')}
             </button>
           </div>
         </div>
         {error && <p className={styles.error} role="alert">{error}</p>}
         {games.length > 1 && (
-          <div className={pageStyles.tabs} role="tablist" aria-label="Order" style={{ alignSelf: 'flex-start' }}>
+          <div className={pageStyles.tabs} role="tablist" aria-label={t('replay.order')} style={{ alignSelf: 'flex-start' }}>
             {orders.map((o) => (
               <button
                 key={o}
@@ -276,7 +274,7 @@ function GameListView({
                 onClick={() => setOrder(o)}
                 className={pageStyles.tab}
               >
-                {ORDER_LABELS[o]}
+                {t(o === 'newest' ? 'replay.newest' : o === 'oldest' ? 'replay.oldest' : 'replay.byTournament')}
               </button>
             ))}
           </div>
@@ -284,12 +282,12 @@ function GameListView({
         <section className={pageStyles.panel}>
           {games.length === 0 ? (
             <div className={pageStyles.empty}>
-              <p className={styles.emptyTitle}>{loading ? 'Loading games…' : 'No finished games yet'}</p>
-              {!loading && <p className={pageStyles.muted}>Play a game and it shows up here when it ends.</p>}
+              <p className={styles.emptyTitle}>{loading ? t('replay.loadingGames') : t('replay.emptyTitle')}</p>
+              {!loading && <p className={pageStyles.muted}>{t('replay.emptyHint')}</p>}
             </div>
           ) : effectiveOrder === 'tournament' ? (
             <div className={styles.group} style={{ gap: 18 }}>
-              {groupByTournament(games).map((group) => (
+              {groupByTournament(games, t('replay.casualGames')).map((group) => (
                 <div key={group.label} className={styles.group}>
                   <h2 className={styles.groupTitle}>{group.label}</h2>
                   <GameTable games={group.games} onReplay={onReplay} showRound showTournament={false} />
@@ -322,26 +320,27 @@ function GameTable({
   /** In a flat list the tournament name is the only hint of which event a game belonged to. */
   showTournament: boolean
 }) {
+  const { t } = useTranslation()
   return (
     <ul className={styles.rows} role="list">
       {games.map((game) => (
         <li key={game.gameId} className={styles.row}>
           <div className={styles.rowMain}>
             <span className={styles.players}>
-              {game.player1Name}<span className={styles.vs}>vs</span>{game.player2Name}
+              {game.player1Name}<span className={styles.vs}>{t('replay.versus')}</span>{game.player2Name}
             </span>
             <span className={styles.meta}>
               {showTournament && game.tournamentName && <span>{game.tournamentName}</span>}
               {showRound && game.tournamentRound != null && (
-                <span className={styles.round}>Round {game.tournamentRound + 1}</span>
+                <span className={styles.round}>{t('replay.round', { number: game.tournamentRound + 1 })}</span>
               )}
               <span>{formatDate(game.endedAt)}</span>
-              <span className={styles.metaWinner}>{game.winnerName ? `${game.winnerName} won` : 'Draw'}</span>
-              <span>{game.snapshotCount} steps</span>
+              <span className={styles.metaWinner}>{game.winnerName ? t('replay.won', { name: game.winnerName }) : t('replay.draw')}</span>
+              <span>{t('replay.steps', { count: game.snapshotCount })}</span>
             </span>
           </div>
           <button type="button" onClick={() => onReplay(game.gameId)} className={`${pageStyles.buttonPrimary} ${styles.watch}`}>
-            Replay
+            {t('replay.replayAction')}
           </button>
         </li>
       ))}
@@ -360,7 +359,7 @@ function GameTable({
 function formatDate(iso: string): string {
   try {
     const d = new Date(iso)
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    return d.toLocaleDateString(i18n.resolvedLanguage ?? i18n.language, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
   } catch {
     return iso
   }

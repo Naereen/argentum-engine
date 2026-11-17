@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import type { BetweenGamesMessage, SealedCardInfo } from '@/types'
 import { getCardImageUrl } from '@/utils/cardImages.ts'
@@ -34,6 +35,7 @@ import {
  * keyed by game in [TournamentOverlay], so game 3 starts from what was played in game 2.
  */
 export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage }) {
+  const { t } = useTranslation()
   const submitMatchDeck = useGameStore((s) => s.submitMatchDeck)
   const editMatchDeck = useGameStore((s) => s.editMatchDeck)
   const leaveTournament = useGameStore((s) => s.leaveTournament)
@@ -122,7 +124,7 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
   }, [shownDeck, cardsByName, basicNames])
 
   const result = snapshot.lastGameResult
-  const resultLabel = result === 'WIN' ? 'You won' : result === 'LOSS' ? 'You lost' : 'Drawn'
+  const resultLabel = result === 'WIN' ? t('sideboarding.youWon') : result === 'LOSS' ? t('sideboarding.youLost') : t('sideboarding.drawn')
   const previousGame = snapshot.nextGameNumber - 1
   const opp = snapshot.opponentName
 
@@ -131,21 +133,25 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
       <header className={ls.header}>
         <div className={ls.headerGroup}>
           <h1 className={ls.title}>
-            {snapshot.canSideboard ? 'Sideboarding' : 'Between games'}
-            <span className={ls.titleSub}> · Round {snapshot.round} vs {opp}</span>
+            {snapshot.canSideboard ? t('sideboarding.sideboarding') : t('sideboarding.betweenGames')}
+            <span className={ls.titleSub}> · {t('sideboarding.roundVs', { round: snapshot.round, opponent: opp })}</span>
           </h1>
         </div>
         <div className={ls.headerGroup}>
           <span className={ls.pill} data-tone={snapshot.opponentReady ? 'good' : undefined} data-testid="opponent-status">
-            {snapshot.opponentReady ? `${opp} is ready` : `${opp} is ${snapshot.canSideboard ? 'sideboarding' : 'getting ready'}…`}
+            {snapshot.opponentReady
+              ? t('sideboarding.opponentReady', { opponent: opp })
+              : snapshot.canSideboard
+                ? t('sideboarding.opponentSideboarding', { opponent: opp })
+                : t('sideboarding.opponentGettingReady', { opponent: opp })}
           </span>
           {confirmLeave ? (
             <>
-              <button type="button" className={ls.leave} onClick={leaveTournament}>Forfeit &amp; leave</button>
-              <button type="button" className={ls.button} onClick={() => setConfirmLeave(false)}>Stay</button>
+              <button type="button" className={ls.leave} onClick={leaveTournament}>{t('sideboarding.forfeitLeave')}</button>
+              <button type="button" className={ls.button} onClick={() => setConfirmLeave(false)}>{t('sideboarding.stay')}</button>
             </>
           ) : (
-            <button type="button" className={ls.leave} onClick={() => setConfirmLeave(true)}>Leave</button>
+            <button type="button" className={ls.leave} onClick={() => setConfirmLeave(true)}>{t('common.leave')}</button>
           )}
         </div>
       </header>
@@ -154,11 +160,11 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
       <section className={styles.hero}>
         <div className={styles.scoreBlock}>
           <p className={styles.eyebrow} data-result={result}>
-            Game {previousGame} · {resultLabel}
+            {t('sideboarding.gameResult', { game: previousGame, result: resultLabel })}
           </p>
-          <div className={styles.score} aria-label={`Match score: you ${snapshot.yourGameWins}, ${opp} ${snapshot.opponentGameWins}`}>
+          <div className={styles.score} aria-label={t('sideboarding.matchScore', { you: snapshot.yourGameWins, opponent: opp, opponentScore: snapshot.opponentGameWins })}>
             <span className={styles.scoreSide}>
-              <span className={styles.scoreName}>You</span>
+              <span className={styles.scoreName}>{t('sideboarding.you')}</span>
               <span className={styles.scoreNum}>{snapshot.yourGameWins}</span>
             </span>
             <span className={styles.scoreDash}>–</span>
@@ -168,9 +174,9 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
             </span>
           </div>
           <p className={styles.scoreNote}>
-            Best of {snapshot.bestOf === 3 ? 'three' : snapshot.bestOf}
-            {snapshot.drawnGames > 0 && ` · ${snapshot.drawnGames} drawn`}
-            {' · '}Game {snapshot.nextGameNumber} next
+            {t('sideboarding.bestOf', { count: snapshot.bestOf })}
+            {snapshot.drawnGames > 0 && ` · ${t('sideboarding.drawnGames', { count: snapshot.drawnGames })}`}
+            {' · '}{t('sideboarding.gameNext', { game: snapshot.nextGameNumber })}
           </p>
         </div>
 
@@ -178,9 +184,9 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
           {snapshot.youChoosePlayDraw ? (
             <>
               <p className={styles.playDrawLabel}>
-                {result === 'DRAW' ? 'You chose last game, so you choose again' : 'You lost, so you choose'}
+                {result === 'DRAW' ? t('sideboarding.chooseAgain') : t('sideboarding.youLostChoose')}
               </p>
-              <div className={styles.segmented} role="radiogroup" aria-label="Who takes the first turn">
+              <div className={styles.segmented} role="radiogroup" aria-label={t('sideboarding.firstTurnChoice')}>
                 <button
                   type="button"
                   role="radio"
@@ -189,7 +195,7 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
                   disabled={ready}
                   onClick={() => setPlayFirst(true)}
                 >
-                  Play first
+                  {t('sideboarding.playFirst')}
                 </button>
                 <button
                   type="button"
@@ -199,19 +205,19 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
                   disabled={ready}
                   onClick={() => setPlayFirst(false)}
                 >
-                  Draw first
+                  {t('sideboarding.drawFirst')}
                 </button>
               </div>
             </>
           ) : (
             <>
-              <p className={styles.playDrawLabel}>Who plays first</p>
+              <p className={styles.playDrawLabel}>{t('sideboarding.whoPlaysFirst')}</p>
               <p className={styles.playDrawValue}>
                 {snapshot.startingPlayer === 'YOU'
-                  ? `${opp} chose to draw — you're on the play`
+                  ? t('sideboarding.opponentChoseDraw')
                   : snapshot.startingPlayer === 'OPPONENT'
-                    ? `${opp} chose to play first`
-                    : `${opp} ${result === 'DRAW' ? 'chooses again' : 'lost, so they choose'}`}
+                    ? t('sideboarding.opponentChosePlay')
+                    : result === 'DRAW' ? t('sideboarding.opponentChoosesAgain') : t('sideboarding.opponentLostChooses')}
               </p>
             </>
           )}
@@ -221,10 +227,10 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
       {/* ── The two piles ── */}
       {snapshot.canSideboard ? (
         <div className={styles.body} data-locked={ready || undefined}>
-          <section className={styles.pool} aria-label="Sideboard">
+          <section className={styles.pool} aria-label={t('sideboarding.sideboard')}>
             <div className={styles.sectionHead}>
-              <span className={ls.sectionLabel}>Sideboard · {countCards(shownSideboard)}</span>
-              <div className={styles.filters} role="group" aria-label="Filter the sideboard by colour">
+              <span className={ls.sectionLabel}>{t('sideboarding.sideboard')} · {countCards(shownSideboard)}</span>
+              <div className={styles.filters} role="group" aria-label={t('sideboarding.filterByColor')}>
                 {FILTER_COLORS.map((c) => (
                   <button
                     key={c}
@@ -232,17 +238,17 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
                     className={styles.filterChip}
                     aria-pressed={colorFilter.has(c)}
                     onClick={() => toggleColor(c)}
-                    title={c === 'C' ? 'Colourless' : `Show ${({ W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green' } as const)[c]} cards`}
+                    title={c === 'C' ? t('sideboarding.colorless') : t('sideboarding.showColor', { color: t(`sideboarding.colors.${c}`) })}
                   >
                     <ManaSymbol symbol={c} size={16} />
                   </button>
                 ))}
               </div>
-              <span className={styles.hint}>Click a card to bring it in</span>
+              <span className={styles.hint}>{t('sideboarding.clickToBringIn')}</span>
             </div>
             {sideboardTiles.length === 0 ? (
               <p className={styles.empty}>
-                {allSideboardTiles.length === 0 ? 'Nothing left to bring in.' : 'No sideboard cards in those colours.'}
+                {allSideboardTiles.length === 0 ? t('sideboarding.nothingToBringIn') : t('sideboarding.noCardsInColors')}
               </p>
             ) : (
               <div className={styles.grid}>
@@ -256,12 +262,12 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
                       className={styles.tile}
                       onClick={() => bringIn(name)}
                       disabled={ready}
-                      aria-label={`Bring in ${name}`}
+                      aria-label={t('sideboarding.bringIn', { card: name })}
                       {...hoverProps(card)}
                     >
                       <img src={getCardImageUrl(name, card?.imageUri ?? null, 'small')} alt={name} loading="lazy" />
                       {count > 1 && <span className={styles.count}>×{count}</span>}
-                      {wasOut && <span className={styles.tag} data-kind="out">Out</span>}
+                      {wasOut && <span className={styles.tag} data-kind="out">{t('sideboarding.out')}</span>}
                     </button>
                   )
                 })}
@@ -269,9 +275,9 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
             )}
           </section>
 
-          <aside className={`${styles.deck} ${ls.rail}`} aria-label="Deck">
+          <aside className={`${styles.deck} ${ls.rail}`} aria-label={t('sealedDeck.yourDeck')}>
             <div className={styles.sectionHead}>
-              <span className={ls.sectionLabel}>Deck</span>
+              <span className={ls.sectionLabel}>{t('sealedDeck.yourDeck')}</span>
               <span className={styles.deckCount} data-short={tooSmall || undefined}>
                 {deckSize}<span className={styles.deckMin}> / {snapshot.minDeckSize}</span>
               </span>
@@ -283,7 +289,7 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
                 return (
                   <div key={group} className={styles.group}>
                     <div className={styles.groupHead}>
-                      {group} <span>{rows.reduce((n, [, c]) => n + c, 0)}</span>
+                      {t(group === 'Creatures' ? 'sideboarding.creatures' : group === 'Spells' ? 'sideboarding.spells' : 'sideboarding.lands')} <span>{rows.reduce((n, [, c]) => n + c, 0)}</span>
                     </div>
                     {rows.map(([name, count]) => {
                       const card = cardsByName.get(name)
@@ -295,12 +301,12 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
                           className={styles.row}
                           onClick={() => takeOut(name)}
                           disabled={ready}
-                          aria-label={`Take out ${name}`}
+                          aria-label={t('sideboarding.takeOut', { card: name })}
                           {...hoverProps(card)}
                         >
                           <span className={styles.rowCount}>{count}</span>
                           <span className={styles.rowName}>{name}</span>
-                          {cameIn && <span className={styles.tag} data-kind="in">In</span>}
+                          {cameIn && <span className={styles.tag} data-kind="in">{t('sideboarding.in')}</span>}
                           <span className={styles.rowCost}><ManaCost cost={card?.manaCost ?? null} size={12} /></span>
                         </button>
                       )
@@ -312,7 +318,7 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
               {snapshot.basicLands.length > 0 && (
                 <div className={styles.group}>
                   <div className={styles.groupHead}>
-                    Basic lands <span>{snapshot.basicLands.reduce((n, b) => n + (shownDeck[b.name] ?? 0), 0)}</span>
+                    {t('sideboarding.basicLands')} <span>{snapshot.basicLands.reduce((n, b) => n + (shownDeck[b.name] ?? 0), 0)}</span>
                   </div>
                   {snapshot.basicLands.map((land) => {
                     const n = shownDeck[land.name] ?? 0
@@ -325,7 +331,7 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
                           className={styles.stepper}
                           onClick={() => setDeck(adjustBasic(deck, land.name, -1))}
                           disabled={ready || n === 0}
-                          aria-label={`Remove a ${land.name}`}
+                          aria-label={t('sideboarding.removeLand', { land: land.name })}
                         >
                           −
                         </button>
@@ -334,7 +340,7 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
                           className={styles.stepper}
                           onClick={() => setDeck(adjustBasic(deck, land.name, 1))}
                           disabled={ready}
-                          aria-label={`Add a ${land.name}`}
+                          aria-label={t('sideboarding.addLand', { land: land.name })}
                         >
                           +
                         </button>
@@ -349,8 +355,8 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
       ) : (
         <div className={styles.fixedBody}>
           <div className={`${ls.panel} ${styles.fixedPanel}`}>
-            <p className={styles.fixedTitle}>Decks stay as registered</p>
-            <p className={styles.fixedText}>This format doesn't allow sideboarding, so game {snapshot.nextGameNumber} is played with the same deck.</p>
+            <p className={styles.fixedTitle}>{t('sideboarding.decksStayRegistered')}</p>
+            <p className={styles.fixedText}>{t('sideboarding.noSideboarding', { game: snapshot.nextGameNumber })}</p>
           </div>
         </div>
       )}
@@ -359,17 +365,17 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
       <footer className={`${ls.footer} ${styles.footer}`}>
         <div className={styles.changes} data-testid="sideboard-changes">
           {!snapshot.canSideboard ? null : changes.length === 0 ? (
-            <span className={styles.noChanges}>Registered deck</span>
+            <span className={styles.noChanges}>{t('sideboarding.registeredDeck')}</span>
           ) : (
             <>
-              <span className={styles.changesLabel}>Changes</span>
+              <span className={styles.changesLabel}>{t('sideboarding.changes')}</span>
               {changes.map((c) => (
                 <span key={c.name} className={styles.change} data-kind={c.delta > 0 ? 'in' : 'out'}>
                   {c.delta > 0 ? '+' : '−'}{Math.abs(c.delta) > 1 ? `${Math.abs(c.delta)} ` : ''}{c.name}
                 </span>
               ))}
               {!ready && (
-                <button type="button" className={styles.reset} onClick={resetToRegistered}>Reset</button>
+                <button type="button" className={styles.reset} onClick={resetToRegistered}>{t('sideboarding.reset')}</button>
               )}
             </>
           )}
@@ -379,9 +385,9 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
             <>
               <span className={styles.waiting}>
                 <span className={styles.dot} aria-hidden />
-                {snapshot.opponentReady ? 'Starting…' : `Waiting for ${opp}`}
+                {snapshot.opponentReady ? t('sideboarding.starting') : t('sideboarding.waitingForOpponent', { opponent: opp })}
               </span>
-              <button type="button" className={ls.button} onClick={editMatchDeck}>Keep editing</button>
+              <button type="button" className={ls.button} onClick={editMatchDeck}>{t('sideboarding.keepEditing')}</button>
             </>
           ) : (
             <button
@@ -389,12 +395,12 @@ export function SideboardingScreen({ snapshot }: { snapshot: BetweenGamesMessage
               className={`${ls.primary} ${ls.large}`}
               onClick={onReady}
               disabled={snapshot.canSideboard && tooSmall}
-              title={tooSmall ? `Your deck needs at least ${snapshot.minDeckSize} cards` : undefined}
+              title={tooSmall ? t('sealedDeck.minimumDeckSize', { count: snapshot.minDeckSize }) : undefined}
               data-testid="sideboard-ready"
             >
               {snapshot.canSideboard && tooSmall
-                ? `${snapshot.minDeckSize - deckSize} more card${snapshot.minDeckSize - deckSize === 1 ? '' : 's'} needed`
-                : `Ready for game ${snapshot.nextGameNumber}`}
+                ? t('sideboarding.moreCardsNeeded', { count: snapshot.minDeckSize - deckSize })
+                : t('sideboarding.readyForGame', { game: snapshot.nextGameNumber })}
             </button>
           )}
         </div>

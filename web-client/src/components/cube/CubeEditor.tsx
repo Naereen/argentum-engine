@@ -21,13 +21,14 @@
  */
 import { useCallback, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import type { SharedCube } from '@/api/account'
 import type { UnifiedCube } from '@/store/useUnifiedCubes'
 import { CubeCardList } from './CubeCardList'
 import { CubePackControls } from './CubePackControls'
 import { cubeToText, isBoosterStyle } from './cubeModel'
 import { CubeStats } from './CubeStats'
-import { PastePane, SOURCE_TAB_LABEL, SearchPane, SetPane, type SourceTab } from './CubeSources'
+import { PastePane, SearchPane, SetPane, type SourceTab } from './CubeSources'
 import { ShareCubeDialog } from './ShareCubeDialog'
 import { useCardHover } from './useCardHover'
 import { useCardCatalog } from './useCardCatalog'
@@ -52,6 +53,7 @@ interface CubeEditorProps {
 }
 
 export function CubeEditor({ cube, availableSets, onClose, onUse }: CubeEditorProps) {
+  const { t } = useTranslation()
   const catalog = useCardCatalog()
   const lookup = useCallback((cardName: string) => catalog.byName.get(cardName.toLowerCase()), [catalog.byName])
   const draft = useCubeDraft({ cube, availableSets, lookup, catalogReady: catalog.ready })
@@ -65,22 +67,22 @@ export function CubeEditor({ cube, availableSets, onClose, onUse }: CubeEditorPr
   const requestClose = () => (dirty ? setConfirmingLeave(true) : onClose())
 
   const editor = (
-    <div className={styles.dialog} role="dialog" aria-label="Cube editor">
+    <div className={styles.dialog} role="dialog" aria-label={t('cubeUi.editor')}>
       <header className={styles.header}>
         <div className={styles.titleBlock}>
           <input
             className={styles.titleInput}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Name your cube"
-            aria-label="Cube name"
+            placeholder={t('cubeUi.nameYourCube')}
+            aria-label={t('cubeUi.cubeName')}
           />
           <input
             className={styles.descriptionInput}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Add a description — what it plays like, who it's for"
-            aria-label="Cube description"
+            placeholder={t('cubeUi.cubeDescriptionPlaceholder')}
+            aria-label={t('cubeUi.cubeDescription')}
             maxLength={280}
           />
         </div>
@@ -89,10 +91,10 @@ export function CubeEditor({ cube, availableSets, onClose, onUse }: CubeEditorPr
             {draft.saveState}
           </span>
           <button type="button" className={styles.secondaryButton} disabled={totalCards === 0} onClick={() => void draft.copyList()}>
-            Copy list
+            {t('cubeUi.copyList')}
           </button>
           <button type="button" className={styles.secondaryButton} disabled={totalCards === 0} onClick={() => setShareOpen(true)}>
-            Share
+            {t('cubeUi.share')}
           </button>
           <button
             type="button"
@@ -100,7 +102,7 @@ export function CubeEditor({ cube, availableSets, onClose, onUse }: CubeEditorPr
             disabled={saving || totalCards === 0 || (!dirty && saved !== null)}
             onClick={() => void draft.save()}
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? t('cubeUi.saving') : t('cubeUi.save')}
           </button>
           {onUse && (
             <button
@@ -111,8 +113,8 @@ export function CubeEditor({ cube, availableSets, onClose, onUse }: CubeEditorPr
                 draft.canUse
                   ? undefined
                   : unresolved.length > 0
-                    ? `${unresolved.length} cards in this cube aren't implemented yet`
-                    : 'Add cards to the cube first'
+                    ? t('cubeUi.cardsNotImplemented', { count: unresolved.length })
+                    : t('cubeUi.addCardsFirst')
               }
               onClick={async () => {
                 if (!draft.canUse) return
@@ -120,18 +122,18 @@ export function CubeEditor({ cube, availableSets, onClose, onUse }: CubeEditorPr
                 else if (await draft.save()) onUse(draft.shared)
               }}
             >
-              Use this cube
+              {t('cubeUi.useThisCube')}
             </button>
           )}
           <button type="button" className={styles.secondaryButton} onClick={requestClose}>
-            Close
+            {t('common.close')}
           </button>
         </div>
       </header>
 
       {confirmingLeave && (
         <div className={styles.confirmBar} role="alert">
-          <span>This cube has unsaved changes.</span>
+          <span>{t('cubeUi.unsavedChanges')}</span>
           <button
             type="button"
             className={styles.primaryButton}
@@ -140,13 +142,13 @@ export function CubeEditor({ cube, availableSets, onClose, onUse }: CubeEditorPr
               if (await draft.save()) onClose()
             }}
           >
-            Save and close
+            {t('cubeUi.saveAndClose')}
           </button>
           <button type="button" className={styles.secondaryButton} onClick={onClose}>
-            Discard changes
+            {t('cubeUi.discardChanges')}
           </button>
           <button type="button" className={styles.linkButton} onClick={() => setConfirmingLeave(false)}>
-            Keep editing
+            {t('cubeUi.keepEditing')}
           </button>
         </div>
       )}
@@ -169,18 +171,22 @@ export function CubeEditor({ cube, availableSets, onClose, onUse }: CubeEditorPr
       {draft.saveError && <div className={styles.warning}>{draft.saveError}</div>}
 
       <div className={styles.body}>
-        <section className={styles.column} aria-label="Add cards">
-          <div className={styles.sourceTabs} role="tablist" aria-label="Add cards by">
-            {SOURCE_TABS.map((t) => (
+        <section className={styles.column} aria-label={t('cubeUi.addCards')}>
+          <div className={styles.sourceTabs} role="tablist" aria-label={t('cubeUi.addCardsBy')}>
+            {SOURCE_TABS.map((sourceTab) => (
               <button
-                key={t}
+                key={sourceTab}
                 type="button"
                 role="tab"
-                aria-selected={tab === t}
+                aria-selected={tab === sourceTab}
                 className={styles.sourceTab}
-                onClick={() => setTab(t)}
+                onClick={() => setTab(sourceTab)}
               >
-                {SOURCE_TAB_LABEL[t]}
+                {sourceTab === 'SEARCH'
+                  ? t('cubeUi.sourceTabs.search')
+                  : sourceTab === 'SET'
+                    ? t('cubeUi.sourceTabs.set')
+                    : t('cubeUi.sourceTabs.paste')}
               </button>
             ))}
           </div>
@@ -199,15 +205,15 @@ export function CubeEditor({ cube, availableSets, onClose, onUse }: CubeEditorPr
           )}
         </section>
 
-        <section className={styles.column} aria-label="Cards in the cube">
+        <section className={styles.column} aria-label={t('cubeUi.cardsInCube')}>
           <div className={styles.columnHeader}>
             <span className={styles.columnHeaderTitle}>
-              {totalCards} card{totalCards === 1 ? '' : 's'}
-              {entries.length !== totalCards ? ` (${entries.length} different)` : ''}
+              {t('cubeUi.totalCards', { count: totalCards })}
+              {entries.length !== totalCards ? ` (${t('cubeUi.differentCards', { count: entries.length })})` : ''}
             </span>
             {entries.length > 0 && (
               <button type="button" className={styles.linkButton} onClick={() => draft.setEntries([])}>
-                Clear all
+                {t('cubeUi.clearAll')}
               </button>
             )}
           </div>
@@ -221,11 +227,9 @@ export function CubeEditor({ cube, availableSets, onClose, onUse }: CubeEditorPr
             onRarity={draft.setRarity}
             emptyHint={
               <>
-                <p className={styles.emptyTitle}>This cube is empty</p>
+                <p className={styles.emptyTitle}>{t('cubeUi.emptyTitle')}</p>
                 <p className={styles.hint}>
-                  Start from a set with <strong>Add a set</strong> — a whole set at its own rarities, ready to open
-                  as boosters — or paste a list you already have. A shuffled cube of 360 cards seats 8 players at 3
-                  packs of 15.
+                  {t('cubeUi.emptyHint')}
                 </p>
               </>
             }

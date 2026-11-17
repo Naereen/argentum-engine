@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import styles from './learn.module.css'
+import { useTranslation } from 'react-i18next'
 
 /**
  * A real card, from the catalog's image (or Scryfall's), with an optional caption and note
@@ -18,6 +19,7 @@ export function CardImage({
   caption?: string
   note?: string
 }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -35,7 +37,7 @@ export function CardImage({
         type="button"
         className={styles.cardButton}
         onClick={() => setOpen(true)}
-        aria-label={`Read ${name} in full`}
+        aria-label={t('learnPage.readCard', { name })}
       >
         <img src={src} alt={name} className={styles.cardImg} draggable={false} />
       </button>
@@ -46,7 +48,7 @@ export function CardImage({
           <div className={styles.lightbox} onClick={() => setOpen(false)} role="dialog" aria-label={name}>
             <img src={src} alt={name} className={styles.lightboxImg} draggable={false} />
             {note !== undefined && <p className={styles.lightboxNote}>{note}</p>}
-            <p className={styles.lightboxHint}>Click anywhere to close</p>
+            <p className={styles.lightboxHint}>{t('learnPage.closeImage')}</p>
           </div>,
           document.body,
         )}

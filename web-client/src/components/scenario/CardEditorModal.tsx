@@ -13,6 +13,7 @@ import { ManaCost } from '@/components/ui/ManaSymbols'
 import { getCardImageUrl } from '@/utils/cardImages'
 import type { ScenarioBattlefieldCard } from './types'
 import styles from './ScenarioBuilder.module.css'
+import { useTranslation } from 'react-i18next'
 
 /** The counter types worth one click. Anything else can be typed in by name. */
 const COMMON_COUNTERS = [
@@ -30,7 +31,14 @@ const COMMON_COUNTERS = [
   'HONE',
 ]
 
-const COLORS = ['WHITE', 'BLUE', 'BLACK', 'RED', 'GREEN']
+const COLORS = ['WHITE', 'BLUE', 'BLACK', 'RED', 'GREEN'] as const
+const COLOR_KEYS = {
+  WHITE: 'scenario.colors.WHITE',
+  BLUE: 'scenario.colors.BLUE',
+  BLACK: 'scenario.colors.BLACK',
+  RED: 'scenario.colors.RED',
+  GREEN: 'scenario.colors.GREEN',
+} as const
 
 const CARD_TYPES = [
   'Artifact',
@@ -41,7 +49,17 @@ const CARD_TYPES = [
   'Land',
   'Planeswalker',
   'Sorcery',
-]
+] as const
+const CARD_TYPE_KEYS = {
+  Artifact: 'scenario.cardTypes.Artifact',
+  Battle: 'scenario.cardTypes.Battle',
+  Creature: 'scenario.cardTypes.Creature',
+  Enchantment: 'scenario.cardTypes.Enchantment',
+  Instant: 'scenario.cardTypes.Instant',
+  Land: 'scenario.cardTypes.Land',
+  Planeswalker: 'scenario.cardTypes.Planeswalker',
+  Sorcery: 'scenario.cardTypes.Sorcery',
+} as const
 
 function counterLabel(type: string): string {
   if (type === 'PLUS_ONE_PLUS_ONE') return '+1/+1'
@@ -67,6 +85,7 @@ export function CardEditorModal({
   onRemove: () => void
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [newCounter, setNewCounter] = useState('')
 
   useEffect(() => {
@@ -99,7 +118,7 @@ export function CardEditorModal({
         className={styles.modal}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
-        aria-label={`Edit ${card.name}`}
+        aria-label={t('scenario.editCard', { name: card.name })}
       >
         <div className={styles.modalArt}>
           <img src={getCardImageUrl(card.name, summary?.imageUri ?? null, 'normal')} alt={card.name} />
@@ -112,7 +131,7 @@ export function CardEditorModal({
           {typeLine && <div className={styles.modalType}>{typeLine}</div>}
 
           <div className={styles.fieldGroup}>
-            <span className={styles.fieldLabel}>State</span>
+            <span className={styles.fieldLabel}>{t('scenario.state')}</span>
             <div className={styles.toggleRow}>
               <label className={card.tapped ? styles.toggleActive : styles.toggle}>
                 <input
@@ -120,7 +139,7 @@ export function CardEditorModal({
                   checked={!!card.tapped}
                   onChange={(e) => onChange({ tapped: e.target.checked })}
                 />
-                Tapped
+                {t('scenario.tapped')}
               </label>
               <label className={card.summoningSickness ? styles.toggleActive : styles.toggle}>
                 <input
@@ -128,20 +147,20 @@ export function CardEditorModal({
                   checked={!!card.summoningSickness}
                   onChange={(e) => onChange({ summoningSickness: e.target.checked })}
                 />
-                Summoning sickness
+                {t('scenario.summoningSickness')}
               </label>
             </div>
           </div>
 
           <div className={styles.fieldGroup}>
-            <span className={styles.fieldLabel}>Counters</span>
+            <span className={styles.fieldLabel}>{t('scenario.counters')}</span>
             {Object.entries(counters).map(([type, count]) => (
               <div key={type} className={styles.counterRow}>
                 <span className={styles.counterName}>{counterLabel(type)}</span>
                 <button
                   type="button"
                   className={styles.stepBtn}
-                  aria-label={`Remove one ${counterLabel(type)} counter`}
+                  aria-label={t('scenario.removeCounter', { counter: counterLabel(type) })}
                   onClick={() => setCounter(type, count - 1)}
                 >
                   −
@@ -151,13 +170,13 @@ export function CardEditorModal({
                   className={styles.numberInput}
                   value={count}
                   min={0}
-                  aria-label={`${counterLabel(type)} counters`}
+                  aria-label={t('scenario.counterCount', { counter: counterLabel(type) })}
                   onChange={(e) => setCounter(type, Number(e.target.value))}
                 />
                 <button
                   type="button"
                   className={styles.stepBtn}
-                  aria-label={`Add one ${counterLabel(type)} counter`}
+                  aria-label={t('scenario.addOneCounter', { counter: counterLabel(type) })}
                   onClick={() => setCounter(type, count + 1)}
                 >
                   +
@@ -168,7 +187,7 @@ export function CardEditorModal({
               <input
                 className={styles.textInput}
                 list="scenario-counter-types"
-                placeholder="Add a counter type…"
+                placeholder={t('scenario.newCounterPlaceholder')}
                 value={newCounter}
                 onChange={(e) => setNewCounter(e.target.value)}
                 onKeyDown={(e) => {
@@ -190,7 +209,7 @@ export function CardEditorModal({
                   setNewCounter('')
                 }}
               >
-                Add
+                {t('scenario.add')}
               </button>
               <datalist id="scenario-counter-types">
                 {COMMON_COUNTERS.map((c) => (
@@ -204,13 +223,13 @@ export function CardEditorModal({
 
           {hostOptions.length > 0 && (
             <div className={styles.fieldGroup}>
-              <span className={styles.fieldLabel}>Attached to (auras / equipment)</span>
+              <span className={styles.fieldLabel}>{t('scenario.attachedTo')}</span>
               <select
                 className={styles.textInput}
                 value={card.attachedTo ?? ''}
                 onChange={(e) => onChange({ attachedTo: e.target.value })}
               >
-                <option value="">Not attached</option>
+                <option value="">{t('scenario.notAttached')}</option>
                 {hostOptions.map((n) => (
                   <option key={n} value={n}>
                     {n}
@@ -221,12 +240,12 @@ export function CardEditorModal({
           )}
 
           <div className={styles.fieldGroup}>
-            <span className={styles.fieldLabel}>Pre-set “as this enters, choose …”</span>
+            <span className={styles.fieldLabel}>{t('scenario.preselectedChoice')}</span>
             <div className={styles.counterRow}>
               <input
                 className={styles.textInput}
                 list="scenario-creature-types"
-                placeholder="Creature type"
+                placeholder={t('scenario.creatureType')}
                 value={card.chosenCreatureType ?? ''}
                 onChange={(e) => onChange({ chosenCreatureType: e.target.value })}
               />
@@ -235,10 +254,10 @@ export function CardEditorModal({
                 value={card.chosenColor ?? ''}
                 onChange={(e) => onChange({ chosenColor: e.target.value })}
               >
-                <option value="">Colour…</option>
+                <option value="">{t('scenario.colorPlaceholder')}</option>
                 {COLORS.map((c) => (
                   <option key={c} value={c}>
-                    {c[0]! + c.slice(1).toLowerCase()}
+                    {t(COLOR_KEYS[c])}
                   </option>
                 ))}
               </select>
@@ -247,10 +266,10 @@ export function CardEditorModal({
                 value={card.chosenCardType ?? ''}
                 onChange={(e) => onChange({ chosenCardType: e.target.value })}
               >
-                <option value="">Card type…</option>
+                <option value="">{t('scenario.cardTypePlaceholder')}</option>
                 {CARD_TYPES.map((c) => (
                   <option key={c} value={c}>
-                    {c}
+                    {t(CARD_TYPE_KEYS[c])}
                   </option>
                 ))}
               </select>
@@ -264,7 +283,7 @@ export function CardEditorModal({
 
           <div className={styles.modalActions}>
             <button type="button" className={styles.ghostBtn} onClick={onClose}>
-              Done
+              {t('scenario.done')}
             </button>
             <button
               type="button"
@@ -274,7 +293,7 @@ export function CardEditorModal({
                 onClose()
               }}
             >
-              Remove from battlefield
+              {t('scenario.removeFromBattlefield')}
             </button>
           </div>
         </div>

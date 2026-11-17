@@ -9,6 +9,7 @@
  *   list and a deck list import identically.
  */
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { SharedCubeEntry } from '@/api/account'
 import { type CatalogSet, getSetCubeCards, listCatalogSets } from '@/api/cubeSets'
 import type { CardSummary } from '@/components/deckbuilder/cardFilter'
@@ -53,6 +54,7 @@ export function SearchPane({
   onAdd: (name: string) => void
   onHover: CardHoverHandler
 }) {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
 
   const results = useMemo(() => {
@@ -72,20 +74,19 @@ export function SearchPane({
           className={styles.input}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search — e.g. c:red t:creature cmc<=3"
-          aria-label="Search cards to add"
+          placeholder={t('cubeUi.searchExample')}
+          aria-label={t('cubeUi.searchCardsToAdd')}
           autoFocus
         />
       </div>
       <div className={styles.scroll}>
         {!catalogReady ? (
-          <p className={styles.hint}>Loading card catalog…</p>
+          <p className={styles.hint}>{t('cubeUi.loadingCardCatalog')}</p>
         ) : results.length === 0 ? (
           <p className={styles.hint}>
             {query.trim()
-              ? 'No cards match that search, or they are all in the cube already.'
-              : <>Search by name or with the deckbuilder&apos;s query language: <code>c:wu</code>,{' '}
-                <code>t:instant</code>, <code>cmc&gt;=5</code>, <code>s:BLB</code>, <code>o:draw</code>.</>}
+              ? t('cubeUi.noCardsMatch')
+              : t('cubeUi.searchSyntaxHint')}
           </p>
         ) : (
           <ul className={styles.rowList}>
@@ -98,7 +99,7 @@ export function SearchPane({
                   onMouseEnter={(e) => onHover(card, e)}
                   onMouseMove={(e) => onHover(card, e)}
                   onMouseLeave={() => onHover(null)}
-                  title={`Add ${card.name}`}
+                  title={t('cubeUi.addCardNamed', { name: card.name })}
                 >
                   <span className={styles.addGlyph} aria-hidden>+</span>
                   <span className={styles.rowName}>{card.name}</span>
@@ -126,6 +127,7 @@ export function SetPane({
   /** Hand the chosen cards over; the editor merges them and may adopt the set's name and basics. */
   onAdd: (entries: SharedCubeEntry[], set: SetCubeCards) => void
 }) {
+  const { t } = useTranslation()
   const [sets, setSets] = useState<CatalogSet[]>([])
   const [query, setQuery] = useState('')
   const [loaded, setLoaded] = useState<SetCubeCards | null>(null)
@@ -174,23 +176,22 @@ export function SetPane({
             className={styles.input}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find a set — Bloomburrow, BLC…"
-            aria-label="Find a set"
+            placeholder={t('cubeUi.findSet')}
+            aria-label={t('cubeUi.findSet')}
             autoFocus
           />
         </div>
         <div className={styles.scroll}>
           {lastAdded && (
             <p className={styles.addedNote}>
-              Added {lastAdded.added} card{lastAdded.added === 1 ? '' : 's'} from {lastAdded.set}. Pick another
-              set to extend the cube further.
+              {t('cubeUi.addedFromSet', { count: lastAdded.added, set: lastAdded.set })}
             </p>
           )}
           {error && <p className={styles.error}>{error}</p>}
           {sets.length === 0 ? (
-            <p className={styles.hint}>Loading sets…</p>
+            <p className={styles.hint}>{t('cubeUi.loadingSets')}</p>
           ) : matches.length === 0 ? (
-            <p className={styles.hint}>No set matches “{query}”.</p>
+            <p className={styles.hint}>{t('cubeUi.noSetMatches', { query })}</p>
           ) : (
             <ul className={styles.rowList}>
               {matches.map((set) => (
@@ -204,7 +205,7 @@ export function SetPane({
                     <SetIcon code={set.code} className={styles.setGlyph} />
                     <span className={styles.rowName}>{set.name}</span>
                     <span className={styles.rowMeta}>
-                      {loadingCode === set.code ? 'Loading…' : set.releaseDate?.slice(0, 4) ?? ''}
+                      {loadingCode === set.code ? t('cubeUi.loading') : set.releaseDate?.slice(0, 4) ?? ''}
                     </span>
                     <span className={styles.rowSet}>{set.code}</span>
                   </button>
@@ -249,6 +250,7 @@ function SetChoicePanel({
   onBack: () => void
   onAdd: (entries: SharedCubeEntry[]) => void
 }) {
+  const { t } = useTranslation()
   const boosterCount = set.cards.filter((c) => c.product === null).length
   const reprintCount = set.cards.filter((c) => c.reprint).length
   const products = useMemo(() => {
@@ -282,17 +284,20 @@ function SetChoicePanel({
         <div className={styles.setHeaderText}>
           <span className={styles.setHeaderName}>{set.name}</span>
           <span className={styles.hintInline}>
-            {set.code}
-            {set.releaseDate ? `, ${set.releaseDate.slice(0, 4)}` : ''} — {set.cards.length} implemented cards
+            {t('cubeUi.setCardsImplemented', {
+              code: set.code,
+              year: set.releaseDate ? `, ${set.releaseDate.slice(0, 4)}` : '',
+              count: set.cards.length,
+            })}
           </span>
         </div>
         <button type="button" className={styles.linkButton} onClick={onBack}>
-          Change set
+          {t('cubeUi.changeSet')}
         </button>
       </div>
 
       <fieldset className={styles.toggleList}>
-        <legend className={styles.srOnly}>Which cards to add</legend>
+        <legend className={styles.srOnly}>{t('cubeUi.whichCardsToAdd')}</legend>
         <label className={styles.toggleRow} data-disabled={boosterCount === 0}>
           <input
             type="checkbox"
@@ -301,9 +306,9 @@ function SetChoicePanel({
             onChange={(e) => onChoice({ ...choice, boosterCards: e.target.checked })}
           />
           <span className={styles.toggleText}>
-            <span>Booster cards</span>
+            <span>{t('cubeUi.boosterCards')}</span>
             <span className={styles.hintInline}>
-              {boosterCount > 0 ? 'Everything that opens in this set’s packs' : 'This set has no booster pool'}
+              {boosterCount > 0 ? t('cubeUi.boosterCardsHint') : t('cubeUi.noBoosterPool')}
             </span>
           </span>
           <span className={styles.toggleCount}>{boosterCount}</span>
@@ -313,7 +318,7 @@ function SetChoicePanel({
             <input type="checkbox" checked={choice.products.has(id)} onChange={() => toggleProduct(id)} />
             <span className={styles.toggleText}>
               <span>{humanizeProduct(id)}</span>
-              <span className={styles.hintInline}>Printed for this set, outside its packs</span>
+              <span className={styles.hintInline}>{t('cubeUi.productCardsHint')}</span>
             </span>
             <span className={styles.toggleCount}>{count}</span>
           </label>
@@ -326,9 +331,9 @@ function SetChoicePanel({
             onChange={(e) => onChoice({ ...choice, reprints: e.target.checked })}
           />
           <span className={styles.toggleText}>
-            <span>Reprints</span>
+            <span>{t('cubeUi.reprints')}</span>
             <span className={styles.hintInline}>
-              Cards first printed in an earlier set. Turn off to keep only this set’s new cards.
+              {t('cubeUi.reprintsHint')}
             </span>
           </span>
           <span className={styles.toggleCount}>{reprintCount}</span>
@@ -337,9 +342,9 @@ function SetChoicePanel({
 
       <div className={styles.setPreview}>
         <span className={styles.setPreviewCount}>
-          {fresh.length === 0 ? 'Nothing new to add' : `Adds ${fresh.length} card${fresh.length === 1 ? '' : 's'}`}
+          {fresh.length === 0 ? t('cubeUi.nothingNewToAdd') : t('cubeUi.addsCardCount', { count: fresh.length })}
         </span>
-        {already > 0 && <span className={styles.hintInline}>{already} already in the cube stay as they are</span>}
+        {already > 0 && <span className={styles.hintInline}>{t('cubeUi.alreadyInCube', { count: already })}</span>}
         {fresh.length > 0 && (
           <span className={styles.previewRarities}>
             {CUBE_RARITIES.filter((r) => tally[r] > 0).map((r) => (
@@ -353,7 +358,7 @@ function SetChoicePanel({
           </span>
         )}
         <p className={styles.hint}>
-          Each card keeps the rarity it has in {set.name}, so booster-style packs open the way this set’s did.
+          {t('cubeUi.keepsPrintedRarity', { set: set.name })}
         </p>
         <button
           type="button"
@@ -361,7 +366,7 @@ function SetChoicePanel({
           disabled={fresh.length === 0}
           onClick={() => onAdd(selected)}
         >
-          {fresh.length === 0 ? 'Add cards' : `Add ${fresh.length} cards`}
+          {fresh.length === 0 ? t('cubeUi.addCards') : t('cubeUi.addCardCount', { count: fresh.length })}
         </button>
       </div>
     </div>
@@ -382,6 +387,7 @@ export function PastePane({
   onImport: (entries: SharedCubeEntry[], replace: boolean) => void
   onSuggestName: (name: string) => void
 }) {
+  const { t } = useTranslation()
   const [text, setText] = useState('')
 
   const preview = useMemo(() => {
@@ -413,42 +419,41 @@ export function PastePane({
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={'1 Llanowar Elves\n1 Lightning Bolt\n1 Counterspell'}
-        aria-label="Cube list"
+        aria-label={t('cubeUi.cubeList')}
         spellCheck={false}
       />
       <p className={styles.hint}>
-        Plain text, MTG Arena or Moxfield format — one <code>count name</code> per line. A list exported
-        from this editor keeps its cube name.
+        {t('cubeUi.pasteListHint')}
       </p>
 
       {preview && (
         <>
           <div className={styles.importSummary}>
             <span>
-              <strong>{matched}</strong> matched
+              <strong>{matched}</strong> {t('cubeUi.matched')}
               {preview.resolved.totalCards !== matched
-                ? ` of ${preview.resolved.totalCards} (${preview.resolved.totalCards - matched} not implemented)`
+                ? ` ${t('cubeUi.ofTotalNotImplemented', { total: preview.resolved.totalCards, count: preview.resolved.totalCards - matched })}`
                 : ''}
             </span>
             {missing > 0 ? (
-              <span className={styles.badBadge}>{missing} unplayable</span>
+              <span className={styles.badBadge}>{t('cubeUi.unplayableCount', { count: missing })}</span>
             ) : (
-              <span className={styles.okBadge}>ready to play</span>
+              <span className={styles.okBadge}>{t('cubeUi.readyToPlay')}</span>
             )}
             {preview.parsed.errors.length > 0 && (
               <span className={styles.badBadge}>
-                {preview.parsed.errors.length} unparseable line{preview.parsed.errors.length === 1 ? '' : 's'}
+                {t('cubeUi.unparseableLineCount', { count: preview.parsed.errors.length })}
               </span>
             )}
           </div>
 
           {missing > 0 && (
             <details className={styles.importDetails} open>
-              <summary>Not implemented yet ({missing})</summary>
+              <summary>{t('cubeUi.notImplementedYet', { count: missing })}</summary>
               <ul>
                 {preview.resolved.unmatched.map((u) => (
                   <li key={`${u.entry.line}-${u.entry.raw}`}>
-                    Line {u.entry.line}: <code>{u.entry.raw}</code>
+                    {t('cubeUi.lineNumber', { line: u.entry.line })}: <code>{u.entry.raw}</code>
                   </li>
                 ))}
               </ul>
@@ -457,11 +462,11 @@ export function PastePane({
 
           {preview.parsed.errors.length > 0 && (
             <details className={styles.importDetails}>
-              <summary>Unparseable lines ({preview.parsed.errors.length})</summary>
+              <summary>{t('cubeUi.unparseableLines', { count: preview.parsed.errors.length })}</summary>
               <ul>
                 {preview.parsed.errors.map((e) => (
                   <li key={`${e.line}-${e.raw}`}>
-                    Line {e.line}: <code>{e.raw}</code> — {e.reason}
+                    {t('cubeUi.lineNumber', { line: e.line })}: <code>{e.raw}</code> — {e.reason}
                   </li>
                 ))}
               </ul>
@@ -471,7 +476,7 @@ export function PastePane({
           <div className={styles.importActions}>
             {missing > 0 && (
               <button type="button" className={styles.secondaryButton} onClick={() => commit(true, cubeIsEmpty)}>
-                Keep all {preview.resolved.totalCards}
+                {t('cubeUi.keepAllCards', { count: preview.resolved.totalCards })}
               </button>
             )}
             {!cubeIsEmpty && (
@@ -480,9 +485,9 @@ export function PastePane({
                 className={styles.secondaryButton}
                 disabled={matched === 0}
                 onClick={() => commit(false, true)}
-                title="Swap the cube's contents for this list"
+                title={t('cubeUi.replaceCubeHint')}
               >
-                Replace cube
+                {t('cubeUi.replaceCube')}
               </button>
             )}
             <button
@@ -491,7 +496,7 @@ export function PastePane({
               disabled={matched === 0}
               onClick={() => commit(false, cubeIsEmpty)}
             >
-              {cubeIsEmpty ? `Import ${matched} cards` : `Add ${matched} cards`}
+              {cubeIsEmpty ? t('cubeUi.importCardCount', { count: matched }) : t('cubeUi.addCardCount', { count: matched })}
             </button>
           </div>
         </>

@@ -9,6 +9,7 @@ import { MobileCardPreview } from './MobileDraftPool'
 import { ColorPips, CurveBars } from './JumpstartPackParts'
 import { colorsLabel, mergeColors, summarizePack } from './jumpstartPack'
 import styles from './JumpstartOverlay.module.css'
+import { useTranslation } from 'react-i18next'
 
 export interface PackExplorerProps {
   /** The packs the arrows step through — the current offers, or the two chosen packs. */
@@ -29,6 +30,7 @@ export interface PackExplorerProps {
  * 40-card deck you'd actually play — which is the comparison Arena makes by showing both packets.
  */
 export function JumpstartPackExplorer({ packs, index, onIndex, base, onChoose, chooseDisabled, onClose }: PackExplorerProps) {
+  const { t } = useTranslation()
   const pack = packs[index]!
   const [combined, setCombined] = useState(base !== undefined)
   const [hovered, setHovered] = useState<SealedCardInfo | null>(null)
@@ -68,27 +70,27 @@ export function JumpstartPackExplorer({ packs, index, onIndex, base, onChoose, c
 
   return createPortal(
     <div className={styles.explorerBackdrop} onClick={onClose}>
-      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`${pack.theme} pack`}
+      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t('draft.explorerTitle', { theme: pack.theme })}
         className={styles.explorer} onClick={(e) => e.stopPropagation()}>
         <header className={styles.explorerHeader}>
           <div className={styles.explorerTitle}>
-            <span className={styles.eyebrow}>{showCombined ? 'YOUR DECK WITH' : packs.length > 1 ? `PACK ${index + 1} OF ${packs.length}` : 'PACK'}</span>
+            <span className={styles.eyebrow}>{showCombined ? t('draft.yourDeckWith') : packs.length > 1 ? t('draft.packNumber', { number: index + 1, total: packs.length }) : t('draft.packShort')}</span>
             <h2>{showCombined ? <><span className={styles.baseText}>{base!.theme}</span> + <span className={styles.packText}>{pack.theme}</span></> : pack.theme}</h2>
             <div className={styles.explorerMeta}>
               <ColorPips colors={colors} />
               <span>{colorsLabel(colors)}</span>
               <span>·</span>
-              <span>{cards.length} cards</span>
+              <span>{t('draft.cardCount', { count: cards.length })}</span>
               <span>·</span>
-              <span>{summary.creatures} creatures, {summary.spells} spells, {summary.lands} lands</span>
+              <span>{t('draft.sectionCount', { count: summary.creatures, spells: summary.spells, lands: summary.lands })}</span>
             </div>
           </div>
           <CurveBars size="large" curve={packSummary.curve} base={showCombined ? baseSummary!.curve : undefined} />
-          <button className={styles.close} onClick={onClose} aria-label="Close pack">✕</button>
+          <button className={styles.close} onClick={onClose} aria-label={t('draft.closePack')}>✕</button>
         </header>
-        {base && base.id !== pack.id && <div className={styles.viewToggle} role="group" aria-label="Show">
-          <button aria-pressed={!showCombined} onClick={() => setCombined(false)}>This pack · 20</button>
-          <button aria-pressed={showCombined} onClick={() => setCombined(true)}>With {base.theme} · 40</button>
+        {base && base.id !== pack.id && <div className={styles.viewToggle} role="group" aria-label={t('draft.show')}>
+          <button aria-pressed={!showCombined} onClick={() => setCombined(false)}>{t('draft.thisPack')}</button>
+          <button aria-pressed={showCombined} onClick={() => setCombined(true)}>{t('draft.withPack', { theme: base.theme })}</button>
           {showCombined && <span className={styles.legend}>
             <span className={styles.legendBase}>{base.theme}</span>
             <span className={styles.legendPack}>{pack.theme}</span>
@@ -96,13 +98,13 @@ export function JumpstartPackExplorer({ packs, index, onIndex, base, onChoose, c
         </div>}
         <div className={styles.explorerBody}>
           {summary.sections.map((section) => <section key={section.key} className={styles.explorerSection}>
-            <h3>{section.label} <span>{section.total}</span></h3>
+            <h3>{t(`draft.${section.key}`)} <span>{section.total}</span></h3>
             <ul className={styles.cardGrid}>
               {section.entries.map(({ card, count }) => {
                 const from = origin(card.name)
                 return <li key={card.name} className={`${styles.cardTile} ${from ? styles[`from_${from}`] : ''}`}>
                   <button
-                    aria-label={`${card.name}${count > 1 ? `, ${count} copies` : ''}`}
+                    aria-label={count > 1 ? t('draft.copies', { name: card.name, count }) : card.name}
                     onMouseEnter={(e) => { setHovered(card); setHoverPos({ x: e.clientX, y: e.clientY }) }}
                     onMouseMove={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
                     onMouseLeave={() => { setHovered(null); dfc.resetFlip() }}
@@ -118,13 +120,13 @@ export function JumpstartPackExplorer({ packs, index, onIndex, base, onChoose, c
         </div>
         <footer className={styles.explorerFooter}>
           {packs.length > 1 ? <div className={styles.pager}>
-            <button onClick={() => onIndex((index + packs.length - 1) % packs.length)} aria-label="Previous pack">←</button>
+            <button onClick={() => onIndex((index + packs.length - 1) % packs.length)} aria-label={t('draft.previousPack')}>←</button>
             <span>{packs.map((p, i) => <button key={p.id} aria-label={p.theme} aria-current={i === index}
               className={i === index ? styles.dotActive : styles.dot} onClick={() => onIndex(i)} />)}</span>
-            <button onClick={() => onIndex((index + 1) % packs.length)} aria-label="Next pack">→</button>
+            <button onClick={() => onIndex((index + 1) % packs.length)} aria-label={t('draft.nextPack')}>→</button>
           </div> : <span />}
           {onChoose && <button className={styles.choose} disabled={chooseDisabled} onClick={() => onChoose(pack)}>
-            Choose {pack.theme}
+            {t('draft.choosePack', { theme: pack.theme })}
           </button>}
         </footer>
       </div>

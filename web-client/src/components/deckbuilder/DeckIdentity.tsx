@@ -8,6 +8,7 @@
  * too, so a cover never shows something you no longer play.
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { DECK_NOTE_MAX_LENGTH } from '@/store/deckLibrary'
 import { heroArtUrl, rarestCard } from '@/components/deck/DeckTile'
 import type { CardSummary } from './cardFilter'
@@ -38,6 +39,7 @@ export function DeckIdentity({
   /** Trailing controls — the format picker. */
   children?: ReactNode
 }) {
+  const { t } = useTranslation()
   const art = heroArtUrl(cover)
   return (
     <div className={styles.identity} data-layout={layout}>
@@ -45,8 +47,8 @@ export function DeckIdentity({
         type="button"
         className={styles.cover}
         onClick={onOpenCoverPicker}
-        title={cover ? `Cover: ${cover.name}${coverChosen ? '' : ' (automatic)'} — click to change` : 'Choose a cover card'}
-        aria-label="Choose the deck's cover card"
+        title={cover ? t('deckbuilder.coverTitle', { name: cover.name, automatic: coverChosen ? '' : ` (${t('deckbuilder.automatic').toLowerCase()})` }) : t('deckbuilder.chooseCover')}
+        aria-label={t('deckbuilder.chooseCover')}
         data-testid="deck-cover-button"
       >
         {art ? (
@@ -58,7 +60,7 @@ export function DeckIdentity({
         )}
         <span className={styles.coverHint} aria-hidden>
           <ImageIcon size={13} />
-          {art ? 'Change' : 'Cover'}
+          {art ? t('deckbuilder.change') : t('deckbuilder.cover')}
         </span>
       </button>
       <div className={styles.fields}>
@@ -120,6 +122,7 @@ export function CoverPicker({
   onChoose: (name: string | null) => void
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [filter, setFilter] = useState('')
 
   useEffect(() => {
@@ -182,10 +185,10 @@ export function CoverPicker({
       >
         <header className={styles.dialogHeader}>
           <div>
-            <h2 id="cover-picker-title" className={styles.dialogTitle}>Choose a cover</h2>
-            <p className={styles.dialogSubtitle}>The art that stands for this deck wherever you pick it.</p>
+            <h2 id="cover-picker-title" className={styles.dialogTitle}>{t('deckbuilder.chooseCover')}</h2>
+            <p className={styles.dialogSubtitle}>{t('deckbuilder.coverDescription')}</p>
           </div>
-          <button type="button" className={styles.closeButton} onClick={onClose} aria-label="Close">
+          <button type="button" className={styles.closeButton} onClick={onClose} aria-label={t('common.close')}>
             ✕
           </button>
         </header>
@@ -194,22 +197,22 @@ export function CoverPicker({
             className={styles.search}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Find a card…"
-            aria-label="Filter cards"
+            placeholder={t('deckbuilder.findCard')}
+            aria-label={t('deckbuilder.filterCards')}
             autoFocus
           />
         )}
         <div className={styles.gridScroll}>
           {candidates.length === 0 ? (
-            <p className={styles.empty}>Add some cards to the deck to pick one of them as its cover.</p>
+            <p className={styles.empty}>{t('deckbuilder.addCardsForCover')}</p>
           ) : (
-            <div className={styles.grid} role="listbox" aria-label="Cover card">
+            <div className={styles.grid} role="listbox" aria-label={t('deckbuilder.coverCard')}>
               {!filter && (
                 <CoverOption
                   art={automaticArt}
-                  label="Automatic"
-                  badge="Auto"
-                  sublabel={automatic ? `Rarest card · ${automatic.name}` : 'Rarest card'}
+                  label={t('deckbuilder.automatic')}
+                  badge={t('deckbuilder.auto')}
+                  sublabel={automatic ? t('deckbuilder.rarestCardName', { name: automatic.name }) : t('deckbuilder.rarestCard')}
                   selected={chosen === null}
                   onSelect={() => onChoose(null)}
                 />
@@ -219,12 +222,12 @@ export function CoverPicker({
                   key={c.card.name}
                   art={c.art}
                   label={c.card.name}
-                  sublabel={c.isCommander ? 'Commander' : undefined}
+                  sublabel={c.isCommander ? t('deckbuilder.commander') : undefined}
                   selected={chosen === c.card.name}
                   onSelect={() => onChoose(c.card.name)}
                 />
               ))}
-              {shown.length === 0 && <p className={styles.empty}>No card in the deck matches “{filter}”.</p>}
+              {shown.length === 0 && <p className={styles.empty}>{t('deckbuilder.noCardMatches', { filter })}</p>}
             </div>
           )}
         </div>

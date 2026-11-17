@@ -17,6 +17,7 @@
  * confirm without re-reading the set code.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { PrintingRef } from '@/types'
 import styles from './PrintingPicker.module.css'
 
@@ -63,6 +64,7 @@ export function PrintingPicker({
   onClear: () => void
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [printings, setPrintings] = useState<PrintingDTO[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [setFilter, setSetFilter] = useState<string>('') // '' = all sets
@@ -87,12 +89,12 @@ export function PrintingPicker({
         if (!cancelled) setPrintings(list)
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load printings')
+        if (!cancelled) setError(e instanceof Error ? e.message : t('deckbuilder.failedLoadPrintings'))
       })
     return () => {
       cancelled = true
     }
-  }, [cardName])
+  }, [cardName, t])
 
   // Dismiss on Escape. (Outside-click is handled by the backdrop's onMouseDown.)
   useEffect(() => {
@@ -158,7 +160,7 @@ export function PrintingPicker({
         className={styles.dialog}
         role="dialog"
         aria-modal="true"
-        aria-label={`Pick a printing for ${cardName}`}
+        aria-label={t('deckbuilder.pickPrintingFor', { cardName })}
       >
         <header className={styles.header}>
           <span className={styles.title}>{cardName}</span>
@@ -168,9 +170,9 @@ export function PrintingPicker({
                 className={styles.setSelect}
                 value={setFilter}
                 onChange={(e) => setSetFilter(e.target.value)}
-                aria-label="Filter by set"
+                aria-label={t('deckbuilder.filterBySet')}
               >
-                <option value="">All sets ({printings.length})</option>
+                <option value="">{t('deckbuilder.allSets', { count: printings.length })}</option>
                 {setOptions.map((s) => (
                   <option key={s.code} value={s.code}>
                     {s.name ? `${s.name} (${s.code})` : s.code}
@@ -180,10 +182,10 @@ export function PrintingPicker({
               <input
                 type="search"
                 className={styles.search}
-                placeholder="Search set, number, artist…"
+                placeholder={t('deckbuilder.searchPrinting')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                aria-label="Search printings"
+                aria-label={t('deckbuilder.searchPrintings')}
               />
             </div>
           )}
@@ -193,20 +195,20 @@ export function PrintingPicker({
             onClick={onClear}
             disabled={pinned === undefined}
           >
-            Use default
+            {t('deckbuilder.useDefault')}
           </button>
-          <button type="button" className={styles.closeButton} onClick={onClose} aria-label="Close">
+          <button type="button" className={styles.closeButton} onClick={onClose} aria-label={t('common.close')}>
             ✕
           </button>
         </header>
         <div className={styles.body}>
-          {printings === null && error === null && <div className={styles.muted}>Loading printings…</div>}
-          {error !== null && <div className={styles.error}>Couldn't load printings: {error}</div>}
+          {printings === null && error === null && <div className={styles.muted}>{t('deckbuilder.loadingPrintings')}</div>}
+          {error !== null && <div className={styles.error}>{t('deckbuilder.couldNotLoadPrintings', { error })}</div>}
           {printings !== null && printings.length === 0 && (
-            <div className={styles.muted}>No printings registered for this card yet.</div>
+            <div className={styles.muted}>{t('deckbuilder.noPrintingsYet')}</div>
           )}
           {hasPrintings && totalShown === 0 && (
-            <div className={styles.muted}>No printings match this filter.</div>
+            <div className={styles.muted}>{t('deckbuilder.noPrintingsMatch')}</div>
           )}
           {hasPrintings &&
             groups.map((g) => (
