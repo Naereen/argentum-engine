@@ -7,6 +7,7 @@ import type React from 'react'
 import { Link } from 'react-router-dom'
 import { PageShell, pageStyles } from '@/components/ui/PageShell'
 import styles from './EntryCard.module.css'
+import { useTranslation } from 'react-i18next'
 
 interface EntryCardProps {
   /** Small caps line above the title — what kind of invite this is. */
@@ -29,6 +30,7 @@ interface EntryCardProps {
 }
 
 export function EntryCard({ kicker, title, code, facts, error, nameEntry, progressText }: EntryCardProps) {
+  const { t } = useTranslation()
   return (
     <PageShell width="narrow">
       <div className={styles.center}>
@@ -51,20 +53,20 @@ export function EntryCard({ kicker, title, code, facts, error, nameEntry, progre
           {error ? (
             <>
               <p className={styles.error} role="alert">{error}</p>
-              <Link to="/" className={`${pageStyles.button} ${styles.wide}`}>Back to home</Link>
+              <Link to="/" className={`${pageStyles.button} ${styles.wide}`}>{t('lobby.backToHome')}</Link>
             </>
           ) : nameEntry ? (
             <form
               className={styles.form}
               onSubmit={(e) => { e.preventDefault(); nameEntry.onSubmit() }}
             >
-              <label className={styles.label} htmlFor="entry-name">Your name</label>
+              <label className={styles.label} htmlFor="entry-name">{t('lobby.yourName')}</label>
               <input
                 id="entry-name"
                 type="text"
                 value={nameEntry.value}
                 onChange={(e) => nameEntry.onChange(e.target.value)}
-                placeholder="Your name"
+                placeholder={t('lobby.yourName')}
                 autoFocus
                 maxLength={20}
                 className={`${pageStyles.input} ${styles.input}`}

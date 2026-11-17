@@ -11,6 +11,7 @@
  * link worth sending. Opening a card pushes a history entry, so Back closes it.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { CardDetailDialog } from '@/components/cards/CardDetailDialog'
 import { clearWorkingCopy } from '@/components/deckbuilder/BuilderModeSwitch'
@@ -44,6 +45,7 @@ interface OpenedHere {
 }
 
 export function CardsPage() {
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -147,34 +149,39 @@ export function CardsPage() {
     [navigate],
   )
 
+  const locale = i18n.resolvedLanguage ?? 'en'
   const resultLabel = loading
-    ? 'Loading…'
+    ? t('library.cardsPage.loading')
     : displayed.length < filtered.length
-      ? `Showing ${displayed.length.toLocaleString()} of ${filtered.length.toLocaleString()}`
-      : `${filtered.length.toLocaleString()} card${filtered.length === 1 ? '' : 's'}`
+      ? t('library.cardsPage.showing', {
+          shown: displayed.length.toLocaleString(locale),
+          total: filtered.length.toLocaleString(locale),
+        })
+      : t('library.cardsPage.cardCount', { count: filtered.length })
 
   return (
-    <PageShell title="Cards" fit width="full" plain>
+    <PageShell title={t('library.cardsPage.title')} fit width="full" plain>
       <div className={styles.toolbar}>
         <div className={styles.intro}>
-          <h1 className={styles.title}>Card browser</h1>
+          <h1 className={styles.title}>{t('library.cardsPage.browserTitle')}</h1>
           <p className={styles.lede}>
-            {catalog.length > 0 ? `${catalog.length.toLocaleString()} cards` : 'Every card'} you can play in Argentum.
-            Click one for a closer look.
+            {catalog.length > 0
+              ? t('library.cardsPage.descriptionWithCount', { count: catalog.length.toLocaleString(locale) })
+              : t('library.cardsPage.descriptionAll')}
           </p>
         </div>
-        <div className={styles.paneTabs} role="tablist" aria-label="Card browser panes">
+        <div className={styles.paneTabs} role="tablist" aria-label={t('library.cardsPage.panesLabel')}>
           <button type="button" role="tab" className={styles.paneTab} aria-selected={pane === 'cards'} onClick={() => setPane('cards')}>
-            Cards
+            {t('library.cardsPage.cardsTab')}
           </button>
           <button type="button" role="tab" className={styles.paneTab} aria-selected={pane === 'filters'} onClick={() => setPane('filters')}>
-            Filters{query.trim() && <span className={styles.paneDot} aria-label="(active)" />}
+            {t('library.cardsPage.filtersTab')}{query.trim() && <span className={styles.paneDot} aria-label={t('library.cardsPage.activeFilter')} />}
           </button>
         </div>
       </div>
 
       <div className={styles.workspace} data-pane={pane}>
-        <aside className={styles.filtersPane} aria-label="Filters">
+        <aside className={styles.filtersPane} aria-label={t('library.cardsPage.filters')}>
           <FilterSection query={query} onQueryChange={setQuery} catalog={catalog} setInfos={setInfos} advanced={browse.advanced} />
         </aside>
 
@@ -187,17 +194,13 @@ export function CardsPage() {
             errors={browse.errors}
             explanation={browse.explanation}
             resultLabel={resultLabel}
-            actionHint={
-              <>
-                <kbd>Click</kbd> a card to see it up close
-              </>
-            }
+            actionHint={<><kbd>{t('library.cardsPage.click')}</kbd> {t('library.cardsPage.clickToViewCard')}</>}
             filterChip={<TileSizeToggle value={tileSize} onChange={setTileSize} />}
           />
           {error ? (
-            <div className={styles.notice} role="alert">Couldn’t load the card catalogue: {error}</div>
+            <div className={styles.notice} role="alert">{t('library.cardsPage.catalogError', { error })}</div>
           ) : loading ? (
-            <div className={styles.notice}>Loading cards…</div>
+            <div className={styles.notice}>{t('library.cardsPage.loadingCards')}</div>
           ) : (
             <CardGrid
               cards={displayed}
@@ -206,7 +209,7 @@ export function CardsPage() {
               hasMore={browse.hasMore}
               onShowMore={browse.showMore}
               large={tileSize === 'large'}
-              tileLabel={(c) => `Show ${c.name}`}
+              tileLabel={(c) => t('library.cardsPage.showCard', { name: c.name })}
             />
           )}
         </main>
@@ -232,14 +235,15 @@ export function CardsPage() {
 const NO_COUNTS: Record<string, number> = {}
 
 function TileSizeToggle({ value, onChange }: { value: TileSize; onChange: (v: TileSize) => void }) {
+  const { t } = useTranslation()
   return (
-    <div className={styles.sizeToggle} role="group" aria-label="Card size">
-      <button type="button" aria-pressed={value === 'regular'} onClick={() => onChange('regular')} title="Smaller cards — more per row">
+    <div className={styles.sizeToggle} role="group" aria-label={t('library.cardsPage.cardSize')}>
+      <button type="button" aria-pressed={value === 'regular'} onClick={() => onChange('regular')} title={t('library.cardsPage.smallerCards')}>
         <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden focusable="false">
           {[1, 5.5, 10].flatMap((x) => [1, 5.5, 10].map((y) => <rect key={`${x}-${y}`} x={x} y={y} width="3" height="3" rx="0.6" fill="currentColor" />))}
         </svg>
       </button>
-      <button type="button" aria-pressed={value === 'large'} onClick={() => onChange('large')} title="Bigger cards">
+      <button type="button" aria-pressed={value === 'large'} onClick={() => onChange('large')} title={t('library.cardsPage.biggerCards')}>
         <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden focusable="false">
           {[1, 7.5].flatMap((x) => [1, 7.5].map((y) => <rect key={`${x}-${y}`} x={x} y={y} width="5.5" height="5.5" rx="1" fill="currentColor" />))}
         </svg>

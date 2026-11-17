@@ -6,7 +6,7 @@ import { useInteraction } from '@/hooks/useInteraction'
 import { useViewingPlayer, useOpponent, useOpponents, useViewedOpponent, useStackCards, selectPriorityMode, useGhostCards, useBattlefieldCards, selectTeamMap, useIdentityColor, useViewerTeamIndex, useIsAlly, identitySeatColor, selectViewingPlayerId, useEliminatedBottomSeatId, useViewerEliminated, useIsSharedLifeTeamGame, useTeamLabelFor, useTeammateNames, useTeamHasPriority, useIsMyTeamTurn, useIsSharedTurnTeamGame, turnQueueHintFor } from '@/store/selectors'
 import { useMultiplayerView, useCombatDefenderFocus } from '@/hooks/useMultiplayerView'
 import { OpponentRail, railReservedWidth, overviewSupported } from './OpponentRail'
-import { hand, getNextStep, StepShortNames, actingPlayerFor } from '@/types'
+import { hand, getNextStep, actingPlayerFor } from '@/types'
 import type { ClientGameState, ClientPlayer, EntityId } from '@/types'
 import type React from 'react'
 import { StepStrip } from '../ui/StepStrip'
@@ -46,6 +46,7 @@ import { markLearnSignal } from '@/learn/signals'
 import { styles } from './board/styles'
 import { unassignedAttackTargets } from '@/utils/attackTargets'
 import { otariaBottomOrder, otariaOverviewMapPosition } from './otariaOverviewLayout'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Props for GameBoard component.
@@ -82,6 +83,7 @@ function OtariaOverviewMapSlot({ gameState }: { gameState: ClientGameState }) {
  * This is the main orchestrator component that composes all game UI elements.
  */
 export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardProps) {
+  const { t } = useTranslation()
   const blockerDeclarationDescription = useGameStore((s) => s.legalActions.find((a) => a.actionType === 'DeclareBlockers')?.description)
   const offeredPassAction = useGameStore((s) => s.legalActions.find((a) => a.actionType === 'PassPriority')?.action)
   const pendingDecision = useGameStore((state) => state.pendingDecision)
@@ -863,21 +865,21 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
     }
     // Fallback for full control mode (server sends null)
     if (stackCards.length > 0) {
-      return 'Resolve'
+      return t('gameCore.resolve')
     }
     // On opponent's turn, just show "Pass" — we're yielding priority, not driving the turn
     if (!isMyTurn) {
-      return 'Pass'
+      return t('gameCore.pass')
     }
-    if (gameState.otaria) return 'Pass'
+    if (gameState.otaria) return t('gameCore.pass')
     const nextStep = getNextStep(gameState.currentStep)
     if (nextStep) {
       if (nextStep === 'END') {
-        return 'End Turn'
+        return t('gameCore.endTurn')
       }
-      return `To ${StepShortNames[nextStep]}`
+      return t('gameCore.toStep', { step: t(`phases.steps.${nextStep}`) })
     }
-    return 'Pass'
+    return t('gameCore.pass')
   }
 
   // Get pass button colors based on priority mode
@@ -909,10 +911,10 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
     <button
       type="button"
       aria-pressed={aiControlEnabled}
-      aria-label={aiControlEnabled ? 'Take back control from AI' : 'Let AI play for you'}
+      aria-label={t(aiControlEnabled ? 'gameCore.takeControlFromAi' : 'gameCore.letAiPlay')}
       title={aiControlEnabled
-        ? 'The AI is playing your seat. Select to take back control.'
-        : 'Let the AI play your seat while you are away.'}
+        ? t('gameCore.aiPlayingTakeControl')
+        : t('gameCore.aiPlayWhileAway')}
       disabled={aiControlPending}
       onClick={() => setAiControl(!aiControlEnabled)}
       style={{
@@ -933,7 +935,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
         whiteSpace: 'nowrap',
       }}
     >
-      {aiControlPending ? 'Switching…' : aiControlEnabled ? 'AI playing · Take control' : 'Let AI play'}
+      {aiControlPending ? t('gameCore.switching') : aiControlEnabled ? t('gameCore.aiPlayingTakeControlShort') : t('gameCore.letAiPlay')}
     </button>
   ) : null
 
@@ -981,7 +983,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
         <>
           <button
             onClick={returnToMenu}
-            title="Leave the game and return to the menu"
+            title={t('gameCore.leaveGame')}
             style={{
               position: 'fixed',
               top: responsive.isMobile ? 8 : 12,
@@ -1003,7 +1005,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
               cursor: 'pointer',
             }}
           >
-            Leave Game
+            {t('gameCore.leaveGameShort')}
           </button>
           {/* Spectating banner — top center, in the chrome row between the Fullscreen
               and Leave Game buttons (the bottom of the screen belongs to the step strip
@@ -1035,11 +1037,11 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
             }}
           >
             <span aria-hidden>💀</span>
-            You've been eliminated — spectating
+            {t('gameCore.eliminatedSpectating')}
             {survivors.length > 1 && (
               <>
             <span aria-hidden style={{ width: 1, height: 14, background: '#3a3a44' }} />
-            <span style={{ color: '#7c8aa8', fontWeight: 600 }}>Bottom seat:</span>
+            <span style={{ color: '#7c8aa8', fontWeight: 600 }}>{t('gameCore.bottomSeat')}:</span>
             {survivors.map((o) => {
               const idx = gameState.players.findIndex((p) => p.playerId === o.playerId)
               const seat = identitySeatColor(teamMap, o.playerId, idx)
@@ -1048,7 +1050,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                 <button
                   key={o.playerId}
                   onClick={() => setEliminatedBottomSeat(o.playerId)}
-                  title={`Watch from behind ${o.name}'s board (bottom half of the table)`}
+                  title={t('gameCore.watchFromBottom', { playerName: o.name })}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -1813,8 +1815,8 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                   requestUndo()
                 }}
                 disabled={!undoAvailable}
-                title="Undo"
-                aria-label="Undo"
+                title={t('gameCore.undo')}
+                aria-label={t('gameCore.undo')}
                 style={{
                   ...styles.floatingBarButton,
                   color: undoAvailable ? '#d4a017' : '#555',
@@ -1827,12 +1829,12 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
               </button>
               <button
                 onClick={toggleAutoTap}
-                aria-label={autoTapEnabled ? 'Auto tap lands' : 'Manual mana tapping'}
+                aria-label={t(autoTapEnabled ? 'gameCore.autoTapLands' : 'gameCore.manualManaTapping')}
                 aria-pressed={!autoTapEnabled}
                 title={
                   autoTapEnabled
-                    ? 'Auto Tap: Lands are tapped automatically. Click to switch to manual mana selection.'
-                    : 'Manual Tap: You choose which lands to tap. Click to switch to auto tap.'
+                    ? t('gameCore.autoTapTitle')
+                    : t('gameCore.manualTapTitle')
                 }
                 style={{
                   ...styles.floatingBarButton,
@@ -1850,10 +1852,10 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                 onClick={cyclePriorityMode}
                 title={
                   serverPriorityMode === 'fullControl'
-                    ? 'Full Control: You receive priority at every step. Click to switch to Auto.'
+                    ? t('gameCore.fullControlTitle')
                     : serverPriorityMode === 'stops'
-                    ? 'Stops: Pauses on opponent spells/abilities and combat damage. Click to switch to Full Control.'
-                    : 'Auto: Smart auto-passing. Click to switch to Stops.'
+                    ? t('gameCore.stopsTitle')
+                    : t('gameCore.autoPriorityTitle')
                 }
                 style={{
                   ...styles.floatingBarButton,
@@ -1875,9 +1877,9 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                   transition: 'all 0.2s',
                 }}
               >
-                {serverPriorityMode === 'fullControl' ? 'Full Control' :
-                 serverPriorityMode === 'stops' ? 'Stops' :
-                 'Auto'}
+                {serverPriorityMode === 'fullControl' ? t('preferences.fullControl') :
+                 serverPriorityMode === 'stops' ? t('preferences.stops') :
+                 t('preferences.auto')}
               </button>
               {/* The in-game help entry. Opens a drawer rather than navigating — leaving `/` would
                   unmount the app and drop the WebSocket. */}
@@ -1967,7 +1969,9 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
         >
           <span aria-hidden>⚔️</span>
           <span>
-            {attackRestriction.direction ? `Attack ${attackRestriction.direction} — you can only attack ` : 'You can only attack '}
+            {attackRestriction.direction
+              ? t('gameCore.attackDirectionOnly', { direction: attackRestriction.direction === 'left' ? t('gameCore.left') : t('gameCore.right') })
+              : t('gameCore.youCanOnlyAttack')}
             {attackRestriction.attackable.map((o, i) => {
               const idx = gameState.players.findIndex((p) => p.playerId === o.playerId)
               const seat = identitySeatColor(teamMap, o.playerId, idx)
@@ -1992,7 +1996,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
             // above a loose row of pills, which read as two unrelated things over the board.
             <div
               role="group"
-              aria-label="Choose a defender"
+              aria-label={t('gameCore.chooseDefender')}
               style={{
                 position: 'fixed',
                 bottom: 110,
@@ -2018,7 +2022,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                 fontSize: responsive.isMobile ? 11 : 12,
                 fontWeight: 600,
               }}>
-                Choose a defender{combatState.selectedAttackers.length > 1 ? ` (${unassignedCount} unassigned)` : ''}
+                {t(combatState.selectedAttackers.length > 1 ? 'gameCore.chooseDefenderWithCount' : 'gameCore.chooseDefender', { count: unassignedCount })}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 6 }}>
                 {targets.map((target) => {
@@ -2078,7 +2082,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                   opacity: combatState.validCreatures.length === 0 ? 0.5 : 1,
                 }}
               >
-                Attack All
+                {t('gameCore.attackAll')}
               </button>
               <button
                 onClick={() => confirmCombat(interactionEpoch)}
@@ -2088,7 +2092,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                   ...compactCombatButton,
                 }}
               >
-                Skip Attacking
+                {t('gameCore.skipAttacking')}
               </button>
             </>
           ) : (
@@ -2101,7 +2105,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                   <button
                     onClick={() => confirmCombat(interactionEpoch)}
                     disabled={awaitingDefender}
-                    title={awaitingDefender ? 'Choose a defender for every attacker first' : undefined}
+                    title={awaitingDefender ? t('gameCore.chooseDefenderForEachAttacker') : undefined}
                     style={{
                       ...styles.floatingBarButton,
                       ...styles.combatActionButton,
@@ -2112,7 +2116,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                       cursor: awaitingDefender ? 'not-allowed' : 'pointer',
                     }}
                   >
-                    Attack with {combatState.selectedAttackers.length}
+                    {t('gameCore.attackWithCount', { count: combatState.selectedAttackers.length })}
                   </button>
                 )
               })()}
@@ -2151,7 +2155,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                   ...compactCombatButton,
                 }}
               >
-                {blockerDeclarationDescription === 'Choose blocker piles' ? blockerDeclarationDescription : 'No Blocks'}
+                {blockerDeclarationDescription === 'Choose blocker piles' ? t('decisions.blockerPiles') : t('gameCore.noBlocks')}
               </button>
             </>
           ) : (
@@ -2198,8 +2202,8 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
             const isPartial = distributeState.allowPartial === true
             const isPrevention = distributeState.prompt.toLowerCase().includes('prevention')
             const isCounters = distributeState.prompt.toLowerCase().includes('counter')
-            const noun = isCounters ? 'counters' : isPrevention ? 'prevention' : 'damage'
-            const confirmLabel = isCounters ? 'Confirm' : isPrevention ? 'Confirm Prevention' : 'Confirm Damage'
+            const noun = isCounters ? t('gameCore.counters') : isPrevention ? t('gameCore.prevention') : t('gameCore.damage')
+            const confirmLabel = isCounters ? t('common.confirm') : isPrevention ? t('gameCore.confirmPrevention') : t('gameCore.confirmDamage')
             const canConfirm = isPartial ? true : distributeRemaining === 0
             const isComplete = distributeRemaining === 0
             return (
@@ -2217,8 +2221,8 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                     fontWeight: 600,
                   }}>
                     {isComplete
-                      ? `All ${noun} allocated`
-                      : `${distributeRemaining} ${isCounters && distributeRemaining === 1 ? 'counter' : noun} remaining`}
+                      ? t('gameCore.allAllocated', { noun })
+                      : t('gameCore.remainingToAllocate', { count: distributeRemaining, noun: isCounters && distributeRemaining === 1 ? t('gameCore.counter') : noun })}
                   </div>
                   <div style={{
                     color: 'rgba(255, 255, 255, 0.7)',
@@ -2260,7 +2264,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
           ? Math.min(100, (counterTotalAllocated / requiredTotal) * 100)
           : 0
         const subtext = counterDistributionState.description
-          ?? 'Remove +1/+1 counters from your creatures'
+          ?? t('gameCore.removeCountersHint')
         const panelWidth = responsive.isMobile ? 220 : 240
         return (
           <div style={{
@@ -2488,7 +2492,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                       <ManaSymbol symbol={symbol.slice(1, -1)} size={20} />
                       <div
                         role="radiogroup"
-                        aria-label={`Pay ${symbol} with`}
+                        aria-label={t('gameCore.paySymbolWith', { symbol })}
                         style={{ display: 'flex', borderRadius: 6, border: '1px solid #555', overflow: 'hidden' }}
                       >
                         <button
@@ -2498,18 +2502,18 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                           onClick={paidWithLife ? toggle : undefined}
                           style={segment(!paidWithLife, true, 'rgba(37, 99, 235, 0.85)')}
                         >
-                          <ManaSymbol symbol={symbol.slice(1, -3)} size={14} /> Mana
+                          <ManaSymbol symbol={symbol.slice(1, -3)} size={14} /> {t('gameCore.mana')}
                         </button>
                         <button
                           type="button"
                           role="radio"
                           aria-checked={paidWithLife}
                           disabled={!canPayLife}
-                          title={canPayLife ? undefined : 'Not enough life'}
+                          title={canPayLife ? undefined : t('gameCore.notEnoughLife')}
                           onClick={paidWithLife ? undefined : toggle}
                           style={segment(paidWithLife, canPayLife, 'rgba(185, 28, 28, 0.9)')}
                         >
-                          ♥ 2 Life
+                          ♥ 2 {t('gameCore.life')}
                         </button>
                       </div>
                     </div>
@@ -2517,7 +2521,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                 })}
                 {lifePips.length > 0 && (
                   <span style={{ color: '#fca5a5', fontSize: responsive.fontSize.small }}>
-                    Life {life} → {lifeAfter}
+                    {t('gameCore.lifeTransition', { before: life, after: lifeAfter })}
                   </span>
                 )}
               </div>

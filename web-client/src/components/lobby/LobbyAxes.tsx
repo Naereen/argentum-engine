@@ -44,31 +44,30 @@ import {
 import type { UnifiedLobbyView } from './lobbyViewModel'
 import type { LobbyCommands } from './useLobbyCommands'
 import styles from '../ui/GameUI.module.css'
+import { useTranslation } from 'react-i18next'
 
-const CARDS_CAPTIONS: Record<CardsKind, string> = {
-  BRING_A_DECK: 'Everyone plays a deck they already built — saved, pasted or imported.',
+const CARDS_CAPTIONS: Record<CardsKind, 'lobbyAxes.cardsBringDeck' | 'lobbyAxes.cardsRandom' | 'lobbyAxes.cardsMomir' | 'lobbyAxes.cardsJumpIn' | 'lobbyAxes.cardsSealed' | 'lobbyAxes.cardsDraft'> = {
+  BRING_A_DECK: 'lobbyAxes.cardsBringDeck',
   RANDOM:
-    'The server rolls you a pool, so there is nothing to prepare. This one is per player: your opponent can still bring a deck of their own.',
-  MOMIR:
-    'No deckbuilding — everyone runs 60 basics. Discard a card and pay {X} to flip a random creature with mana value X.',
-  JUMP_IN: 'Choose two themed packs, combine them into a 40-card deck, and play. Lands included — no deckbuilding needed.',
-  SEALED: 'Open boosters and build a deck from what you get.',
-  DRAFT: 'Pass packs around and pick one card at a time, then build from your picks.',
+    'lobbyAxes.cardsRandom',
+  MOMIR: 'lobbyAxes.cardsMomir',
+  JUMP_IN: 'lobbyAxes.cardsJumpIn',
+  SEALED: 'lobbyAxes.cardsSealed',
+  DRAFT: 'lobbyAxes.cardsDraft',
 }
 
-const RULES_CAPTIONS: Record<RulesAxis, string> = {
-  STANDARD: 'The ordinary rules for the table you picked — 20 life at 1v1, no command zone.',
-  COMMANDER:
-    'Everyone designates a commander, which starts in the command zone and can be recast from it (CR 903). 40 life at a pod, and 21 damage from a single commander knocks you out. Independent of where the cards come from — a brought deck, a sealed pool or any draft can be played this way.',
+const RULES_CAPTIONS: Record<RulesAxis, 'lobbyAxes.rulesStandard' | 'lobbyAxes.rulesCommander'> = {
+  STANDARD: 'lobbyAxes.rulesStandard',
+  COMMANDER: 'lobbyAxes.rulesCommander',
 }
 
-const TABLE_CAPTIONS: Record<TableAxis, string> = {
-  ONE_V_ONE: 'Two players per game. In a bracket, everyone plays everyone; most match wins takes it.',
-  FREE_FOR_ALL: 'One game, everyone at the same table (2-6 players). Last player standing wins.',
+const TABLE_CAPTIONS: Record<TableAxis, 'lobbyAxes.tableOneVsOne' | 'lobbyAxes.tableFreeForAll' | 'lobbyAxes.tableTwoHeadedGiant' | 'lobbyAxes.tableTeamVsTeam'> = {
+  ONE_V_ONE: 'lobbyAxes.tableOneVsOne',
+  FREE_FOR_ALL: 'lobbyAxes.tableFreeForAll',
   TWO_HEADED_GIANT:
-    'Four players in two teams of two. Each team shares one 30-life total, takes turns together, and attacks and blocks as one. Last team standing wins.',
+    'lobbyAxes.tableTwoHeadedGiant',
   TEAM_VS_TEAM:
-    'An even pod (4/6/8) split into two teams — 2v2, 3v3, or 4v4. Each player keeps their own 20 life and their own turn; players are knocked out one at a time. The last team with anyone standing wins.',
+    'lobbyAxes.tableTeamVsTeam',
 }
 
 interface AxisProps {
@@ -107,37 +106,38 @@ export function EventAxisStrip({ view, onRecreate }: AxisProps) {
 /* ── Bodies: always-visible sub-options and captions ──────────────────── */
 
 export function CardsAxisBody({ view, commands, jumpstart = false }: Omit<AxisProps, 'onRecreate'> & { jumpstart?: boolean }) {
+  const { t } = useTranslation()
   const cards = view.axes.cards
 
   return (
     <>
       <div className={styles.settingsRow}>
         <span className={styles.settingsLabel} />
-        <div className={styles.variantCaption}>{jumpstart ? 'Choose two themed packs and play their combined 40-card deck.' : CARDS_CAPTIONS[cards.kind]}</div>
+        <div className={styles.variantCaption}>{t(jumpstart ? 'lobbyAxes.jumpstartCaption' : CARDS_CAPTIONS[cards.kind])}</div>
       </div>
 
       {/* Cards → Sealed: which sealed shape. */}
       {cards.kind === 'SEALED' && (
         <div className={`${styles.settingsRow} ${styles.settingsRowSub}`}>
-          <span className={styles.settingsLabel}>Sealed shape</span>
+          <span className={styles.settingsLabel}>{t('lobbyAxes.sealedShape')}</span>
           <div className={styles.variantGroup}>
             <div className={styles.settingsButtons}>
               <ShapeButton
-                label="Standard"
+                label={t('lobbyAxes.standard')}
                 active={cards.shape === 'STANDARD'}
                 onClick={() => commands.setCardsShape('SEALED')}
               />
               <ShapeButton
-                label="Commander"
+                label={t('lobbyAxes.commander')}
                 active={cards.shape === 'COMMANDER'}
                 blocked={shapeBlock(view, { kind: 'SEALED', shape: 'COMMANDER' })}
                 onClick={() => commands.setCardsShape('COMMANDER_SEALED')}
               />
             </div>
             <div className={styles.variantCaption}>
-              {jumpstart ? 'Each pack contains 20 cards, including lands. No deckbuilding needed.' : cards.shape === 'COMMANDER'
-                ? 'Open Commander-shaped packs and build a 60-card deck around a commander from your pool. Up to 8 players, playing a 1v1 bracket or one pod at 40 life.'
-                : 'Open 6 boosters and build a 40-card deck.'}
+              {t(jumpstart ? 'lobbyAxes.jumpstartPackCaption' : cards.shape === 'COMMANDER'
+                ? 'lobbyAxes.sealedCommanderCaption'
+                : 'lobbyAxes.sealedStandardCaption')}
             </div>
           </div>
         </div>
@@ -146,32 +146,32 @@ export function CardsAxisBody({ view, commands, jumpstart = false }: Omit<AxisPr
       {/* Cards → Draft: which of the four draft shapes. */}
       {cards.kind === 'DRAFT' && (
         <div className={`${styles.settingsRow} ${styles.settingsRowSub}`}>
-          <span className={styles.settingsLabel}>Draft shape</span>
+          <span className={styles.settingsLabel}>{t('lobbyAxes.draftShape')}</span>
           <div className={styles.variantGroup}>
             <div className={styles.settingsButtons}>
               <ShapeButton
-                label="Booster"
+                label={t('lobbyAxes.booster')}
                 draft
                 active={cards.shape === 'BOOSTER'}
                 blocked={shapeBlock(view, { kind: 'DRAFT', shape: 'BOOSTER' })}
                 onClick={() => commands.setCardsShape('DRAFT')}
               />
               <ShapeButton
-                label="Winston"
+                label={t('lobbyAxes.winston')}
                 draft
                 active={cards.shape === 'WINSTON'}
                 blocked={shapeBlock(view, { kind: 'DRAFT', shape: 'WINSTON' })}
                 onClick={() => commands.setCardsShape('WINSTON_DRAFT')}
               />
               <ShapeButton
-                label="Grid"
+                label={t('lobbyAxes.grid')}
                 draft
                 active={cards.shape === 'GRID'}
                 blocked={shapeBlock(view, { kind: 'DRAFT', shape: 'GRID' })}
                 onClick={() => commands.setCardsShape('GRID_DRAFT')}
               />
               <ShapeButton
-                label="Commander"
+                label={t('lobbyAxes.commander')}
                 draft
                 active={cards.shape === 'COMMANDER'}
                 blocked={shapeBlock(view, { kind: 'DRAFT', shape: 'COMMANDER' })}
@@ -179,11 +179,11 @@ export function CardsAxisBody({ view, commands, jumpstart = false }: Omit<AxisPr
               />
             </div>
             <div className={styles.variantCaption}>
-              {cards.shape === 'COMMANDER'
-                ? 'Commander-shaped 20-card packs; pick a commander from your pool. Up to 8 drafters, playing a 1v1 bracket or one pod at 40 life.'
-                : cards.shape === 'WINSTON' ? 'Pick from 3 face-down piles. 2 players.'
-                : cards.shape === 'GRID' ? 'Pick a row or column from a 3×3 grid. 2-4 players.'
-                : 'Pass packs around the table. 3-8 players.'}
+              {t(cards.shape === 'COMMANDER'
+                ? 'lobbyAxes.draftCommanderCaption'
+                : cards.shape === 'WINSTON' ? 'lobbyAxes.draftWinstonCaption'
+                : cards.shape === 'GRID' ? 'lobbyAxes.draftGridCaption'
+                : 'lobbyAxes.draftBoosterCaption')}
             </div>
           </div>
         </div>
@@ -193,6 +193,7 @@ export function CardsAxisBody({ view, commands, jumpstart = false }: Omit<AxisPr
 }
 
 export function RulesAxisBody({ view, commands }: { view: UnifiedLobbyView; commands: LobbyCommands }) {
+  const { t } = useTranslation()
   // A lobby can be sitting on a Rules × Table contradiction (the server defaults Rules to Commander
   // when the host picks commander deck legality, whatever the table). Say so here rather than only
   // on a disabled Start button.
@@ -219,19 +220,19 @@ export function RulesAxisBody({ view, commands }: { view: UnifiedLobbyView; comm
       <div className={styles.settingsRow}>
         <span className={styles.settingsLabel} />
         <div className={styles.variantCaption}>
-          {rulesConflict ?? RULES_CAPTIONS[view.axes.rules]}
+          {rulesConflict ?? t(RULES_CAPTIONS[view.axes.rules])}
         </div>
       </div>
       {cards.kind === 'BRING_A_DECK' && (
         <div className={`${styles.settingsRow} ${styles.settingsRowSub}`}>
-          <span className={styles.settingsLabel}>Deck legality</span>
+          <span className={styles.settingsLabel}>{t('lobbyAxes.deckLegality')}</span>
           <select
             value={cards.legality ?? ''}
             onChange={(e) => commands.setLegality((e.target.value || null) as never)}
             className={styles.settingsSelect}
-            title="Submitted decks must be legal under the selected rules and constructed format."
+            title={t('lobbyAxes.submittedDeckLegalityHint')}
           >
-            {allowsAnyDeck && <option value="">Any deck</option>}
+            {allowsAnyDeck && <option value="">{t('lobbyAxes.anyDeck')}</option>}
             {legalityOptions.map((format) => (
               <option key={format.value} value={format.value}>{format.label}</option>
             ))}
@@ -243,10 +244,11 @@ export function RulesAxisBody({ view, commands }: { view: UnifiedLobbyView; comm
 }
 
 export function TableAxisBody({ view }: { view: UnifiedLobbyView }) {
+  const { t } = useTranslation()
   return (
     <div className={styles.settingsRow}>
       <span className={styles.settingsLabel} />
-      <div className={styles.variantCaption}>{TABLE_CAPTIONS[view.axes.table]}</div>
+      <div className={styles.variantCaption}>{t(TABLE_CAPTIONS[view.axes.table])}</div>
     </div>
   )
 }

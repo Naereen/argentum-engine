@@ -9,6 +9,7 @@
  * shift/right-click, and every tile is draggable (payload source `catalog`).
  */
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { CardSummary } from '../cardFilter'
 import { CardGrid } from './CardGrid'
 import { FilterSection } from './FilterSection'
@@ -53,13 +54,17 @@ export function CardBrowser({
   /** Denser card tiles — on by default, since this component is built for a side pane. */
   compact?: boolean
 }) {
+  const { t, i18n } = useTranslation()
   const browse = useCardBrowse(catalog, initialQuery)
   const { query, setQuery, displayed, filtered, overrides } = browse
   const [filtersOpen, setFiltersOpen] = useState(filtersOpenByDefault)
 
   const resultLabel = loading
-    ? 'Loading…'
-    : `Showing ${displayed.length} of ${filtered.length}`
+    ? t('library.browser.loading')
+    : t('library.cardsPage.showing', {
+        shown: displayed.length.toLocaleString(i18n.resolvedLanguage ?? 'en'),
+        total: filtered.length.toLocaleString(i18n.resolvedLanguage ?? 'en'),
+      })
 
   return (
     <div className={styles.browser}>
@@ -81,11 +86,11 @@ export function CardBrowser({
           onClick={() => setFiltersOpen((v) => !v)}
           aria-pressed={filtersOpen}
         >
-          Filters
+          {t('library.browser.filters')}
         </button>
       </div>
       {error ? (
-        <div className={styles.error}>Couldn’t load the card catalogue: {error}</div>
+        <div className={styles.error}>{t('library.browser.catalogError', { error })}</div>
       ) : (
         <div className={styles.body}>
           {filtersOpen && (
@@ -101,7 +106,7 @@ export function CardBrowser({
           )}
           <div className={styles.results}>
             {loading ? (
-              <div className={styles.notice}>Loading cards…</div>
+              <div className={styles.notice}>{t('library.browser.loadingCards')}</div>
             ) : (
               <CardGrid
                 cards={displayed}

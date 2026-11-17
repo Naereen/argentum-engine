@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
 import type { ClientGameState, ClientSubgame, ClientWaitingGame, EntityId } from '@/types'
 import styles from './SubgameBadge.module.css'
@@ -14,6 +15,7 @@ import styles from './SubgameBadge.module.css'
  * totals. Purely presentational: it renders `ClientGameState.subgame`, which the server sends.
  */
 export function SubgameBadge({ gameState }: { gameState: ClientGameState }) {
+  const { t } = useTranslation()
   const subgame = gameState.subgame
   const badgeRef = React.useRef<HTMLButtonElement>(null)
   const [hoverAnchor, setHoverAnchor] = React.useState<DOMRect | null>(null)
@@ -37,7 +39,9 @@ export function SubgameBadge({ gameState }: { gameState: ClientGameState }) {
       ref={badgeRef}
       type="button"
       className={styles.badge}
-      aria-label={`Subgame${source?.sourceName ? ` of ${source.sourceName}` : ''} in progress`}
+      aria-label={source?.sourceName
+        ? t('gameCore.subgameOfInProgress', { sourceName: source.sourceName })
+        : t('gameCore.subgameInProgress')}
       aria-expanded={anchor != null}
       data-testid="subgame-badge"
       onMouseEnter={() => setHoverAnchor(badgeRef.current?.getBoundingClientRect() ?? null)}
@@ -45,8 +49,8 @@ export function SubgameBadge({ gameState }: { gameState: ClientGameState }) {
       onClick={() => setPinned((p) => !p)}
     >
       <NestedFramesGlyph depth={subgame.depth} />
-      <span>Subgame</span>
-      {subgame.depth > 1 && <span className={styles.depth}>{subgame.depth} deep</span>}
+      <span>{t('gameCore.subgame')}</span>
+      {subgame.depth > 1 && <span className={styles.depth}>{t('gameCore.subgameDepth', { depth: subgame.depth })}</span>}
       {anchor && <SubgamePanel anchor={anchor} subgame={subgame} gameState={gameState} />}
     </button>
   )
@@ -86,6 +90,7 @@ function SubgamePanel({ anchor, subgame, gameState }: {
   subgame: ClientSubgame
   gameState: ClientGameState
 }) {
+  const { t } = useTranslation()
   const vw = window.innerWidth
   const rawLeft = anchor.left + anchor.width / 2 - PANEL_WIDTH / 2
   const left = Math.max(VIEWPORT_PADDING, Math.min(rawLeft, vw - PANEL_WIDTH - VIEWPORT_PADDING))
@@ -99,7 +104,7 @@ function SubgamePanel({ anchor, subgame, gameState }: {
   return createPortal(
     <div
       role="dialog"
-      aria-label="Subgame details"
+      aria-label={t('decisions.subgameDetails')}
       className={styles.panel}
       style={{
         left,

@@ -4,21 +4,23 @@ import { useAuthStore } from '@/store/authStore'
 import { useIsSharedLifeTeamGame } from '@/store/selectors'
 import { useResponsiveContext } from '../board/shared'
 import { GearIcon, PreferencesDialog } from '@/components/preferences/PreferencesDialog'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Concede button with confirmation, positioned top-right.
  */
 export function ConcedeButton() {
+  const { t } = useTranslation()
   const concede = useGameStore((state) => state.concede)
   // In a pod, conceding eliminates *you* while the game goes on (CR 800.4a) — say so, since
   // "Concede" reads as "end the game" everywhere else. Two-Headed Giant is the exception: a team
   // wins and loses together, so one concession takes the whole team out (CR 810.8b).
   const isPod = useGameStore((state) => (state.gameState?.players.length ?? 0) > 2)
   const teamConcedes = useIsSharedLifeTeamGame()
-  const confirmLabel = teamConcedes ? 'Concede for the team' : isPod ? 'Concede & leave' : 'Confirm'
+  const confirmLabel = teamConcedes ? t('gameControls.concedeForTeam') : isPod ? t('gameControls.concedeLeave') : t('gameControls.confirm')
   // Rides inside the button so the confirm row keeps its width — beside the buttons it ran into
   // the top-right board's name plate, below them into that cell's collapse button.
-  const podNote = teamConcedes ? 'your team is out' : isPod ? 'the others play on' : null
+  const podNote = teamConcedes ? t('gameControls.yourTeamOut') : isPod ? t('gameControls.othersPlayOn') : null
   // During a Magic subgame (Shahrazad, CR 729) there are two games to give up: the subgame alone —
   // the main game then resumes, and losing it costs what the spell says — or the whole game.
   const inSubgame = useGameStore((state) => state.gameState?.subgame != null)
@@ -60,16 +62,16 @@ export function ConcedeButton() {
             style={{ ...confirmStyle, background: 'linear-gradient(150deg, #8a6a2c 0%, #5b3f14 100%)' }}
             data-testid="concede-subgame"
           >
-            <span>Concede subgame</span>
-            {note('the main game resumes')}
+            <span>{t('gameControls.concedeSubgame')}</span>
+            {note(t('gameControls.mainGameResumes'))}
           </button>
         )}
         <button
           onClick={() => { concede(); setConfirming(false) }}
           style={confirmStyle}
         >
-          <span>{inSubgame ? 'Concede the game' : confirmLabel}</span>
-          {note(inSubgame ? 'leave the main game too' : podNote)}
+          <span>{inSubgame ? t('gameControls.concedeGame') : confirmLabel}</span>
+          {note(inSubgame ? t('gameControls.leaveMainGame') : podNote)}
         </button>
         <button
           onClick={() => setConfirming(false)}
@@ -85,7 +87,7 @@ export function ConcedeButton() {
             cursor: 'pointer',
           }}
         >
-          Cancel
+          {t('gameControls.cancel')}
         </button>
       </div>
     )
@@ -107,7 +109,7 @@ export function ConcedeButton() {
           cursor: 'pointer',
         }}
       >
-        Concede
+        {t('gameControls.concede')}
       </button>
     </div>
   )
@@ -118,6 +120,7 @@ export function ConcedeButton() {
  * Does not depend on ResponsiveProvider.
  */
 export function StandaloneConcedeButton() {
+  const { t } = useTranslation()
   const concede = useGameStore((state) => state.concede)
   // A subgame's own mulligan (CR 729): conceding the subgame and the whole game are different.
   const inSubgame = useGameStore((state) => state.gameState?.subgame != null)
@@ -150,14 +153,14 @@ export function StandaloneConcedeButton() {
             onClick={() => { concede(true); setConfirming(false) }}
             style={{ ...confirmStyle, background: 'linear-gradient(150deg, #8a6a2c 0%, #5b3f14 100%)' }}
           >
-            Concede subgame
+            {t('gameControls.concedeSubgame')}
           </button>
         )}
         <button
           onClick={() => { concede(); setConfirming(false) }}
           style={confirmStyle}
         >
-          {inSubgame ? 'Concede the game' : 'Confirm'}
+          {inSubgame ? t('gameControls.concedeGame') : t('gameControls.confirm')}
         </button>
         <button
           onClick={() => setConfirming(false)}
@@ -173,7 +176,7 @@ export function StandaloneConcedeButton() {
             cursor: 'pointer',
           }}
         >
-          Cancel
+          {t('gameControls.cancel')}
         </button>
       </div>
     )
@@ -195,7 +198,7 @@ export function StandaloneConcedeButton() {
           cursor: 'pointer',
         }}
       >
-        Concede
+        {t('gameControls.concede')}
       </button>
     </div>
   )
@@ -210,6 +213,7 @@ export function StandaloneConcedeButton() {
  * sits in the same low-attention strip without crowding the game UI.
  */
 export function SpectatorCountBadge() {
+  const { t } = useTranslation()
   const spectatorCount = useGameStore((state) => state.spectatorCount)
   const spectatorNames = useGameStore((state) => state.spectatorNames)
   const responsive = useResponsiveContext()
@@ -219,7 +223,7 @@ export function SpectatorCountBadge() {
 
   if (spectatorCount <= 0) return null
 
-  const label = spectatorCount === 1 ? '1 watching' : `${spectatorCount} watching`
+  const label = t('gameControls.watching', { count: spectatorCount })
 
   return (
     <div
@@ -290,7 +294,7 @@ export function SpectatorCountBadge() {
               </div>
             ))
           ) : (
-            <div style={{ color: '#6b7480', fontStyle: 'italic' }}>(names unavailable)</div>
+            <div style={{ color: '#6b7480', fontStyle: 'italic' }}>{t('gameControls.namesUnavailable')}</div>
           )}
         </div>
       )}
@@ -302,6 +306,7 @@ export function SpectatorCountBadge() {
  * Fullscreen toggle button, positioned top-left.
  */
 export function FullscreenButton() {
+  const { t } = useTranslation()
   const [isFullscreen, setIsFullscreen] = useState(false)
   const responsive = useResponsiveContext()
 
@@ -326,7 +331,7 @@ export function FullscreenButton() {
   }
 
   const size = responsive.isMobile ? 30 : 34
-  const title = isFullscreen ? 'Exit fullscreen (Esc)' : 'Enter fullscreen'
+  const title = isFullscreen ? t('gameControls.fullscreenExit') : t('gameControls.fullscreenEnter')
   // Icon-only, like the landing and lobby top bars — the label cost a card's width in the corner.
   return (
     <button
@@ -367,6 +372,7 @@ export function FullscreenButton() {
  * the board — stacking, stops, auto-tap and motion, without leaving the game.
  */
 export function GamePreferencesButton() {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const responsive = useResponsiveContext()
   const size = responsive.isMobile ? 30 : 34
@@ -395,8 +401,8 @@ export function GamePreferencesButton() {
           alignItems: 'center',
           justifyContent: 'center',
         }}
-        title="Preferences"
-        aria-label="Preferences"
+        title={t('gameControls.preferences')}
+        aria-label={t('gameControls.preferences')}
         data-testid="game-preferences-button"
       >
         <GearIcon size={responsive.isMobile ? 15 : 17} />

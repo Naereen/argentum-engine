@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import { selectGameState, selectViewingPlayerId, useCardLegalActions } from '@/store/selectors.ts'
 import { AbilityFlagDisplayNames, KeywordDisplayNames, ZoneType, zoneIdEquals } from '@/types'
@@ -23,6 +24,7 @@ import { castOfferFace } from '@/utils/castFace.ts'
  * game-specific extras: token frames, stat breakdowns, keywords, revealed labels.
  */
 export function CardPreview() {
+  const { t } = useTranslation()
   const hoveredCardId = useGameStore((state) => state.hoveredCardId)
   const hoverPosition = useGameStore((state) => state.hoverPosition)
   const combatFocusBounds = useCombatFocusBounds((state) => state.bounds)
@@ -285,7 +287,7 @@ export function CardPreview() {
           for stay listed and dimmed — "not yet" is an answer. */}
       {showCostLadder && (
         <div style={styles.cardPreviewCostOptions}>
-          <div style={styles.cardPreviewCostHeader}>Ways to play</div>
+          <div style={styles.cardPreviewCostHeader}>{t('gameCore.waysToPlay')}</div>
           {costRows.map((option) => (
             <div key={option.key}>
               <div style={{
@@ -338,7 +340,7 @@ export function CardPreview() {
           <div style={styles.cardPreviewStatsBreakdown}>
             {card.basePower !== null && card.baseToughness !== null && (
               <div style={styles.cardPreviewStatsRow}>
-                <span style={styles.cardPreviewStatsLabel}>Base</span>
+                <span style={styles.cardPreviewStatsLabel}>{t('gameCore.base')}</span>
                 <span style={styles.cardPreviewStatsValue}>
                   {card.basePower}/{card.baseToughness}
                 </span>
@@ -347,7 +349,7 @@ export function CardPreview() {
             {hasCounters && (
               <div style={styles.cardPreviewStatsRow}>
                 <span style={{...styles.cardPreviewStatsLabel, color: '#66ccff'}}>
-                  <i className={`ms ms-${counterModifier >= 0 ? counterManaClass.PLUS_ONE_PLUS_ONE : counterManaClass.MINUS_ONE_MINUS_ONE}`} style={{marginRight: 4, fontSize: 10}} />Counters
+                  <i className={`ms ms-${counterModifier >= 0 ? counterManaClass.PLUS_ONE_PLUS_ONE : counterManaClass.MINUS_ONE_MINUS_ONE}`} style={{marginRight: 4, fontSize: 10}} />{t('gameCore.counters')}
                 </span>
                 <span style={{...styles.cardPreviewStatsValue, color: counterModifier >= 0 ? '#66ccff' : '#ff6666'}}>
                   {counterModifier >= 0 ? '+' : ''}{counterModifier}/{counterModifier >= 0 ? '+' : ''}{counterModifier}
@@ -356,7 +358,7 @@ export function CardPreview() {
             )}
             {hasEffects && (
               <div style={styles.cardPreviewStatsRow}>
-                <span style={{...styles.cardPreviewStatsLabel, color: '#ffcc66'}}>Effects</span>
+                <span style={{...styles.cardPreviewStatsLabel, color: '#ffcc66'}}>{t('gameCore.effects')}</span>
                 <span style={{...styles.cardPreviewStatsValue, color: '#ffcc66'}}>
                   {effectPowerMod >= 0 ? '+' : ''}{effectPowerMod}/{effectToughnessMod >= 0 ? '+' : ''}{effectToughnessMod}
                 </span>
@@ -364,7 +366,7 @@ export function CardPreview() {
             )}
             {card.damage != null && card.damage > 0 && (
               <div style={styles.cardPreviewDamageRow}>
-                <span>Damage</span>
+                <span>{t('gameCore.damage')}</span>
                 <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>
                   {card.damage}
                 </span>
@@ -379,12 +381,12 @@ export function CardPreview() {
       {card.protectorId && (
         <div style={styles.cardPreviewEffects}>
           <div style={styles.cardPreviewEffect}>
-            <span style={styles.cardPreviewEffectName}>Protected by</span>
+            <span style={styles.cardPreviewEffectName}>{t('gameCore.protectedBy')}</span>
             <span style={styles.cardPreviewEffectText}>{playerName(card.protectorId)}</span>
           </div>
           {card.controllerId !== card.protectorId && (
             <div style={styles.cardPreviewEffect}>
-              <span style={styles.cardPreviewEffectName}>Controlled by</span>
+              <span style={styles.cardPreviewEffectName}>{t('gameCore.controlledBy')}</span>
               <span style={styles.cardPreviewEffectText}>{playerName(card.controllerId)}</span>
             </div>
           )}
@@ -394,7 +396,7 @@ export function CardPreview() {
       {/* Counters panel — the card's full counter inventory, whatever its card type. */}
       {allCounters.length > 0 && (
         <div style={styles.cardPreviewCounters}>
-          <div style={styles.cardPreviewCountersHeading}>Counters</div>
+          <div style={styles.cardPreviewCountersHeading}>{t('gameCore.counters')}</div>
           {allCounters.map(({ type, label, count }) => (
             <div key={type} style={styles.cardPreviewCounterRow}>
               <span style={styles.cardPreviewCounterLabel}>
@@ -441,7 +443,7 @@ export function CardPreview() {
         return (
           <div style={styles.cardPreviewEffects}>
             <div style={styles.cardPreviewEffect}>
-              <span style={styles.cardPreviewEffectName}>Granted types</span>
+              <span style={styles.cardPreviewEffectName}>{t('gameCore.grantedTypes')}</span>
               <span style={styles.cardPreviewEffectText}>{grantedTypes.join(', ')}</span>
             </div>
           </div>

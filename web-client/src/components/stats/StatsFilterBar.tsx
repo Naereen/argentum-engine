@@ -6,6 +6,7 @@
  * URL (`?vs=humans&days=30`), so it survives a reload and can be shared.
  */
 import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import type { WinLoss } from '@/api/account'
 import {
@@ -57,25 +58,38 @@ export function StatsFilterBar({
   /** Hide the period control where the view has its own range (the AI report). */
   showPeriod?: boolean
 }) {
+  const { t } = useTranslation()
+  const opponentOptions = OPPONENT_OPTIONS.map((option) => ({
+    ...option,
+    label: t(`library.statsPage.${option.value === 'all' ? 'everyone' : option.value}`),
+  }))
+  const periodOptions = PERIOD_OPTIONS.map((option) => ({
+    ...option,
+    label: option.value === 0
+      ? t('library.statsPage.allPeriod')
+      : option.value === 365
+        ? t('library.statsPage.yearPeriod')
+        : t('library.statsPage.daysPeriod', { count: option.value }),
+  }))
   return (
-    <div className={s.bar} role="group" aria-label="Filter games">
+    <div className={s.bar} role="group" aria-label={t('library.statsPage.filterGames')}>
       <Segmented<OpponentFilter>
-        label="Against"
-        options={OPPONENT_OPTIONS}
+        label={t('library.statsPage.againstLabel')}
+        options={opponentOptions}
         value={filter.vs}
         onChange={(vs) => onChange({ ...filter, vs })}
       />
       {showPeriod && (
         <Segmented<PeriodFilter>
-          label="Period"
-          options={PERIOD_OPTIONS}
+          label={t('library.statsPage.periodLabel')}
+          options={periodOptions}
           value={filter.days}
           onChange={(days) => onChange({ ...filter, days })}
         />
       )}
       {!isAllGames(filter) && (
         <button type="button" className={s.reset} onClick={() => onChange({ vs: 'all', days: 0 })}>
-          Clear
+          {t('library.statsPage.clearFilter')}
         </button>
       )}
     </div>
@@ -128,6 +142,7 @@ export function OpponentSplit({
   filter: StatsFilter
   onChange: (next: StatsFilter) => void
 }) {
+  const { t } = useTranslation()
   const item = (vs: OpponentFilter, label: string, r: WinLoss) => {
     const active = filter.vs === vs
     return (
@@ -136,7 +151,11 @@ export function OpponentSplit({
         className={s.splitItem}
         aria-pressed={active}
         disabled={r.games === 0 && !active}
-        title={active ? 'Show games against everyone' : `Show only games ${label.toLowerCase()}`}
+        title={active
+          ? t('library.statsPage.showGamesAgainstEveryone')
+          : t('library.statsPage.showOnlyGamesAgainst', {
+              opponent: vs === 'humans' ? t('library.statsPage.humans').toLowerCase() : t('library.statsPage.ai'),
+            })}
         onClick={() => onChange({ ...filter, vs: active ? 'all' : vs })}
       >
         <span className={s.splitLabel}>{label}</span>
@@ -149,20 +168,20 @@ export function OpponentSplit({
   }
   return (
     <div className={s.split}>
-      {item('humans', 'vs humans', vsHumans)}
-      {item('ai', 'vs AI', vsAi)}
+      {item('humans', t('library.statsPage.vsHumans'), vsHumans)}
+      {item('ai', t('library.statsPage.vsAi'), vsAi)}
     </div>
   )
 }
 
 /** "N games not counted" with the explanation one click away; renders nothing for zero. */
 export function NotCountedNote({ count, noun = 'game' }: { count: number; noun?: string }) {
+  const { t } = useTranslation()
   if (count <= 0) return null
   return (
     <span className={s.note}>
-      {count} {noun}
-      {count === 1 ? '' : 's'} not counted
-      <HelpTip topicId={COUNTED_GAMES_TOPIC} size="sm" label="Which games count" />
+      {noun === 'game' ? t('library.statsPage.notCounted', { count }) : `${count} ${noun} not counted`}
+      <HelpTip topicId={COUNTED_GAMES_TOPIC} size="sm" label={t('library.statsPage.whichGamesCount')} />
     </span>
   )
 }

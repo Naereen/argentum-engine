@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useDraggable } from '@/hooks/useDraggable.ts'
 import styles from './DecisionUI.module.css'
 
@@ -14,6 +15,7 @@ export function DraggableBanner({
   className: string | undefined
   children: ReactNode
 }) {
+  const { t } = useTranslation()
   const { ref, handleProps, style, isDragging } = useDraggable()
 
   return (
@@ -21,7 +23,7 @@ export function DraggableBanner({
       <div
         className={styles.dragHandle}
         style={isDragging ? { cursor: 'grabbing' } : undefined}
-        aria-label="Drag to move"
+        aria-label={t('decisions.dragToMove')}
         {...handleProps}
       >
         <span className={styles.dragHandleGrip} />

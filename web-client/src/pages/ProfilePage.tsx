@@ -6,6 +6,7 @@
  * head-to-head, colors, mana curve, …) live on the separate /stats page.
  */
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type React from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -39,6 +40,7 @@ import { useAuthStore } from '@/store/authStore'
 const PAGE_SIZE = 10
 
 export function ProfilePage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const status = useAuthStore((s) => s.status)
@@ -74,7 +76,7 @@ export function ProfilePage() {
         setCopiedReplay(gameId)
         setTimeout(() => setCopiedReplay((c) => (c === gameId ? null : c)), 2000)
       },
-      () => window.prompt('Copy this replay link', url),
+      () => window.prompt(t('library.profilePage.copyReplayLink'), url),
     )
   }
 
@@ -111,7 +113,7 @@ export function ProfilePage() {
   const submitName = async () => {
     const trimmed = nameDraft.trim()
     if (!trimmed) {
-      setNameError('Name cannot be empty')
+      setNameError(t('library.profilePage.nameRequired'))
       return
     }
     setSavingName(true)
@@ -120,7 +122,7 @@ export function ProfilePage() {
       await updateDisplayName(trimmed)
       setEditingName(false)
     } catch (e) {
-      setNameError(e instanceof Error ? e.message : 'Could not update name')
+      setNameError(e instanceof Error ? e.message : t('library.profilePage.updateNameError'))
     } finally {
       setSavingName(false)
     }
@@ -131,19 +133,19 @@ export function ProfilePage() {
     const firstShown = historyTotal === 0 ? 0 : page * PAGE_SIZE + 1
     const lastShown = Math.min(historyTotal, page * PAGE_SIZE + history.length)
     return (
-      <AccountPage title="Profile">
+      <AccountPage title={t('library.profilePage.title')}>
         <section className={p.panel}>
           <div className={a.identity}>
             <button
               type="button"
               className={a.avatarEdit}
               onClick={() => setAvatarPickerOpen(true)}
-              aria-label="Change avatar"
-              title="Change avatar"
+              aria-label={t('library.profilePage.changeAvatar')}
+              title={t('library.profilePage.changeAvatar')}
               data-testid="profile-avatar"
             >
               <Avatar name={user.displayName} avatar={user.avatar} />
-              <span className={a.avatarEditOverlay} aria-hidden>Change</span>
+              <span className={a.avatarEditOverlay} aria-hidden>{t('library.profilePage.change')}</span>
               <span className={a.avatarEditBadge} aria-hidden>
                 <PencilIcon />
               </span>
@@ -156,7 +158,7 @@ export function ProfilePage() {
                     value={nameDraft}
                     maxLength={40}
                     autoFocus
-                    aria-label="Display name"
+                    aria-label={t('library.profilePage.displayName')}
                     onChange={(e) => setNameDraft(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') void submitName()
@@ -164,17 +166,17 @@ export function ProfilePage() {
                     }}
                   />
                   <button type="button" className={p.buttonPrimary} disabled={savingName} onClick={() => void submitName()}>
-                    {savingName ? 'Saving…' : 'Save'}
+                    {savingName ? t('library.profilePage.saving') : t('library.profilePage.save')}
                   </button>
                   <button type="button" className={p.buttonGhost} onClick={() => setEditingName(false)}>
-                    Cancel
+                    {t('library.profilePage.cancel')}
                   </button>
                 </div>
               ) : (
                 <div className={a.nameRow}>
                   <h1 className={p.h1}>{user.displayName}</h1>
                   <button type="button" className={a.link} style={{ fontSize: 13 }} onClick={startEditName}>
-                    Edit name
+                    {t('library.profilePage.editName')}
                   </button>
                 </div>
               )}
@@ -183,20 +185,20 @@ export function ProfilePage() {
             <div className={a.identityActions}>
               {user.isAdmin && (
                 <button type="button" className={a.adminPill} onClick={() => navigate('/admin')}>
-                  <span className={a.adminBadge}>ADMIN</span>
-                  Dashboard
+                  <span className={a.adminBadge}>{t('library.profilePage.admin')}</span>
+                  {t('library.profilePage.dashboard')}
                 </button>
               )}
               <button type="button" className={p.button} onClick={logout}>
-                Log out
+                {t('library.profilePage.logOut')}
               </button>
             </div>
           </div>
           <div className={p.statGrid} style={{ marginTop: 18 }}>
-            <Stat label="Games" value={stats?.games ?? 0} />
-            <Stat label="Wins" value={stats?.wins ?? 0} />
-            <Stat label="Losses" value={stats?.losses ?? 0} />
-            <Stat label="Win rate" value={stats && stats.games > 0 ? `${Math.round(stats.winRate * 100)}%` : '—'} />
+            <Stat label={t('library.profilePage.games')} value={stats?.games ?? 0} />
+            <Stat label={t('library.profilePage.wins')} value={stats?.wins ?? 0} />
+            <Stat label={t('library.profilePage.losses')} value={stats?.losses ?? 0} />
+            <Stat label={t('library.profilePage.winRate')} value={stats && stats.games > 0 ? `${Math.round(stats.winRate * 100)}%` : '—'} />
           </div>
           {stats && (stats.vsHumans.games > 0 || stats.vsAi.games > 0 || stats.notCounted > 0) && (
             <div className={a.overviewFoot} style={{ marginTop: 12 }}>
@@ -215,36 +217,36 @@ export function ProfilePage() {
         <div className={a.shortcuts}>
           <Shortcut
             icon={<ChartIcon />}
-            title="Full stats"
-            sub="Ratings, colors, curve & more"
+            title={t('library.profilePage.fullStats')}
+            sub={t('library.profilePage.statsDescription')}
             onClick={() => navigate('/stats')}
           />
           {/* Launcher into the Decks & Cubes library — no need to duplicate that UI here. */}
           <Shortcut
             icon={<DecksIcon />}
-            title="My decks"
+            title={t('library.profilePage.myDecks')}
             sub={
               decks.length === 0
-                ? 'None saved to your account yet'
-                : `${decks.length} deck${decks.length === 1 ? '' : 's'} saved to your account`
+                ? t('library.profilePage.noDecks')
+                : t('library.profilePage.decksSaved', { count: decks.length })
             }
             onClick={() => navigate('/library?tab=decks')}
           />
-          <Shortcut icon={<FriendsIcon />} title="Friends" sub="Your friend code and who's online" onClick={() => navigate('/friends')} />
+          <Shortcut icon={<FriendsIcon />} title={t('library.profilePage.friends')} sub={t('library.profilePage.friendsDescription')} onClick={() => navigate('/friends')} />
           <Shortcut
             icon={<SlidersIcon />}
-            title="Preferences"
-            sub="Auto-pass stops, card stacking & more"
+            title={t('library.profilePage.preferences')}
+            sub={t('library.profilePage.preferencesDescription')}
             onClick={() => navigate('/preferences')}
           />
         </div>
 
         <section className={p.panel}>
           <div className={a.sectionHead}>
-            <h2 className={a.sectionTitle}>Recent games</h2>
+            <h2 className={a.sectionTitle}>{t('library.profilePage.recentGames')}</h2>
             {historyTotal > 0 && (
               <span className={a.count}>
-                {firstShown}–{lastShown} of {historyTotal}
+                {t('library.profilePage.historyRange', { first: firstShown, last: lastShown, total: historyTotal })}
               </span>
             )}
           </div>
@@ -263,8 +265,8 @@ export function ProfilePage() {
           {history.length === 0 ? (
             <p className={a.muted}>
               {historyFilter.vs === 'all'
-                ? 'No games yet — finished games show up here with their decks and replays.'
-                : `No games against ${historyFilter.vs === 'ai' ? 'the AI' : 'humans'} yet.`}
+                ? t('library.profilePage.noGames')
+                : t(historyFilter.vs === 'ai' ? 'library.profilePage.noGamesVsAi' : 'library.profilePage.noGamesVsHumans')}
             </p>
           ) : (
             <GameHistoryList
@@ -276,15 +278,15 @@ export function ProfilePage() {
                     className={a.miniButton}
                     onClick={() => setDeckModal({ gameId: g.gameId, opponent: g.opponents ?? 'opponent' })}
                   >
-                    Decks
+                    {t('library.profilePage.decks')}
                   </button>
                   {g.hasReplay && (
                     <>
                       <button type="button" className={a.miniButton} onClick={() => navigate(`/replay/${g.gameId}`)}>
-                        Watch
+                        {t('library.profilePage.watch')}
                       </button>
                       <button type="button" className={a.miniButton} onClick={() => shareReplay(g.gameId)}>
-                        {copiedReplay === g.gameId ? 'Copied!' : 'Share'}
+                        {copiedReplay === g.gameId ? t('library.profilePage.copied') : t('library.profilePage.share')}
                       </button>
                     </>
                   )}
@@ -300,10 +302,10 @@ export function ProfilePage() {
                 disabled={page === 0}
                 onClick={() => setPage((n) => Math.max(0, n - 1))}
               >
-                ← Newer
+                {t('library.profilePage.newer')}
               </button>
               <span>
-                Page {page + 1} of {pageCount}
+                {t('library.profilePage.pageOf', { page: page + 1, total: pageCount })}
               </span>
               <button
                 type="button"
@@ -311,7 +313,7 @@ export function ProfilePage() {
                 disabled={page + 1 >= pageCount}
                 onClick={() => setPage((n) => n + 1)}
               >
-                Older →
+                {t('library.profilePage.older')}
               </button>
             </div>
           )}
@@ -323,8 +325,8 @@ export function ProfilePage() {
         {tournaments.length > 0 && (
           <section className={p.panel}>
             <div className={a.sectionHead}>
-              <h2 className={a.sectionTitle}>Recent tournaments</h2>
-              <span className={a.count}>Open one for its standings and replays</span>
+              <h2 className={a.sectionTitle}>{t('library.profilePage.recentTournaments')}</h2>
+              <span className={a.count}>{t('library.profilePage.tournamentHint')}</span>
             </div>
             <TournamentList tournaments={tournaments} onOpen={setOpenTournament} />
           </section>
@@ -355,26 +357,26 @@ export function ProfilePage() {
   const resolving = status === 'idle' || status === 'loading'
 
   return (
-    <AccountPage title="Profile">
+    <AccountPage title={t('library.profilePage.title')}>
       <MessageCard>
-        <h1 className={p.h1}>Your account</h1>
+        <h1 className={p.h1}>{t('library.profilePage.yourAccount')}</h1>
         {accountsEnabled ? (
           <>
-            <p className={p.lede}>Sign in with your email — no password — to keep your progress across devices.</p>
+            <p className={p.lede}>{t('library.profilePage.signInBenefits')}</p>
             <ul className={a.benefits}>
-              <li>Save decks to the cloud</li>
-              <li>Track your record, ratings and stats</li>
-              <li>Add friends and see who's online</li>
+              <li>{t('library.profilePage.cloudDecks')}</li>
+              <li>{t('library.profilePage.recordRatingsStats')}</li>
+              <li>{t('library.profilePage.addFriends')}</li>
             </ul>
             <button type="button" className={`${p.buttonPrimary} ${a.fullButton}`} onClick={() => setLoginOpen(true)}>
-              Sign in
+              {t('library.profilePage.signIn')}
             </button>
             <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
           </>
         ) : resolving ? (
-          <p className={a.muted}>Loading…</p>
+          <p className={a.muted}>{t('library.profilePage.loading')}</p>
         ) : (
-          <p className={a.muted}>Accounts aren't available on this server.</p>
+          <p className={a.muted}>{t('library.profilePage.accountsUnavailable')}</p>
         )}
       </MessageCard>
     </AccountPage>

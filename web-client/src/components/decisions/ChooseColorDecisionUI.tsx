@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import type { ChooseColorDecision } from '@/types'
 import { ColorDisplayNames } from '@/types'
@@ -69,6 +70,7 @@ export function ChooseColorDecisionUI({
 }: {
   decision: ChooseColorDecision
 }) {
+  const { t } = useTranslation()
   const submitColorDecision = useGameStore((s) => s.submitColorDecision)
   const [hoveredColor, setHoveredColor] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState(false)
@@ -167,7 +169,7 @@ export function ChooseColorDecisionUI({
         </div>
         <button
           onClick={() => setCollapsed(true)}
-          title="Collapse to view hand"
+          title={t('decisions.collapseToViewHand')}
           style={{
             background: 'none',
             border: '1px solid rgba(255, 255, 255, 0.2)',

@@ -4,6 +4,7 @@
  * dashboard from a single bundled response. Account-gated.
  */
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import {
   type AccountStats,
@@ -27,13 +28,14 @@ import {
   fetchTournamentHistory,
 } from '@/api/account'
 import { StatsDashboard } from '@/components/profile/StatsDashboard'
-import { describeFilter, isAllGames } from '@/api/statsFilter'
+import { isAllGames } from '@/api/statsFilter'
 import { useStatsFilterParam } from '@/components/stats/StatsFilterBar'
 import { AccountPage, MessageCard, accountStyles as a } from '@/components/profile/accountUi'
 import { pageStyles as p } from '@/components/ui/PageShell'
 import { useAuthStore } from '@/store/authStore'
 
 export function StatsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const status = useAuthStore((s) => s.status)
   const init = useAuthStore((s) => s.init)
@@ -52,6 +54,17 @@ export function StatsPage() {
   const [ratings, setRatings] = useState<RatingEntry[]>([])
   const [ratingHistory, setRatingHistory] = useState<RatingPoint[]>([])
   const [filter, setFilter] = useStatsFilterParam()
+  const filterDescription = [
+    filter.vs === 'humans' ? t('library.statsPage.againstHumans') : null,
+    filter.vs === 'ai' ? t('library.statsPage.againstAi') : null,
+    filter.days === 365
+      ? t('library.statsPage.yearSummary')
+      : filter.days > 0
+        ? t('library.statsPage.daysSummary', { count: filter.days })
+        : null,
+  ]
+    .filter((part): part is string => part !== null)
+    .join(' · ')
 
   useEffect(() => {
     if (status === 'idle') void init()
@@ -93,19 +106,19 @@ export function StatsPage() {
   if (status !== 'authenticated') {
     const resolving = status === 'idle' || status === 'loading'
     return (
-      <AccountPage title="Stats" width="wide" plain>
+      <AccountPage title={t('library.statsPage.title')} width="wide" plain>
         <MessageCard>
-          <h1 className={p.h1}>Your stats</h1>
+          <h1 className={p.h1}>{t('library.statsPage.yourStats')}</h1>
           <p className={a.muted}>
             {resolving
-              ? 'Loading…'
+              ? t('library.statsPage.loading')
               : accountsEnabled
-                ? 'Sign in to see your record, ratings and the cards you play.'
-                : "Accounts aren't available on this server."}
+                ? t('library.statsPage.signInPrompt')
+                : t('library.statsPage.accountsUnavailable')}
           </p>
           {!resolving && accountsEnabled && (
             <button type="button" className={p.buttonPrimary} onClick={() => navigate('/profile')}>
-              Go to sign in
+              {t('library.statsPage.goToSignIn')}
             </button>
           )}
         </MessageCard>
@@ -117,17 +130,17 @@ export function StatsPage() {
   const filtered = !isAllGames(filter)
 
   return (
-    <AccountPage title="Stats" width="wide" plain>
+    <AccountPage title={t('library.statsPage.title')} width="wide" plain>
       <div>
-        <h1 className={p.h1}>Your stats</h1>
+        <h1 className={p.h1}>{t('library.statsPage.yourStats')}</h1>
         <p className={p.lede}>
           {empty && filtered
-            ? `No games ${describeFilter(filter)}.`
+            ? t('library.statsPage.noGamesInFilter', { filter: filterDescription })
             : empty
-              ? 'Play some games to start building your stats.'
+              ? t('library.statsPage.startPlaying')
               : filtered
-                ? `Your games ${describeFilter(filter)}.`
-                : 'Everything you play, at a glance.'}
+                ? t('library.statsPage.gamesInFilter', { filter: filterDescription })
+                : t('library.statsPage.everythingAtAGlance')}
         </p>
       </div>
       <StatsDashboard
@@ -149,10 +162,10 @@ export function StatsPage() {
       {empty && !filtered && (
         <section className={p.panel}>
           <div className={a.emptyHero}>
-            <h2 className={a.sectionTitle}>Nothing to chart yet</h2>
-            <p className={a.muted}>Finish a game while signed in — colors, curve, ratings and head-to-head fill in from there.</p>
+            <h2 className={a.sectionTitle}>{t('library.statsPage.nothingToChart')}</h2>
+            <p className={a.muted}>{t('library.statsPage.finishGameHint')}</p>
             <button type="button" className={p.buttonPrimary} onClick={() => navigate('/')}>
-              Find a game
+              {t('library.statsPage.findGame')}
             </button>
           </div>
         </section>

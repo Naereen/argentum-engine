@@ -5,69 +5,75 @@
  */
 export interface SearchExample {
   query: string
-  finds: string
+  descriptionKey:
+    | 'nameContainsBolt' | 'exactNameMatch' | 'rulesTextPhrase' | 'flying'
+    | 'creatures' | 'goblins' | 'legendaryCreatures' | 'permanents'
+    | 'redCards' | 'exactlyWhiteBlue' | 'fitsRedGreen' | 'guildNames' | 'colorlessCards'
+    | 'manaValueAtMostTwo' | 'powerAtLeastFour' | 'toughnessAtMostOne' | 'powerGreaterThanToughness' | 'exactManaCost'
+    | 'printedInBloomburrow' | 'mythicRares' | 'rareOrBetter' | 'legalInStandard'
+    | 'redGoblins' | 'eitherType' | 'nonCreatures' | 'groupedCreatures'
 }
 
 export interface SearchExampleGroup {
-  title: string
+  titleKey: 'namesAndText' | 'type' | 'colour' | 'costAndStats' | 'setRarityFormat' | 'combine'
   examples: SearchExample[]
 }
 
 export const SEARCH_EXAMPLE_GROUPS: SearchExampleGroup[] = [
   {
-    title: 'Name and text',
+    titleKey: 'namesAndText',
     examples: [
-      { query: 'bolt', finds: 'Names containing “bolt”' },
-      { query: '!"Lightning Bolt"', finds: 'Exactly this card' },
-      { query: 'o:"draw a card"', finds: 'Rules text containing a phrase' },
-      { query: 'kw:flying', finds: 'Cards with flying' },
+      { query: 'bolt', descriptionKey: 'nameContainsBolt' },
+      { query: '!"Lightning Bolt"', descriptionKey: 'exactNameMatch' },
+      { query: 'o:"draw a card"', descriptionKey: 'rulesTextPhrase' },
+      { query: 'kw:flying', descriptionKey: 'flying' },
     ],
   },
   {
-    title: 'Type',
+    titleKey: 'type',
     examples: [
-      { query: 't:creature', finds: 'Creatures' },
-      { query: 't:goblin', finds: 'Goblins' },
-      { query: 't:"legendary creature"', finds: 'Legendary creatures' },
-      { query: 'is:permanent', finds: 'Anything that stays on the battlefield' },
+      { query: 't:creature', descriptionKey: 'creatures' },
+      { query: 't:goblin', descriptionKey: 'goblins' },
+      { query: 't:"legendary creature"', descriptionKey: 'legendaryCreatures' },
+      { query: 'is:permanent', descriptionKey: 'permanents' },
     ],
   },
   {
-    title: 'Colour',
+    titleKey: 'colour',
     examples: [
-      { query: 'c:r', finds: 'Red cards (multicolour ones too)' },
-      { query: 'c=wu', finds: 'Exactly white and blue' },
-      { query: 'c<=rg', finds: 'Fits a red-green deck' },
-      { query: 'c:izzet', finds: 'Guild names work: izzet, golgari, …' },
-      { query: 'c:colorless', finds: 'Colourless cards' },
+      { query: 'c:r', descriptionKey: 'redCards' },
+      { query: 'c=wu', descriptionKey: 'exactlyWhiteBlue' },
+      { query: 'c<=rg', descriptionKey: 'fitsRedGreen' },
+      { query: 'c:izzet', descriptionKey: 'guildNames' },
+      { query: 'c:colorless', descriptionKey: 'colorlessCards' },
     ],
   },
   {
-    title: 'Cost and stats',
+    titleKey: 'costAndStats',
     examples: [
-      { query: 'mv<=2', finds: 'Mana value 2 or less' },
-      { query: 'pow>=4', finds: 'Power 4 or more' },
-      { query: 'tou<=1', finds: 'Toughness 1 or less' },
-      { query: 'pow>tou', finds: 'More power than toughness' },
-      { query: 'mana:{1}{G}', finds: 'Costs exactly {1}{G}' },
+      { query: 'mv<=2', descriptionKey: 'manaValueAtMostTwo' },
+      { query: 'pow>=4', descriptionKey: 'powerAtLeastFour' },
+      { query: 'tou<=1', descriptionKey: 'toughnessAtMostOne' },
+      { query: 'pow>tou', descriptionKey: 'powerGreaterThanToughness' },
+      { query: 'mana:{1}{G}', descriptionKey: 'exactManaCost' },
     ],
   },
   {
-    title: 'Set, rarity and format',
+    titleKey: 'setRarityFormat',
     examples: [
-      { query: 's:blb', finds: 'Printed in Bloomburrow' },
-      { query: 'r:mythic', finds: 'Mythic rares' },
-      { query: 'r>=rare', finds: 'Rare or better' },
-      { query: 'f:standard', finds: 'Legal in Standard' },
+      { query: 's:blb', descriptionKey: 'printedInBloomburrow' },
+      { query: 'r:mythic', descriptionKey: 'mythicRares' },
+      { query: 'r>=rare', descriptionKey: 'rareOrBetter' },
+      { query: 'f:standard', descriptionKey: 'legalInStandard' },
     ],
   },
   {
-    title: 'Combine',
+    titleKey: 'combine',
     examples: [
-      { query: 't:goblin c:r', finds: 'A space means and: red goblins' },
-      { query: 't:elf or t:goblin', finds: 'Either one' },
-      { query: '-t:creature', finds: 'A minus excludes: non-creatures' },
-      { query: '(c:u or c:b) t:creature', finds: 'Brackets group: blue or black creatures' },
+      { query: 't:goblin c:r', descriptionKey: 'redGoblins' },
+      { query: 't:elf or t:goblin', descriptionKey: 'eitherType' },
+      { query: '-t:creature', descriptionKey: 'nonCreatures' },
+      { query: '(c:u or c:b) t:creature', descriptionKey: 'groupedCreatures' },
     ],
   },
 ]

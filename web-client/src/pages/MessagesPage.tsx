@@ -17,6 +17,7 @@
  * which this page hides while it's showing.
  */
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { LoginModal } from '@/components/auth/LoginModal'
 import { BackButton, ComposeIcon, ConversationPane, NewMessagePicker, ThreadRow, messagesStyles as m } from '@/components/messages/conversation'
@@ -31,6 +32,7 @@ const POLL_INTERVAL_MS = 30_000
 const OFFLINE_POLL_INTERVAL_MS = 6_000
 
 export function MessagesPage() {
+  const { t } = useTranslation()
   const { accountId } = useParams<{ accountId: string }>()
   const [search] = useSearchParams()
   const navigate = useNavigate()
@@ -57,7 +59,7 @@ export function MessagesPage() {
   if (status === 'authenticated' && user) {
     const toList = () => navigate('/messages')
     return (
-      <PageShell title="Messages" width="wide" fit>
+      <PageShell title={t('library.messagesUI.pageTitle')} width="wide" fit>
         <div className={m.layout} data-open={!!accountId || composing}>
           <ThreadList selectedId={accountId} composing={composing} myId={user.id} />
           {accountId && accountId !== user.id ? (
@@ -68,7 +70,7 @@ export function MessagesPage() {
               className={p.panel}
               onBack={toList}
               onLeave={toList}
-              menuItems={[{ label: 'View profile', onSelect: () => navigate(`/u/${accountId}`) }]}
+              menuItems={[{ label: t('library.messagesUI.viewProfile'), onSelect: () => navigate(`/u/${accountId}`) }]}
             />
           ) : (
             <NewMessagePane composing={composing} />
@@ -80,21 +82,21 @@ export function MessagesPage() {
 
   const resolving = status === 'idle' || status === 'loading'
   return (
-    <PageShell title="Messages">
+    <PageShell title={t('library.messagesUI.pageTitle')}>
       <MessageCard>
-        <h1 className={p.h1}>Messages</h1>
+      <h1 className={p.h1}>{t('library.messagesUI.pageTitle')}</h1>
         {accountsEnabled ? (
           <>
-            <p className={p.lede}>Sign in to message your friends and the players you meet.</p>
+          <p className={p.lede}>{t('library.messagesUI.signInPrompt')}</p>
             <button type="button" className={`${p.buttonPrimary} ${a.fullButton}`} onClick={() => setLoginOpen(true)}>
-              Sign in
+            {t('library.messagesUI.signIn')}
             </button>
             <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
           </>
         ) : resolving ? (
-          <p className={a.muted}>Loading…</p>
+          <p className={a.muted}>{t('library.messagesUI.loading')}</p>
         ) : (
-          <p className={a.muted}>Accounts aren’t available on this server.</p>
+          <p className={a.muted}>{t('library.messagesUI.accountsUnavailable')}</p>
         )}
       </MessageCard>
     </PageShell>
@@ -102,6 +104,7 @@ export function MessagesPage() {
 }
 
 function ThreadList({ selectedId, composing, myId }: { selectedId: string | undefined; composing: boolean; myId: string }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const threads = useMessagesStore((s) => s.threads)
   const loaded = useMessagesStore((s) => s.threadsLoaded)
@@ -121,26 +124,26 @@ function ThreadList({ selectedId, composing, myId }: { selectedId: string | unde
   const unreadRequests = requests.filter((t) => t.unread > 0).length
 
   return (
-    <aside className={`${p.panel} ${m.listPane}`} aria-label="Conversations">
+    <aside className={`${p.panel} ${m.listPane}`} aria-label={t('library.messagesUI.conversations')}>
       <div className={m.listHead}>
-        <h1 className={m.listTitle}>Messages</h1>
+        <h1 className={m.listTitle}>{t('library.messagesUI.pageTitle')}</h1>
         <button
           type="button"
           className={m.iconButton}
           data-active={composing}
           onClick={() => navigate('/messages?new')}
-          aria-label="New message"
-          title="New message"
+          aria-label={t('library.messagesUI.newMessage')}
+          title={t('library.messagesUI.newMessage')}
         >
           <ComposeIcon />
         </button>
       </div>
       <div className={m.tabs} role="tablist">
         <button type="button" role="tab" aria-selected={tab === 'chats'} className={m.tab} onClick={() => setTab('chats')}>
-          Chats
+          {t('library.messagesUI.chats')}
         </button>
         <button type="button" role="tab" aria-selected={tab === 'requests'} className={m.tab} onClick={() => setTab('requests')}>
-          Requests
+          {t('library.messagesUI.requests')}
           {requests.length > 0 && (
             <span className={m.tabCount} data-unread={unreadRequests > 0}>{requests.length}</span>
           )}
@@ -153,21 +156,21 @@ function ThreadList({ selectedId, composing, myId }: { selectedId: string | unde
           <div className={m.listEmpty}>
             {tab === 'chats' ? (
               <>
-                <p className={m.emptyTitle}>No conversations yet</p>
+                <p className={m.emptyTitle}>{t('library.messagesUI.noConversations')}</p>
                 <p className={a.muted}>
-                  <button type="button" className={a.link} onClick={() => navigate('/messages?new')}>Message a friend</button>
-                  {' '}or message any player from their profile.
+                  <button type="button" className={a.link} onClick={() => navigate('/messages?new')}>{t('library.messagesUI.messageFriend')}</button>
+                  {' '}{t('library.messagesUI.orMessageAnyPlayer')}
                 </p>
                 {requests.length > 0 && (
                   <button type="button" className={a.link} onClick={() => setTab('requests')}>
-                    You have {requests.length} message {requests.length === 1 ? 'request' : 'requests'} →
+                    {t('library.messagesUI.messageRequestCount', { count: requests.length })}
                   </button>
                 )}
               </>
             ) : (
               <>
-                <p className={m.emptyTitle}>No message requests</p>
-                <p className={a.muted}>When someone who isn’t your friend messages you, it waits here until you accept it.</p>
+                <p className={m.emptyTitle}>{t('library.messagesUI.noRequests')}</p>
+                <p className={a.muted}>{t('library.messagesUI.requestWaiting')}</p>
               </>
             )}
           </div>
@@ -187,12 +190,13 @@ function ThreadList({ selectedId, composing, myId }: { selectedId: string | unde
 
 /** Nothing open: start a conversation with any friend, including ones you've never written to. */
 function NewMessagePane({ composing }: { composing: boolean }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   return (
-    <section className={`${p.panel} ${m.convPane}`} aria-label="New message">
+    <section className={`${p.panel} ${m.convPane}`} aria-label={t('library.messagesUI.newMessage')}>
       <header className={m.convHead}>
         <BackButton onClick={() => navigate('/messages')} />
-        <h2 className={m.paneTitle}>New message</h2>
+        <h2 className={m.paneTitle}>{t('library.messagesUI.newMessage')}</h2>
       </header>
       <NewMessagePicker key={String(composing)} autoFocus={composing} onPick={(id) => navigate(`/messages/${id}`)} />
     </section>

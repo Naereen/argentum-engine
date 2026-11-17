@@ -3,6 +3,7 @@ import { readdirSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { entityId } from '@/types'
 import { LogEntryRow } from './GameLog'
+import i18n from '@/i18n'
 
 describe('illustrated game log', () => {
   it('ships every mapped event and merchant proxy with the client', () => {
@@ -14,6 +15,7 @@ describe('illustrated game log', () => {
     ])
   })
   it('keeps event artwork inspectable without looking up a French proxy on Scryfall', () => {
+    void i18n.changeLanguage('en')
     const html = renderToStaticMarkup(<LogEntryRow entry={{
       description: 'Ev. Naturalisation finished resolving and was discarded.',
       playerId: entityId('explorer'),
@@ -41,5 +43,34 @@ describe('illustrated game log', () => {
     expect(html).toContain('discarded without resolving')
     expect(html).not.toContain('<img')
     expect(html).not.toContain('<details')
+  })
+
+  it('renders structured log events in the active language while preserving card names', async () => {
+    const entry = {
+      description: 'Player drew card in server prose.',
+      event: {
+        type: 'cardDrawn' as const,
+        playerId: entityId('explorer'),
+        cardId: entityId('card-1'),
+        cardName: 'Év. Naturalisation',
+        description: 'Player drew card in server prose.',
+      },
+      playerId: entityId('explorer'),
+      timestamp: 0,
+      type: 'action' as const,
+    }
+
+    await i18n.changeLanguage('en')
+    const english = renderToStaticMarkup(
+      <LogEntryRow entry={entry} isPlayer seatColor={null} playerName="Ari" />,
+    )
+    expect(english).toContain('Ari drew Év. Naturalisation.')
+
+    await i18n.changeLanguage('fr')
+    const french = renderToStaticMarkup(
+      <LogEntryRow entry={entry} isPlayer seatColor={null} playerName="Ari" />,
+    )
+    expect(french).toContain('Ari a pioché Év. Naturalisation.')
+    await i18n.changeLanguage('en')
   })
 })

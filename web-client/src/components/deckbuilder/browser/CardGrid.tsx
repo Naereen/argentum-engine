@@ -6,6 +6,7 @@
  * the deckbuilder stylesheet, which both surfaces import.
  */
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ManaCost } from '@/components/ui/ManaSymbols'
 import { useDfcHoverFlip } from '@/components/ui/useDfcHoverFlip'
 import { getCardImageUrl } from '@/utils/cardImages'
@@ -40,6 +41,7 @@ export function CardGrid({
   /** Accessible name for a tile's click, e.g. "Add Shock" or "Show Shock". Defaults to the card name. */
   tileLabel?: (c: CardSummary) => string
 }) {
+  const { t } = useTranslation()
   const [hoverCard, setHoverCard] = useState<CardSummary | null>(null)
   const dfc = useDfcHoverFlip(
     hoverCard
@@ -74,7 +76,7 @@ export function CardGrid({
     return (
       <div className={styles.gridScroll}>
         <div className={gridClass}>
-          <div className={styles.emptyState}>No cards match the current filters.</div>
+          <div className={styles.emptyState}>{t('library.browser.noResults')}</div>
         </div>
       </div>
     )
@@ -100,7 +102,7 @@ export function CardGrid({
         {hasMore && (
           <div className={styles.showMoreRow}>
             <button className={styles.secondaryButton} onClick={onShowMore} type="button">
-              Show more
+              {t('library.browser.showMore')}
             </button>
           </div>
         )}

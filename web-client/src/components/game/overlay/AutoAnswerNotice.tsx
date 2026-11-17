@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore'
 
 /** How long the notice stays up: long enough to read a short line, short enough never to queue. */
@@ -13,6 +14,7 @@ const NOTICE_MS = 4000
  * its own, and a click dismisses it early.
  */
 export function AutoAnswerNotice({ topOffset = 0 }: { topOffset?: number }) {
+  const { t } = useTranslation()
   const notice = useGameStore((s) => s.autoAnswerNotice)
   const dismiss = useGameStore((s) => s.dismissAutoAnswerNotice)
 
@@ -31,7 +33,7 @@ export function AutoAnswerNotice({ topOffset = 0 }: { topOffset?: number }) {
       role="status"
       aria-live="polite"
       onClick={dismiss}
-      title="Only one answer was legal, so it was given for you. You can turn this off in Preferences."
+      title={t('gameCore.onlyOneAnswer')}
       style={{
         position: 'fixed',
         top: topOffset + 52,
@@ -55,7 +57,7 @@ export function AutoAnswerNotice({ topOffset = 0 }: { topOffset?: number }) {
         animation: 'autoAnswerNoticeIn 220ms ease-out',
       }}
     >
-      <span style={{ color: '#94a3b8', fontWeight: 700, whiteSpace: 'nowrap' }}>Answered for you</span>
+      <span style={{ color: '#94a3b8', fontWeight: 700, whiteSpace: 'nowrap' }}>{t('gameCore.answeredForYou')}</span>
       {notice.sourceName && <span style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>{notice.sourceName}</span>}
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{notice.text}</span>
       <style>{`

@@ -12,6 +12,7 @@
  * scenario builder's card browser.
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
 import { ManaSymbol } from '@/components/ui/ManaSymbols'
 import { SetIcon } from '@/components/ui/SetIcon'
@@ -28,13 +29,20 @@ import {
 import styles from '../deckbuilder.module.css'
 import type { SetInfo } from './useCardCatalog'
 
-export const COLOR_TOKENS: Array<{ letter: string; label: string; key: string }> = [
+export const COLOR_TOKENS: Array<{ letter: string; label: string; key: 'WHITE' | 'BLUE' | 'BLACK' | 'RED' | 'GREEN' }> = [
   { letter: 'w', label: 'W', key: 'WHITE' },
   { letter: 'u', label: 'U', key: 'BLUE' },
   { letter: 'b', label: 'B', key: 'BLACK' },
   { letter: 'r', label: 'R', key: 'RED' },
   { letter: 'g', label: 'G', key: 'GREEN' },
 ]
+const COLOR_LABEL_KEYS = {
+  WHITE: 'library.filters.colors.white',
+  BLUE: 'library.filters.colors.blue',
+  BLACK: 'library.filters.colors.black',
+  RED: 'library.filters.colors.red',
+  GREEN: 'library.filters.colors.green',
+} as const
 
 const TYPE_TOKENS = [
   'Creature',
@@ -44,23 +52,32 @@ const TYPE_TOKENS = [
   'Artifact',
   'Planeswalker',
   'Land',
-]
+] as const
+const TYPE_LABEL_KEYS = {
+  Creature: 'library.filters.typeOptions.creature',
+  Instant: 'library.filters.typeOptions.instant',
+  Sorcery: 'library.filters.typeOptions.sorcery',
+  Enchantment: 'library.filters.typeOptions.enchantment',
+  Artifact: 'library.filters.typeOptions.artifact',
+  Planeswalker: 'library.filters.typeOptions.planeswalker',
+  Land: 'library.filters.typeOptions.land',
+} as const
 
-const RARITY_TOKENS: Array<{ value: string; dot: string }> = [
+const RARITY_TOKENS = [
   { value: 'common', dot: '#9a9a9a' },
   { value: 'uncommon', dot: '#b8c7d1' },
   { value: 'rare', dot: '#d9b450' },
   { value: 'mythic', dot: '#e8662e' },
-]
+] as const
 
 /** Mana-value chips; the last one is "7 or more". */
 const MANA_VALUES = [0, 1, 2, 3, 4, 5, 6, 7]
 const MV_TOP = 7
 
-const COLOR_MODE_HINT: Record<ColorOp, string> = {
-  ':': 'Cards with every colour you pick — and maybe others.',
-  '=': 'Cards with exactly the colours you pick.',
-  '<=': 'Cards you could play using only the colours you pick.',
+const COLOR_MODE_HINT: Record<ColorOp, 'library.filters.includesHint' | 'library.filters.exactlyHint' | 'library.filters.atMostHint'> = {
+  ':': 'library.filters.includesHint',
+  '=': 'library.filters.exactlyHint',
+  '<=': 'library.filters.atMostHint',
 }
 
 // Evergreen keywords most commonly used as filters. Surface as chips; the rest
@@ -81,7 +98,24 @@ const KEYWORD_TOKENS = [
   'Indestructible',
   'Flash',
   'Ward',
-]
+] as const
+const KEYWORD_LABEL_KEYS = {
+  Flying: 'library.filters.keywords.flying',
+  Trample: 'library.filters.keywords.trample',
+  Vigilance: 'library.filters.keywords.vigilance',
+  Lifelink: 'library.filters.keywords.lifelink',
+  Deathtouch: 'library.filters.keywords.deathtouch',
+  Haste: 'library.filters.keywords.haste',
+  'First strike': 'library.filters.keywords.firstStrike',
+  'Double strike': 'library.filters.keywords.doubleStrike',
+  Reach: 'library.filters.keywords.reach',
+  Menace: 'library.filters.keywords.menace',
+  Hexproof: 'library.filters.keywords.hexproof',
+  Defender: 'library.filters.keywords.defender',
+  Indestructible: 'library.filters.keywords.indestructible',
+  Flash: 'library.filters.keywords.flash',
+  Ward: 'library.filters.keywords.ward',
+} as const
 
 export function FilterSection({
   query,
@@ -97,6 +131,7 @@ export function FilterSection({
   /** `true` when the query uses or / brackets; the panel says its chips narrow all of it. */
   advanced: boolean
 }) {
+  const { t } = useTranslation()
   const toggle = (token: string) => onQueryChange(toggleToken(query, token))
   const terms = useMemo(() => queryTerms(query), [query])
 
@@ -163,7 +198,7 @@ export function FilterSection({
     <fieldset className={styles.filterFieldset}>
       <div className={styles.filterHeader}>
         <h2 className={styles.filterTitle}>
-          Filters
+          {t('library.filters.filters')}
           {terms.length > 0 && <span className={styles.filterCount}>{terms.length}</span>}
         </h2>
         <button
@@ -172,29 +207,29 @@ export function FilterSection({
           onClick={() => onQueryChange('')}
           disabled={query.trim().length === 0}
         >
-          Clear all
+          {t('library.filters.clearAll')}
         </button>
       </div>
       {advanced && (
         <p className={styles.filterNote} role="status">
-          Your search uses <code>or</code> or brackets — filters picked here narrow all of it.
+          {t('library.filters.advancedQuery', { operator: 'or' })}
         </p>
       )}
       {availableSets.length > 0 && (
         <section className={`${styles.section} ${styles.setPickerSection}`}>
-          <h2 className={styles.sectionLabel}>Set</h2>
+          <h2 className={styles.sectionLabel}>{t('library.filters.set')}</h2>
           <SetCombobox sets={availableSets} value={activeSet} onChange={onSetChange} />
         </section>
       )}
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionLabel}>Colour</h2>
+          <h2 className={styles.sectionLabel}>{t('library.filters.colour')}</h2>
           <ColorModeSegmented op={colorOp} onChange={changeColorMode} />
         </div>
         <div className={styles.colorRow}>
           {COLOR_TOKENS.map(({ letter, label, key }) => {
             const active = colorLetters.has(letter)
-            const name = key[0] + key.slice(1).toLowerCase()
+            const name = t(COLOR_LABEL_KEYS[key])
             return (
               <button
                 key={letter}
@@ -213,18 +248,18 @@ export function FilterSection({
             className={`${styles.chip} ${styles.chipMana} ${hasToken(query, 'is:colorless') ? styles.chipActive : ''}`}
             onClick={() => toggle('is:colorless')}
             type="button"
-            aria-label="Colourless"
+            aria-label={t('library.filters.colorless')}
             aria-pressed={hasToken(query, 'is:colorless')}
-            title="Colourless"
+            title={t('library.filters.colorless')}
           >
             <ManaSymbol symbol="C" size={20} />
           </button>
         </div>
-        <p className={styles.filterHint}>{COLOR_MODE_HINT[colorOp]}</p>
+        <p className={styles.filterHint}>{t(COLOR_MODE_HINT[colorOp])}</p>
       </section>
 
       <section className={styles.section}>
-        <h2 className={styles.sectionLabel}>Type</h2>
+        <h2 className={styles.sectionLabel}>{t('library.filters.type')}</h2>
         <div className={styles.filterRow}>
           {TYPE_TOKENS.map((label) => {
             const token = `t:${label}`
@@ -237,7 +272,7 @@ export function FilterSection({
                 type="button"
                 aria-pressed={active}
               >
-                {label}
+                {t(TYPE_LABEL_KEYS[label])}
               </button>
             )
           })}
@@ -256,7 +291,7 @@ export function FilterSection({
                 aria-pressed={active}
               >
                 <span aria-hidden="true" style={{ marginRight: 4, color: '#d4a017' }}>♛</span>
-                Legendary
+                {t('library.filters.legendary')}
               </button>
             )
           })()}
@@ -266,7 +301,7 @@ export function FilterSection({
       <SubtypeSection query={query} terms={terms} onQueryChange={onQueryChange} catalog={catalog} />
 
       <section className={styles.section}>
-        <h2 className={styles.sectionLabel}>Rarity</h2>
+        <h2 className={styles.sectionLabel}>{t('library.filters.rarity')}</h2>
         <div className={styles.filterRow}>
           {RARITY_TOKENS.map(({ value, dot }) => {
             const token = `r:${value}`
@@ -280,7 +315,7 @@ export function FilterSection({
                 aria-pressed={active}
               >
                 <span className={styles.rarityDot} style={{ background: dot }} aria-hidden="true" />
-                {value[0]!.toUpperCase() + value.slice(1)}
+                {t(`library.filters.rarities.${value}`)}
               </button>
             )
           })}
@@ -288,8 +323,8 @@ export function FilterSection({
       </section>
 
       <section className={styles.section}>
-        <h2 className={styles.sectionLabel}>Mana value</h2>
-        <div className={styles.mvRow} role="group" aria-label="Mana value">
+        <h2 className={styles.sectionLabel}>{t('library.filters.manaValue')}</h2>
+        <div className={styles.mvRow} role="group" aria-label={t('library.filters.manaValue')}>
           {MANA_VALUES.map((v) => {
             const active = mvSelected(cmcMin, cmcMax, v)
             return (
@@ -298,7 +333,7 @@ export function FilterSection({
                 type="button"
                 className={`${styles.mvChip} ${active ? styles.mvChipActive : ''}`}
                 aria-pressed={active}
-                aria-label={v === MV_TOP ? 'Mana value 7 or more' : `Mana value ${v}`}
+                aria-label={v === MV_TOP ? t('library.filters.manaValueSevenPlus') : t('library.filters.manaValueNumber', { value: v })}
                 onClick={() => {
                   const [lo, hi] = mvClick(cmcMin, cmcMax, v)
                   onQueryChange(setRange(query, 'cmc', lo, hi))
@@ -309,19 +344,19 @@ export function FilterSection({
             )
           })}
         </div>
-        <p className={styles.filterHint}>Click one value, then another to pick a range.</p>
+        <p className={styles.filterHint}>{t('library.filters.rangeHint')}</p>
       </section>
 
-      <CollapsibleSection title="Power / toughness" activeCount={statCount}>
+      <CollapsibleSection title={t('library.filters.powerToughness')} activeCount={statCount}>
         <RangeRow
-          label="Power"
+          label={t('library.filters.power')}
           min={powMin}
           max={powMax}
           onMin={(v) => onQueryChange(setRange(query, 'pow', v, powMax))}
           onMax={(v) => onQueryChange(setRange(query, 'pow', powMin, v))}
         />
         <RangeRow
-          label="Toughness"
+          label={t('library.filters.toughness')}
           min={touMin}
           max={touMax}
           onMin={(v) => onQueryChange(setRange(query, 'tou', v, touMax))}
@@ -329,7 +364,7 @@ export function FilterSection({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Keywords" activeCount={keywordCount}>
+      <CollapsibleSection title={t('library.filters.keywordsTitle')} activeCount={keywordCount}>
         <div className={styles.filterRow}>
           {KEYWORD_TOKENS.map((label) => {
             const token = keywordToken(label)
@@ -342,7 +377,7 @@ export function FilterSection({
                 type="button"
                 aria-pressed={active}
               >
-                {label}
+                {t(KEYWORD_LABEL_KEYS[label])}
               </button>
             )
           })}
@@ -409,6 +444,7 @@ function SetCombobox({
   value: string
   onChange: (next: string) => void
 }) {
+  const { t } = useTranslation()
   const [sortMode, setSortMode] = useState<'name' | 'date'>(() => {
     if (typeof window === 'undefined') return 'name'
     return (window.localStorage.getItem('deckbuilder.setSort') as 'name' | 'date') ?? 'name'
@@ -537,7 +573,7 @@ function SetCombobox({
   }
 
   const displayValue = open ? search : selected ? `${selected.name} (${selected.code})` : ''
-  const placeholder = selected ? '' : 'All sets — type to search'
+  const placeholder = selected ? '' : t('library.filters.allSetsPlaceholder')
   const activeOptionId = open && filtered[activeIdx] ? `set-opt-${filtered[activeIdx].code}` : undefined
 
   return (
@@ -572,7 +608,7 @@ function SetCombobox({
           <button
             type="button"
             className={styles.setComboClear}
-            aria-label={`Clear set filter (${selected.name})`}
+            aria-label={t('library.filters.clearSet', { name: selected.name })}
             onMouseDown={(e) => {
               e.preventDefault()
               commit('')
@@ -591,9 +627,9 @@ function SetCombobox({
         >
           <div className={styles.setComboPanelHeader}>
             <span className={styles.setComboCount}>
-              {filtered.length} {filtered.length === 1 ? 'set' : 'sets'}
+              {t('library.filters.setCount', { count: filtered.length })}
             </span>
-            <div className={styles.modeSegmented} role="tablist" aria-label="Sort sets">
+            <div className={styles.modeSegmented} role="tablist" aria-label={t('library.filters.sortSets')}>
               <button
                 type="button"
                 role="tab"
@@ -602,7 +638,7 @@ function SetCombobox({
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => setSortMode('name')}
               >
-                Name
+                {t('library.browser.sortName')}
               </button>
               <button
                 type="button"
@@ -612,7 +648,7 @@ function SetCombobox({
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => setSortMode('date')}
               >
-                Release
+                {t('library.filters.release')}
               </button>
             </div>
           </div>
@@ -621,7 +657,7 @@ function SetCombobox({
             ref={listRef}
             className={styles.setComboList}
             role="listbox"
-            aria-label="Sets"
+            aria-label={t('library.filters.set')}
           >
             <li
               id="set-opt-all"
@@ -634,7 +670,7 @@ function SetCombobox({
                 commit('')
               }}
             >
-              <span className={styles.setComboOptionName}>All sets</span>
+              <span className={styles.setComboOptionName}>{t('library.filters.allSets')}</span>
             </li>
             {filtered.map((s, i) => {
               const isActive = i === activeIdx
@@ -692,6 +728,7 @@ function SubtypeSection({
   onQueryChange: (next: string) => void
   catalog: CardSummary[]
 }) {
+  const { t } = useTranslation()
   const [input, setInput] = useState('')
 
   const allSubtypes = useMemo(() => {
@@ -710,11 +747,11 @@ function SubtypeSection({
     for (const term of terms) {
       const m = term.match(/^(-?)t:"?([^"]+?)"?$/)
       if (m && subSet.has(m[2]!.toLowerCase())) {
-        out.push({ token: term, label: m[1] ? `not ${m[2]}` : m[2]! })
+        out.push({ token: term, label: m[1] ? `${t('library.filters.not')} ${m[2]}` : m[2]! })
       }
     }
     return out
-  }, [terms, allSubtypes])
+  }, [terms, allSubtypes, t])
 
   const addSubtype = (raw: string) => {
     const trimmed = raw.trim()
@@ -729,7 +766,7 @@ function SubtypeSection({
 
   return (
     <section className={styles.section}>
-      <h2 className={styles.sectionLabel}>Subtype / tribe</h2>
+      <h2 className={styles.sectionLabel}>{t('library.filters.subtype')}</h2>
       {activeSubtypes.length > 0 && (
         <div className={styles.filterRow}>
           {activeSubtypes.map(({ token, label }) => (
@@ -738,8 +775,8 @@ function SubtypeSection({
               className={`${styles.chip} ${styles.chipActive}`}
               onClick={() => onQueryChange(removeToken(query, token))}
               type="button"
-              title="Remove"
-              aria-label={`Remove ${label}`}
+              title={t('library.filters.remove')}
+              aria-label={`${t('library.filters.remove')} ${label}`}
             >
               {label} <span aria-hidden="true">×</span>
             </button>
@@ -764,8 +801,8 @@ function SubtypeSection({
           const exact = allSubtypes.find((s) => s.toLowerCase() === input.trim().toLowerCase())
           if (exact) addSubtype(exact)
         }}
-        placeholder="Type a tribe — Goblin, Wizard…"
-        aria-label="Add a subtype"
+        placeholder={t('library.filters.subtypePlaceholder')}
+        aria-label={t('library.filters.addSubtype')}
       />
       <datalist id="deckbuilder-subtypes">
         {allSubtypes.map((s) => (
@@ -789,23 +826,28 @@ function ColorModeSegmented({
   op: ColorOp
   onChange: (op: ColorOp) => void
 }) {
-  const options: Array<{ op: ColorOp; label: string; title: string }> = [
-    { op: ':', label: 'Includes', title: 'Cards that include the chosen colour(s)' },
-    { op: '=', label: 'Exactly', title: 'Cards whose colours are exactly the chosen set' },
-    { op: '<=', label: 'At most', title: 'Cards you could play using only the chosen colours' },
+  const { t } = useTranslation()
+  const options: Array<{
+    op: ColorOp
+    label: 'library.filters.includes' | 'library.filters.exactly' | 'library.filters.atMost'
+    title: 'library.filters.includesHint' | 'library.filters.exactlyHint' | 'library.filters.atMostHint'
+  }> = [
+    { op: ':', label: 'library.filters.includes', title: 'library.filters.includesHint' },
+    { op: '=', label: 'library.filters.exactly', title: 'library.filters.exactlyHint' },
+    { op: '<=', label: 'library.filters.atMost', title: 'library.filters.atMostHint' },
   ]
   return (
-    <div className={styles.modeSegmented} role="group" aria-label="Colour comparison mode">
+    <div className={styles.modeSegmented} role="group" aria-label={t('library.filters.colorMode')}>
       {options.map((opt) => (
         <button
           key={opt.op}
           className={op === opt.op ? styles.modeButtonActive : styles.modeButton}
           aria-pressed={op === opt.op}
           onClick={() => onChange(opt.op)}
-          title={opt.title}
+          title={t(opt.title)}
           type="button"
         >
-          {opt.label}
+          {t(opt.label)}
         </button>
       ))}
     </div>
@@ -890,6 +932,7 @@ function RangeRow({
   onMin: (v: string) => void
   onMax: (v: string) => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className={styles.rangeRow}>
       <span className={styles.rangeLabel}>{label}</span>
@@ -900,11 +943,11 @@ function RangeRow({
         max={20}
         className={styles.numericInput}
         value={min ?? ''}
-        placeholder="any"
-        aria-label={`${label} at least`}
+        placeholder={t('library.filters.rangeAny')}
+        aria-label={t('library.filters.rangeMin', { label })}
         onChange={(e) => onMin(e.target.value)}
       />
-      <span aria-hidden="true">to</span>
+      <span aria-hidden="true">{t('library.filters.to')}</span>
       <input
         type="number"
         inputMode="numeric"
@@ -912,8 +955,8 @@ function RangeRow({
         max={20}
         className={styles.numericInput}
         value={max ?? ''}
-        placeholder="any"
-        aria-label={`${label} at most`}
+        placeholder={t('library.filters.rangeAny')}
+        aria-label={t('library.filters.rangeMax', { label })}
         onChange={(e) => onMax(e.target.value)}
       />
     </div>

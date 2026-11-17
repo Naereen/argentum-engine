@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useGameStore } from '@/store/gameStore.ts'
 import type { ChooseNumberDecision } from '@/types'
+import { useTranslation } from 'react-i18next'
 import { ManaSymbol } from '../ui/ManaSymbols'
 import { DecisionContextCards, resolveDecisionCards } from './DecisionContextCards'
 import styles from './DecisionUI.module.css'
@@ -44,12 +45,6 @@ const MANA_TINT: Record<string, string> = {
 
 const tintOf = (symbol: string) => MANA_TINT[symbol] ?? '#888'
 
-const COLOR_NAME: Record<string, string> = {
-  W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green', C: 'colorless',
-}
-
-const nameOf = (symbol: string) => COLOR_NAME[symbol] ?? symbol
-
 /** Pips shrink as the total grows so a big Vivi still fits on one or two rows. */
 const pipSize = (total: number) => (total <= 8 ? 30 : total <= 14 ? 24 : 18)
 
@@ -67,6 +62,7 @@ export function ManaDistributionUI({
   distribution: ManaDistribution
   onMinimize?: (() => void) | undefined
 }) {
+  const { t } = useTranslation()
   const { firstColor, secondColor, total, unitMultiplier } = distribution
   // Start at an even split: a mixed default shows at a glance that the colors combine.
   const [firstAmount, setFirstAmount] = useState(Math.ceil(total / 2))
@@ -79,6 +75,17 @@ export function ManaDistributionUI({
   const secondAmount = total - firstAmount
   const even = Math.ceil(total / 2)
   const firstPct = total === 0 ? 50 : (firstAmount / total) * 100
+  const nameOf = (symbol: string) => {
+    switch (symbol) {
+      case 'W': return t('mana.white')
+      case 'U': return t('mana.blue')
+      case 'B': return t('mana.black')
+      case 'R': return t('mana.red')
+      case 'G': return t('mana.green')
+      case 'C': return t('mana.colorless')
+      default: return symbol
+    }
+  }
 
   // Clicking pip i paints the split there; clicking the last first-color pip again un-paints it,
   // so a single pip can always be flipped either way.
@@ -98,7 +105,7 @@ export function ManaDistributionUI({
           className={manaStyles.stepButton}
           onClick={() => onChange(-1)}
           disabled={amount === 0}
-          aria-label={`Less ${nameOf(symbol)}`}
+          aria-label={t('mana.less', { color: nameOf(symbol) })}
         >
           −
         </button>
@@ -110,7 +117,7 @@ export function ManaDistributionUI({
           className={manaStyles.stepButton}
           onClick={() => onChange(1)}
           disabled={amount === total}
-          aria-label={`More ${nameOf(symbol)}`}
+          aria-label={t('mana.more', { color: nameOf(symbol) })}
         >
           +
         </button>
@@ -130,14 +137,15 @@ export function ManaDistributionUI({
     <>
       <DecisionContextCards cards={cards} />
       <h2 className={styles.title}>
-        {decision.context.sourceName ?? 'Add mana'}
+        {decision.context.sourceName ?? t('mana.addMana')}
       </h2>
       <p className={manaStyles.subtitle}>
-        Add {total} mana in any combination of <ManaSymbol symbol={firstColor} size={16} /> and
-        {' '}<ManaSymbol symbol={secondColor} size={16} />
+        {t('mana.addAnyCombination', { count: total })}{' '}
+        <ManaSymbol symbol={firstColor} size={16} /> {t('mana.and')}{' '}
+        <ManaSymbol symbol={secondColor} size={16} />
       </p>
       {unitMultiplier > 1 && (
-        <p className={manaStyles.multiplierNote}>Each mana you choose becomes {unitMultiplier}.</p>
+        <p className={manaStyles.multiplierNote}>{t('mana.eachBecomes', { count: unitMultiplier })}</p>
       )}
 
       <div className={manaStyles.board}>
@@ -146,7 +154,7 @@ export function ManaDistributionUI({
           {colorPanel(secondColor, secondAmount, (d) => setFirst(firstAmount - d))}
         </div>
 
-        <div className={manaStyles.pips} role="group" aria-label="Mana to add">
+        <div className={manaStyles.pips} role="group" aria-label={t('mana.manaToAdd')}>
           {Array.from({ length: total }, (_, i) => {
             const symbol = i < firstAmount ? firstColor : secondColor
             return (
@@ -155,7 +163,11 @@ export function ManaDistributionUI({
                 type="button"
                 className={manaStyles.pip}
                 onClick={() => handlePipClick(i)}
-                                aria-label={`${i + 1} ${nameOf(firstColor)}, rest ${nameOf(secondColor)}`}
+                aria-label={t('mana.pipSelection', {
+                  number: i + 1,
+                  firstColor: nameOf(firstColor),
+                  secondColor: nameOf(secondColor),
+                })}
               >
                 <ManaSymbol symbol={symbol} size={pipSize(total)} />
               </button>
@@ -174,7 +186,10 @@ export function ManaDistributionUI({
           style={{
             background: `linear-gradient(to right, ${tintOf(firstColor)} 0%, ${tintOf(firstColor)} ${firstPct}%, ${tintOf(secondColor)} ${firstPct}%, ${tintOf(secondColor)} 100%)`,
           }}
-          aria-label={`Amount of ${nameOf(firstColor)} mana; the rest is ${nameOf(secondColor)}`}
+          aria-label={t('mana.amountFirstColor', {
+            color: nameOf(firstColor),
+            otherColor: nameOf(secondColor),
+          })}
         />
 
         <div className={manaStyles.presets}>
@@ -183,7 +198,7 @@ export function ManaDistributionUI({
             className={`${manaStyles.preset} ${firstAmount === total ? manaStyles.presetActive : ''}`}
             onClick={() => setFirst(total)}
           >
-            All <ManaSymbol symbol={firstColor} size={14} />
+            {t('mana.all')} <ManaSymbol symbol={firstColor} size={14} />
           </button>
           {total > 1 && (
             <button
@@ -191,7 +206,7 @@ export function ManaDistributionUI({
               className={`${manaStyles.preset} ${firstAmount === even ? manaStyles.presetActive : ''}`}
               onClick={() => setFirst(even)}
             >
-              Even
+              {t('mana.even')}
             </button>
           )}
           <button
@@ -199,7 +214,7 @@ export function ManaDistributionUI({
             className={`${manaStyles.preset} ${firstAmount === 0 ? manaStyles.presetActive : ''}`}
             onClick={() => setFirst(0)}
           >
-            All <ManaSymbol symbol={secondColor} size={14} />
+            {t('mana.all')} <ManaSymbol symbol={secondColor} size={14} />
           </button>
         </div>
       </div>
@@ -207,14 +222,14 @@ export function ManaDistributionUI({
       <div className={styles.buttonContainer}>
         {onMinimize && (
           <button onClick={onMinimize} className={styles.viewBattlefieldButton}>
-            View Battlefield
+            {t('mana.viewBattlefield')}
           </button>
         )}
         <button
           onClick={() => submitNumberDecision(decision.id, firstAmount)}
           className={`${styles.confirmButton} ${manaStyles.confirmButton}`}
         >
-          Add {confirmPart(firstColor, firstAmount)}
+          {t('mana.confirmAdd')} {confirmPart(firstColor, firstAmount)}
           {firstAmount > 0 && secondAmount > 0 && <span className={manaStyles.confirmPlus}>+</span>}
           {confirmPart(secondColor, secondAmount)}
         </button>

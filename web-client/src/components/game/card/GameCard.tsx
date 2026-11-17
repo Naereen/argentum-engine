@@ -1,5 +1,6 @@
 import { CounterAllocationControls } from './CounterAllocationControls'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import { useHasLegalActions } from '@/store/selectors.ts'
 import type { ClientCard, EntityId, LegalActionInfo } from '@/types'
@@ -226,6 +227,7 @@ function GameCardImpl({
   isGhost = false,
   enableDragToCast = false,
 }: GameCardProps) {
+  const { t } = useTranslation()
   const voidActive = useGameStore(
     (state) => (state.spectatingState?.gameState ?? state.gameState)?.voidActive ?? false
   )
@@ -2286,14 +2288,14 @@ function GameCardImpl({
                     matters at a glance, because a token that leaves the battlefield ceases to exist. */}
                 {showToken && (
                   <div
-                    aria-label="Token"
+                    aria-label={t('gameCore.token')}
                     title="Token — it ceases to exist if it leaves the battlefield"
                     style={{
                       ...styles.tokenChip,
                       fontSize: Math.max(responsive.badges.smallLabelFontSize - 1, 6),
                     }}
                   >
-                    Token
+                    {t('gameCore.token')}
                   </div>
                 )}
 
@@ -2302,8 +2304,8 @@ function GameCardImpl({
                     (One Ring) glyph. */}
                 {showRingBearer && (
                   <div
-                    aria-label="Ring-bearer"
-                    title="Ring-bearer"
+                    aria-label={t('gameCore.ringBearer')}
+                    title={t('gameCore.ringBearer')}
                     style={{ ...styles.ringBearerMarker, width: markerSize, height: markerSize }}
                   >
                     <i
@@ -2942,8 +2944,8 @@ function GameCardImpl({
     const crownHeight = Math.round(crownWidth * 0.55)
     return (
       <div
-        aria-label="Commander"
-        title="Commander"
+        aria-label={t('gameCore.commander')}
+        title={t('gameCore.commander')}
         style={{
           position: 'absolute',
           top: bandTop - crownHeight - 3,
@@ -3038,8 +3040,8 @@ function GameCardImpl({
         {cardElement}
         {isEncounterCard && (
           <span
-            aria-label="Encounter permanent"
-            title="Encounter permanent — managed by this seat, not controlled by that player"
+            aria-label={t('gameCore.encounterPermanent')}
+            title={t('gameCore.encounterPermanentHint')}
             style={{
               position: 'absolute', top: 2, left: 2, zIndex: 7, pointerEvents: 'none',
               padding: '2px 4px', borderRadius: 4, background: 'rgba(86, 47, 21, 0.94)',

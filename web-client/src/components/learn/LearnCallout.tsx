@@ -9,11 +9,13 @@
  * at `/learn` (the `/help` guide has the other one).
  */
 import { useNavigate } from 'react-router-dom'
-import { COURSE_COUNT_WORD, COURSE_MINUTES, MISSIONS } from '@/learn/missions'
+import { COURSE_MINUTES, MISSIONS } from '@/learn/missions'
 import { hasStarted, nextIncomplete, useLearnProgress } from '@/learn/progressStore'
 import styles from './LearnCallout.module.css'
+import { useTranslation } from 'react-i18next'
 
 export function LearnCallout({ variant }: { variant: 'arrival' | 'tier' }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const completed = useLearnProgress((s) => s.completed)
   const started = hasStarted({ completed })
@@ -31,17 +33,17 @@ export function LearnCallout({ variant }: { variant: 'arrival' | 'tier' }) {
         <span className={styles.arrivalText}>
           <span className={styles.arrivalTitle}>
             {finished
-              ? 'Course complete — replay it any time'
+              ? t('learnCallout.courseComplete')
               : started
-                ? 'Pick up the course where you left off'
-                : 'Never played Magic?'}
+                ? t('learnCallout.resumeCourse')
+                : t('learnCallout.newToMagic')}
           </span>
           <span className={styles.arrivalBody}>
             {finished
-              ? `All ${MISSIONS.length} missions done. Any of them can be played again — no name needed.`
+              ? t('learnCallout.finishedBody', { missionCount: MISSIONS.length })
               : started
-                ? `${completed.length} of ${MISSIONS.length} missions done — no name needed to continue.`
-                : `Learn by playing: ${COURSE_COUNT_WORD} short guided games with a coach, about ${COURSE_MINUTES} minutes. No name needed.`}
+                ? t('learnCallout.resumeBody', { completedCount: completed.length, missionCount: MISSIONS.length })
+                : t('learnCallout.startBody', { missionCount: MISSIONS.length, minutes: COURSE_MINUTES })}
           </span>
         </span>
         <span className={styles.arrivalArrow} aria-hidden="true">→</span>
@@ -60,13 +62,17 @@ export function LearnCallout({ variant }: { variant: 'arrival' | 'tier' }) {
       </span>
       <span className={styles.tierLabel}>
         {finished
-          ? 'Learn to play — course complete'
+          ? t('learnCallout.tierComplete')
           : started
-            ? 'Continue learning to play'
-            : 'New to Magic? Learn to play'}
+            ? t('learnCallout.tierContinue')
+            : t('learnCallout.tierNew')}
       </span>
       <span className={styles.tierMeta}>
-        {finished ? 'Replay' : started ? `${completed.length}/${MISSIONS.length}` : `${COURSE_MINUTES} min`}
+        {finished
+          ? t('learnCallout.replay')
+          : started
+            ? `${completed.length}/${MISSIONS.length}`
+            : t('learnCallout.minutes', { count: COURSE_MINUTES })}
       </span>
     </button>
   )

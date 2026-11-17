@@ -1,5 +1,6 @@
 import type React from 'react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import type { ClientAbilityIdentity, ClientYield } from '@/types/gameState'
 import type { YieldKind } from '@/types'
@@ -30,6 +31,7 @@ export function YieldContextMenu({
   ownAbility: boolean
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const setAbilityYield = useGameStore((s) => s.setAbilityYield)
   const clearAbilityYield = useGameStore((s) => s.clearAbilityYield)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -68,7 +70,7 @@ export function YieldContextMenu({
       <div
         ref={menuRef}
         role="menu"
-        aria-label={`Yields for ${sourceName}`}
+        aria-label={t('gameCore.yieldsFor', { sourceName })}
         style={{
           position: 'fixed',
           left: placed.x,
@@ -91,21 +93,21 @@ export function YieldContextMenu({
             {sourceName}
           </div>
           <div style={{ color: '#9c8cb4', fontSize: 11, marginTop: 2 }}>
-            Stop being asked about this ability. Covers every copy of it.
+            {t('gameCore.yieldMenuHelp')}
           </div>
         </div>
 
-        <SectionLabel>When it’s on the stack</SectionLabel>
+        <SectionLabel>{t('gameCore.yieldOnStack')}</SectionLabel>
         <MenuItem
-          label="Auto-pass this turn"
-          detail="Don’t stop for it again until end of turn"
+          label={t('gameCore.autoPassThisTurn')}
+          detail={t('gameCore.autoPassThisTurnHint')}
           tone="pass"
           active={existing?.untilEndOfTurn ?? false}
           onClick={() => apply('YIELD_UNTIL_END_OF_TURN')}
         />
         <MenuItem
-          label="Auto-pass all game"
-          detail="Never stop to respond to it"
+          label={t('gameCore.autoPassAllGame')}
+          detail={t('gameCore.autoPassAllGameHint')}
           tone="pass"
           active={existing?.wholeGame ?? false}
           onClick={() => apply('YIELD_WHOLE_GAME')}
@@ -113,17 +115,17 @@ export function YieldContextMenu({
 
         {(ownAbility || existing?.autoAnswer != null) && (
           <>
-            <SectionLabel>When it asks “you may…”</SectionLabel>
+            <SectionLabel>{t('gameCore.optionalChoice')}</SectionLabel>
             <MenuItem
-              label="Always answer Yes"
-              detail="Your optional choice, answered for you"
+              label={t('gameCore.alwaysAnswerYes')}
+              detail={t('gameCore.alwaysAnswerYesHint')}
               tone="yes"
               active={existing?.autoAnswer === true}
               onClick={() => apply('ALWAYS_ANSWER_YES')}
             />
             <MenuItem
-              label="Always answer No"
-              detail="Decline it without a prompt"
+              label={t('gameCore.alwaysAnswerNo')}
+              detail={t('gameCore.alwaysAnswerNoHint')}
               tone="no"
               active={existing?.autoAnswer === false}
               onClick={() => apply('ALWAYS_ANSWER_NO')}
@@ -153,7 +155,7 @@ export function YieldContextMenu({
             onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(200, 80, 70, 0.16)' }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
           >
-            Stop yielding — ask me again
+            {t('gameCore.stopYielding')}
           </button>
         )}
       </div>

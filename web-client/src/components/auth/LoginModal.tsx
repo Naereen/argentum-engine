@@ -3,6 +3,7 @@
  * Uses the account area's glass dialog (`account.module.css`).
  */
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type React from 'react'
 import { requestLogin } from '@/api/account'
 import a from '@/components/profile/account.module.css'
@@ -14,6 +15,7 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ open, onClose }: LoginModalProps) {
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -51,7 +53,7 @@ export function LoginModal({ open, onClose }: LoginModalProps) {
       setStatus('sent')
     } catch (err) {
       setStatus('idle')
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setError(err instanceof Error ? err.message : t('auth.genericError'))
     }
   }
 
@@ -60,17 +62,16 @@ export function LoginModal({ open, onClose }: LoginModalProps) {
       <div className={a.dialog} data-size="small" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="login-title">
         <div className={a.dialogHead}>
           <h2 id="login-title" className={a.dialogTitle}>
-            {status === 'sent' && devLoginPath ? 'Sign in (dev server)' : status === 'sent' ? 'Check your email' : 'Sign in'}
+            {status === 'sent' && devLoginPath ? t('auth.signInDev') : status === 'sent' ? t('auth.checkEmail') : t('auth.signIn')}
           </h2>
-          <button type="button" onClick={onClose} className={a.close} aria-label="Close">
+          <button type="button" onClick={onClose} className={a.close} aria-label={t('auth.close')}>
             ×
           </button>
         </div>
         {status === 'sent' && devLoginPath ? (
           <div className={a.form}>
             <p className={a.muted}>
-              This server has no mail configured, so no email was sent. The sign-in link for{' '}
-              <strong className={a.strong}>{email}</strong> is ready — use it here.
+              {t('auth.devMailUnavailable', { email })}
             </p>
             <button
               type="button"
@@ -78,38 +79,37 @@ export function LoginModal({ open, onClose }: LoginModalProps) {
               className={p.buttonPrimary}
               data-testid="dev-sign-in"
             >
-              Sign in now
+              {t('auth.signInNow')}
             </button>
           </div>
         ) : status === 'sent' ? (
           <div className={a.form}>
             <p className={a.muted}>
-              We sent a sign-in link to <strong className={a.strong}>{email}</strong>. Open it on this device to finish
-              signing in. The link expires shortly and can be used once.
+              {t('auth.linkSent', { email })}
             </p>
             <button type="button" onClick={onClose} className={p.buttonPrimary}>
-              Done
+              {t('auth.done')}
             </button>
           </div>
         ) : (
           <>
             <p className={a.muted} style={{ marginTop: 6 }}>
-              Enter your email and we’ll send you a one-time sign-in link — no password needed.
+              {t('auth.emailPrompt')}
             </p>
             <form onSubmit={submit} className={a.form}>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                aria-label="Email"
+                placeholder={t('auth.emailAddress')}
+                aria-label={t('auth.email')}
                 autoFocus
                 required
                 className={p.input}
               />
               {error && <p className={a.error}>{error}</p>}
               <button type="submit" disabled={status === 'sending'} className={p.buttonPrimary}>
-                {status === 'sending' ? 'Sending…' : 'Send sign-in link'}
+                {status === 'sending' ? t('auth.sending') : t('auth.sendSignInLink')}
               </button>
             </form>
           </>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import styles from './GameUI.module.css'
 
 /**
@@ -7,6 +8,7 @@ import styles from './GameUI.module.css'
  * `compact` draws an icon instead of the label, for the landing and lobby top bars.
  */
 export function FullscreenButton({ compact = false }: { compact?: boolean } = {}) {
+  const { t } = useTranslation()
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   useEffect(() => {
@@ -29,7 +31,7 @@ export function FullscreenButton({ compact = false }: { compact?: boolean } = {}
     }
   }
 
-  const title = isFullscreen ? 'Exit fullscreen (Esc)' : 'Enter fullscreen'
+  const title = isFullscreen ? t('fullscreen.exit') : t('fullscreen.enter')
   if (compact) {
     return (
       <button
@@ -54,7 +56,7 @@ export function FullscreenButton({ compact = false }: { compact?: boolean } = {}
       className={styles.fullscreenButton}
       title={title}
     >
-      {isFullscreen ? '⛶ Exit' : '⛶ Fullscreen'}
+      {isFullscreen ? `⛶ ${t('fullscreen.exitLabel')}` : `⛶ ${t('fullscreen.label')}`}
     </button>
   )
 }

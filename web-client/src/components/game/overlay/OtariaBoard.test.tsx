@@ -1,10 +1,15 @@
 import { renderToStaticMarkup } from 'react-dom/server'
+import type React from 'react'
 import { describe, expect, it } from 'vitest'
 import { otariaBoard, otariaGameState, otariaViewer, otariaManager } from '@/test/otariaFixtures'
 import { Color, entityId } from '@/types'
 import type { ClientOtariaState } from '@/types'
 import { OtariaBoardButton, OtariaBoardContents, OtariaMap, OtariaReserveButton } from './OtariaBoard'
 import styles from './OtariaBoard.module.css'
+import { I18nextProvider } from 'react-i18next'
+import i18n from '@/i18n'
+
+const render = (node: React.ReactNode) => renderToStaticMarkup(<I18nextProvider i18n={i18n}>{node}</I18nextProvider>)
 
 describe('Otaria board', () => {
   it('shows the supplied event artwork while the exploration is pending', () => {
@@ -17,7 +22,7 @@ describe('Otaria board', () => {
         card: { name: 'Ev. Naturalisation', kind: 'EVENT', imageUri: '/images/otaria/events/naturalisation.png' },
       },
     }
-    const html = renderToStaticMarkup(<OtariaBoardContents gameState={otariaGameState(board)} board={board} />)
+    const html = render(<OtariaBoardContents gameState={otariaGameState(board)} board={board} />)
     expect(html).toContain('src="/images/otaria/events/naturalisation.png"')
     expect(html).toContain('alt="Ev. Naturalisation"')
   })
@@ -29,8 +34,8 @@ describe('Otaria board', () => {
       choices: [{ position: { column: 7, row: 3 }, index: 0, label: 'Order Encampment' }],
       selectedIndex: 0,
     }
-    const local = renderToStaticMarkup(<OtariaMap {...props} zoomed />)
-    const full = renderToStaticMarkup(<OtariaMap {...props} zoomed={false} />)
+    const local = render(<OtariaMap {...props} zoomed />)
+    const full = render(<OtariaMap {...props} zoomed={false} />)
     const viewBox = local.match(/viewBox="([^"]+)"/)![1]!.split(' ').map(Number)
     const [x, y, width, height] = viewBox as [number, number, number, number]
     for (const position of [board.players[0]!.position, props.choices[0]!.position]) {
@@ -48,7 +53,7 @@ describe('Otaria board', () => {
       expect(html).toContain('aria-label="Order Encampment" aria-pressed="true"')
       expect(html.match(/role="button"/g)).toHaveLength(1)
     }
-    expect(renderToStaticMarkup(<OtariaMap gameState={props.gameState} board={board} zoomed />))
+    expect(render(<OtariaMap gameState={props.gameState} board={board} zoomed />))
       .toContain('viewBox="-8 -8 390 512"')
   })
 
@@ -64,7 +69,7 @@ describe('Otaria board', () => {
       players: original.players.map((player, index) =>
         index === 1 ? { ...player, position: { column: 12, row: 14 } } : player),
     }
-    const html = renderToStaticMarkup(
+    const html = render(
       <OtariaMap
         gameState={otariaGameState(board)}
         board={board}
@@ -82,7 +87,7 @@ describe('Otaria board', () => {
       { position: { column: 7, row: 3 }, index: 0, label: 'Order Encampment' },
       { position: { column: 7, row: 8 }, index: 1, label: 'Southern Pit-Arena' },
     ]
-    const renderMap = (selectedIndex: number | null) => renderToStaticMarkup(
+    const renderMap = (selectedIndex: number | null) => render(
       <OtariaMap gameState={otariaGameState(board)} board={board} choices={choices} selectedIndex={selectedIndex} />,
     )
     const unselected = renderMap(null)
@@ -115,7 +120,7 @@ describe('Otaria board', () => {
         ...originalState.players[0]!, playerId: player.playerId, name: `Player ${index + 1}`,
       })),
     }
-    const html = renderToStaticMarkup(<OtariaMap gameState={state} board={board} />)
+    const html = render(<OtariaMap gameState={state} board={board} />)
     const circles = [...html.matchAll(/<circle cx="([^"]+)" cy="([^"]+)" r="9"/g)]
     expect(circles).toHaveLength(5)
     const centers = circles.map((match) => [Number(match[1]), Number(match[2])] as const)
@@ -132,26 +137,26 @@ describe('Otaria board', () => {
   })
 
   it('only offers the map for Otaria positions', () => {
-    expect(renderToStaticMarkup(<OtariaBoardButton gameState={otariaGameState()} />)).toContain('Otaria map')
-    expect(renderToStaticMarkup(<OtariaBoardButton gameState={otariaGameState(null)} />)).toBe('')
+    expect(render(<OtariaBoardButton gameState={otariaGameState()} />)).toContain('Otaria map')
+    expect(render(<OtariaBoardButton gameState={otariaGameState(null)} />)).toBe('')
   })
 
   it('renders the live map as an accessible full-panel button in the overview', () => {
     const state = otariaGameState()
-    const html = renderToStaticMarkup(<OtariaBoardButton gameState={state} miniature />)
+    const html = render(<OtariaBoardButton gameState={state} miniature />)
     expect(html).toContain('aria-label="Open Otaria map"')
     expect(html).toContain('viewBox="-8 -8 390 512"')
     expect(html).toContain('<circle')
-    expect(renderToStaticMarkup(<OtariaBoardButton gameState={otariaGameState(null)} miniature />)).toBe('')
+    expect(render(<OtariaBoardButton gameState={otariaGameState(null)} miniature />)).toBe('')
   })
 
   it('offers the viewing player direct access to their private reserve from the game HUD', () => {
     const state = otariaGameState()
-    const html = renderToStaticMarkup(<OtariaReserveButton gameState={state} />)
+    const html = render(<OtariaReserveButton gameState={state} />)
 
     expect(html).toContain('aria-label="Open your reserve, 1 card"')
     expect(html).toContain('Reserve · 1')
-    expect(renderToStaticMarkup(<OtariaReserveButton gameState={otariaGameState(null)} />)).toBe('')
+    expect(render(<OtariaReserveButton gameState={otariaGameState(null)} />)).toBe('')
 
     const hiddenFromViewer = {
       ...state,
@@ -160,12 +165,12 @@ describe('Otaria board', () => {
         players: state.otaria!.players.map((player) => ({ ...player, privateData: null })),
       },
     }
-    expect(renderToStaticMarkup(<OtariaReserveButton gameState={hiddenFromViewer} />)).toBe('')
+    expect(render(<OtariaReserveButton gameState={hiddenFromViewer} />)).toBe('')
   })
 
   it('shows public positions and counts and only the private reserve provided by the server', () => {
     const board = otariaBoard()
-    const html = renderToStaticMarkup(<OtariaBoardContents gameState={otariaGameState(board)} board={board} />)
+    const html = render(<OtariaBoardContents gameState={otariaGameState(board)} board={board} />)
 
     expect(html).toContain('Krosian Forest')
     expect(html).toContain('Alice')
@@ -190,7 +195,7 @@ describe('Otaria board', () => {
       ...board,
       pendingExploration: { ...pending, card: { name: 'Hidden Morph', kind: 'CREATURE' as const } },
     }
-    const html = renderToStaticMarkup(
+    const html = render(
       <OtariaBoardContents gameState={otariaGameState(managerView)} board={managerView} />,
     )
     expect(html).toContain('Face-down creature: Hidden Morph (private)')
@@ -209,7 +214,7 @@ describe('Otaria board', () => {
         participants: [otariaViewer, otariaManager],
       }],
     }
-    const html = renderToStaticMarkup(
+    const html = render(
       <OtariaBoardContents gameState={otariaGameState(board)} board={board} />,
     )
     expect(html).toContain('Current turn')
@@ -217,7 +222,7 @@ describe('Otaria board', () => {
     expect(html).toContain('Exploration completed.')
     expect(html).toContain('Active encounters')
     expect(html).toContain('Southern Pit-Arena')
-    expect(html).toContain('<strong>Alice</strong> explores; <strong>Bob</strong> manages the encounter.')
+    expect(html).toContain('Alice explores; Bob manages the encounter.')
     expect(html).toContain('Participants: Alice, Bob')
     expect(html).not.toContain('encounter-actor')
     expect(html).not.toContain('Current exploration')
@@ -229,7 +234,7 @@ describe('Otaria board', () => {
       ...otariaBoard(),
       turn: { action: 'MOVE', movementAllowed: false, explorationFinished: false },
     }
-    const html = renderToStaticMarkup(
+    const html = render(
       <OtariaBoardContents gameState={otariaGameState(board)} board={board} />,
     )
     expect(html).toContain('Movement is no longer available this turn.')

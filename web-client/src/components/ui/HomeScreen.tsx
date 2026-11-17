@@ -31,6 +31,7 @@ import { LearnCallout } from '@/components/learn/LearnCallout'
 import { WhatsNew } from '@/components/whatsNew/WhatsNew'
 import { ArgentumMark } from './ArgentumMark'
 import { FullscreenButton } from './FullscreenButton'
+import { useTranslation } from 'react-i18next'
 import { PlayHub } from './PlayHub'
 import { SetupRail } from './SetupRail'
 import { FindOpponentPanel } from '../matchmaking/FindOpponentPanel'
@@ -89,6 +90,7 @@ export function HomeScreen({
   sessionId: string | null
   error: string | undefined
 }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const connect = useGameStore((state) => state.connect)
   const aiEnabled = useGameStore((state) => state.aiEnabled)
@@ -104,7 +106,7 @@ export function HomeScreen({
   const [loginOpen, setLoginOpen] = useState(false)
   const [showReplays, setShowReplays] = useState(false)
   const [publicLobbies, setPublicLobbies] = useState<PublicLobbyEntry[]>([])
-  const [publicLobbiesError, setPublicLobbiesError] = useState<string | null>(null)
+  const [publicLobbiesError, setPublicLobbiesError] = useState(false)
   const [liveGames, setLiveGames] = useState<LiveGameEntry[]>([])
   // A join requested before the socket was up (name entry, or a public-lobby row clicked while
   // disconnected), replayed once we're connected. Kind-agnostic: the quick-game join handler
@@ -180,13 +182,13 @@ export function HomeScreen({
           ]
           setPublicLobbies(merged)
           setLiveGames(live)
-          setPublicLobbiesError(null)
+          setPublicLobbiesError(false)
         }
       } catch {
         if (!cancelled) {
           setPublicLobbies([])
           setLiveGames([])
-          setPublicLobbiesError('Could not load public lobbies.')
+          setPublicLobbiesError(true)
         }
       }
     }
@@ -287,7 +289,7 @@ export function HomeScreen({
       {showPublicLobbies && (
         <PublicLobbyList
           lobbies={publicLobbies}
-          error={publicLobbiesError}
+          error={publicLobbiesError ? t('home.publicLobbiesError') : null}
           onlinePlayers={onlinePlayers}
           onJoin={joinPublicLobby}
         />
@@ -312,57 +314,56 @@ export function HomeScreen({
       >
         <div className={home.artTint} aria-hidden />
         <header className={home.topBar}>
-          <Link to="/" className={home.brand} aria-label="Argentum — home" onClick={() => setShowReplays(false)}>
+          <Link to="/" className={home.brand} aria-label={t('navigation.home')} onClick={() => setShowReplays(false)}>
             <BrandMark />
             Argentum
           </Link>
-          <nav className={home.nav} aria-label="Main">
+          <nav className={home.nav} aria-label={t('navigation.main')}>
             <button
               type="button"
               className={home.navItem}
               onClick={() => navigate('/library')}
-              title="Build and save decks and cubes, and share them with friends"
+              title={t('navigation.deckDescription')}
             >
-              Decks &amp; Cubes
+              {t('navigation.decksAndCubes')}
             </button>
             <button
               type="button"
               className={home.navItem}
               onClick={() => navigate('/cards')}
-              title="Look through every card you can play here"
+              title={t('navigation.cardsDescription')}
             >
-              Cards
+              {t('navigation.cards')}
             </button>
-            <button type="button" className={home.navItem} onClick={() => setShowReplays(true)}>Replays</button>
-            {/* "Which cards of a set can I actually play with?" is a deckbuilding question. */}
+            <button type="button" className={home.navItem} onClick={() => setShowReplays(true)}>{t('navigation.replays')}</button>
             <button
               type="button"
               className={home.navItem}
               onClick={() => navigate('/set-completion')}
-              title="How much of every Magic set Argentum can play today"
+              title={t('navigation.setsDescription')}
             >
-              Sets
+              {t('navigation.sets')}
             </button>
-            {/* "Which set should I draft or play sealed?" — the guide to the fully playable sets. */}
             <button
               type="button"
               className={home.navItem}
               onClick={() => navigate('/sets')}
-              title="Compare the sets you can draft or play sealed and find one that suits you"
+              title={t('navigation.setGuideDescription')}
             >
-              Set guide
+              {t('navigation.setGuide')}
             </button>
-            <button type="button" className={home.navItem} onClick={() => navigate('/learn')}>Learn</button>
+            <button type="button" className={home.navItem} onClick={() => navigate('/learn')}>{t('navigation.learn')}</button>
             <button
               type="button"
               className={home.navItem}
               onClick={() => navigate('/help')}
-              title="How Argentum works — modes, priority, shortcuts"
+              title={t('navigation.helpDescription')}
             >
-              Help
+              {t('navigation.help')}
             </button>
           </nav>
           <div className={home.topBarEnd}>
+
             <WhatsNew compact />
             <PreferencesButton />
             <ChatButton />
@@ -372,13 +373,13 @@ export function HomeScreen({
         </header>
 
         <main className={home.main}>
-          {error && <p className={home.error}>Error: {error}</p>}
+          {error && <p className={home.error}>{t('common.error', { message: error })}</p>}
 
           <div className={home.quickRow}>
             {resumableLobbyId && (
               <div className={home.resume}>
                 <div className={home.resumeText}>
-                  <span className={home.resumeLabel}>Lobby still open</span>
+                  <span className={home.resumeLabel}>{t('home.lobbyStillOpen')}</span>
                   <span className={home.resumeCode}>{resumableLobbyId}</span>
                 </div>
                 <button
@@ -386,13 +387,13 @@ export function HomeScreen({
                   className={home.resumeButton}
                   onClick={() => joinQuickGameLobby(resumableLobbyId)}
                 >
-                  Rejoin
+                  {t('home.rejoin')}
                 </button>
                 <button
                   type="button"
                   className={home.resumeDismiss}
-                  aria-label="Dismiss"
-                  title="I'm done with that lobby"
+                  aria-label={t('common.dismiss')}
+                  title={t('home.dismissLobby')}
                   onClick={() => { clearLobbyId(); setResumableLobbyId(null) }}
                 >
                   ×
@@ -413,18 +414,18 @@ export function HomeScreen({
                 className={home.joinCard}
                 onSubmit={(e) => { e.preventDefault(); handleJoin() }}
               >
-                <label htmlFor="join-code" className={home.joinLabel}>Have a code?</label>
+                <label htmlFor="join-code" className={home.joinLabel}>{t('home.haveCode')}</label>
                 <input
                   id="join-code"
                   type="text"
                   value={joinSessionId}
                   onChange={(e) => setJoinSessionId(e.target.value)}
-                  placeholder="Invite code"
+                  placeholder={t('home.inviteCode')}
                   autoComplete="off"
                   className={home.joinInput}
                 />
                 <button type="submit" disabled={!joinSessionId.trim()} className={home.joinButton} data-testid="join-code-submit">
-                  Join
+                  {t('home.join')}
                 </button>
               </form>
             }
@@ -446,13 +447,13 @@ export function HomeScreen({
               server runs with GAME_DEV_ENDPOINTS_ENABLED. The *routes* stay open either way — a
               replay's "share as scenario" link is a real `/scenario?s=` deep link. */}
           {import.meta.env.DEV && (
-            <nav className={home.lab} aria-label="Lab">
-              <span className={home.labLabel}>Lab</span>
-              <button type="button" onClick={() => navigate('/scenario')} className={home.labLink}>Scenario Builder</button>
-              <button type="button" onClick={() => navigate('/llm-tournament')} className={home.labLink}>LLM Tournament</button>
+            <nav className={home.lab} aria-label={t('home.lab')}>
+              <span className={home.labLabel}>{t('home.lab')}</span>
+              <button type="button" onClick={() => navigate('/scenario')} className={home.labLink}>{t('home.scenarioBuilder')}</button>
+              <button type="button" onClick={() => navigate('/llm-tournament')} className={home.labLink}>{t('home.llmTournament')}</button>
               {/* Bot-vs-bot with nobody in a seat — the way to watch the engine AI play. */}
-              <button type="button" onClick={() => navigate('/ai-sandbox')} className={home.labLink}>AI Sandbox</button>
-              <button type="button" onClick={() => navigate('/otaria')} className={home.labLink}>Otaria Playtest</button>
+              <button type="button" onClick={() => navigate('/ai-sandbox')} className={home.labLink}>{t('home.aiSandbox')}</button>
+              <button type="button" onClick={() => navigate('/otaria')} className={home.labLink}>{t('home.otariaPlaytest')}</button>
             </nav>
           )}
         </HomeFooter>
@@ -472,26 +473,27 @@ export function HomeScreen({
     >
       <div className={home.artTint} aria-hidden />
       <header className={home.topBar}>
-        <Link to="/" className={home.brand} aria-label="Argentum — home">
+        <Link to="/" className={home.brand} aria-label={t('navigation.home')}>
           <BrandMark />
           Argentum
         </Link>
-        <nav className={home.nav} aria-label="Main">
-          <button type="button" className={home.navItem} onClick={() => navigate('/library')}>Decks &amp; Cubes</button>
-          <button type="button" className={home.navItem} onClick={() => navigate('/cards')}>Cards</button>
-          <button type="button" className={home.navItem} onClick={() => navigate('/set-completion')}>Sets</button>
-          <button type="button" className={home.navItem} onClick={() => navigate('/sets')}>Set guide</button>
-          <button type="button" className={home.navItem} onClick={() => navigate('/learn')}>Learn</button>
+        <nav className={home.nav} aria-label={t('navigation.main')}>
+          <button type="button" className={home.navItem} onClick={() => navigate('/library')}>{t('navigation.decksAndCubes')}</button>
+          <button type="button" className={home.navItem} onClick={() => navigate('/cards')}>{t('navigation.cards')}</button>
+          <button type="button" className={home.navItem} onClick={() => navigate('/set-completion')}>{t('navigation.sets')}</button>
+          <button type="button" className={home.navItem} onClick={() => navigate('/sets')}>{t('navigation.setGuide')}</button>
+          <button type="button" className={home.navItem} onClick={() => navigate('/learn')}>{t('navigation.learn')}</button>
           <button
             type="button"
             className={home.navItem}
             onClick={() => navigate('/help')}
-            title="How Argentum works — modes, priority, shortcuts"
+            title={t('navigation.helpDescription')}
           >
-            Help
+            {t('navigation.help')}
           </button>
         </nav>
         <div className={home.topBarEnd}>
+
           <WhatsNew compact />
           <PreferencesButton />
           <ChatButton />
@@ -505,14 +507,14 @@ export function HomeScreen({
           <div className={welcome.card}>
             <div className={welcome.heading}>
               <h1 className={welcome.title}>
-                {sessionId ? 'Game created' : joinSessionId ? 'Join the table' : 'Welcome to Argentum'}
+                {sessionId ? t('home.gameCreated') : joinSessionId ? t('home.joinTable') : t('home.welcome')}
               </h1>
               {askingForName && !sessionId && (
-                <p className={welcome.lede}>Play Magic in your browser — against friends, strangers or the AI.</p>
+                <p className={welcome.lede}>{t('home.welcomeDescription')}</p>
               )}
             </div>
 
-            {error && <p className={welcome.error}>Error: {error}</p>}
+            {error && <p className={welcome.error}>{t('common.error', { message: error })}</p>}
 
             {/* Only a visitor with no name at all is asked for one. A signed-in account already has a
                 display name, and the server would overwrite anything typed here with it. Held back
@@ -528,7 +530,7 @@ export function HomeScreen({
                 )}
                 <div className={welcome.form}>
                   <label className={welcome.label} htmlFor="player-name">
-                    {joinSessionId ? 'Your name, to join' : 'What should we call you?'}
+                    {joinSessionId ? t('home.yourNameToJoin') : t('home.namePrompt')}
                   </label>
                   <div className={welcome.inputRow}>
                     <input
@@ -537,7 +539,7 @@ export function HomeScreen({
                       value={playerName}
                       onChange={(e) => setPlayerName(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') confirmName() }}
-                      placeholder="Your name"
+                      placeholder={t('home.yourName')}
                       autoFocus
                       maxLength={20}
                       className={welcome.input}
@@ -548,7 +550,7 @@ export function HomeScreen({
                       disabled={!playerName.trim()}
                       className={welcome.primary}
                     >
-                      Continue
+                      {t('common.continue')}
                     </button>
                   </div>
                 </div>
@@ -608,24 +610,25 @@ function BrandMark() {
  * desktop it is a single row — anything taller would push the hub into scrolling on a laptop.
  */
 function HomeFooter({ children }: { children?: ReactNode }) {
+  const { t } = useTranslation()
   return (
     <footer className={home.footer}>
       <div className={home.footerBar}>
         <p className={home.credits}>
           <span>
-            Made by <a href={MAKER_PORTFOLIO_URL} target="_blank" rel="noopener noreferrer">wingedsheep</a> and{' '}
+            {t('home.madeBy')} <a href={MAKER_PORTFOLIO_URL} target="_blank" rel="noopener noreferrer">wingedsheep</a> {t('home.andContributors')}{' '}
             <a href={`${GITHUB_REPOSITORY_URL}/graphs/contributors`} target="_blank" rel="noopener noreferrer">contributors</a>
             <span className={home.creditsDot} aria-hidden>·</span>
-            Card images via <a href="https://scryfall.com" target="_blank" rel="noopener noreferrer">Scryfall</a>
+            {t('home.cardImagesVia')} <a href="https://scryfall.com" target="_blank" rel="noopener noreferrer">Scryfall</a>
             <span className={home.creditsDot} aria-hidden>·</span>
-            Mana symbols by <a href="https://mana.andrewgioia.com" target="_blank" rel="noopener noreferrer">Mana Font</a>
+            {t('home.manaSymbolsBy')} <a href="https://mana.andrewgioia.com" target="_blank" rel="noopener noreferrer">Mana Font</a>
           </span>
           <span className={home.disclaimer}>
-            Fan-made; not affiliated with or endorsed by Wizards of the Coast. Magic: The Gathering is © Wizards of the Coast LLC.
+            {t('home.disclaimer')}
           </span>
         </p>
         {children}
-        <nav className={home.community} aria-label="Community">
+        <nav className={home.community} aria-label={t('home.community')}>
           <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className={home.communityLink} data-brand="discord">
             <DiscordIcon />
             Discord
@@ -636,7 +639,7 @@ function HomeFooter({ children }: { children?: ReactNode }) {
           </a>
           <a href={CONTRIBUTING_GUIDE_URL} target="_blank" rel="noopener noreferrer" className={home.communityLink}>
             <GuideIcon />
-            Help build it
+            {t('home.helpBuildIt')}
           </a>
         </nav>
       </div>
@@ -696,14 +699,15 @@ function LiveGameList({
   onSpectate: (gameSessionId: string) => void
   disabled: boolean
 }) {
+  const { t } = useTranslation()
   return (
     <div className={styles.publicTournamentPanel}>
       <div className={styles.publicTournamentHeader}>
-        <span className={styles.publicTournamentTitle}>Live Games</span>
+        <span className={styles.publicTournamentTitle}>{t('home.liveGames')}</span>
         <div className={styles.publicTournamentHeaderRight}>
           <span className={styles.liveBadge}>
             <span className={styles.liveDot} />
-            Live
+            {t('home.live')}
           </span>
           <span className={styles.publicTournamentCount}>{games.length}</span>
         </div>
@@ -712,37 +716,30 @@ function LiveGameList({
         <div key={`${game.kind}-${game.gameSessionId}`} className={styles.publicTournamentRow}>
           <div className={styles.publicTournamentInfo}>
             <span className={styles.publicTournamentName}>
-              {game.player1Name} vs {game.player2Name}
+              {t('home.versus', { playerOne: game.player1Name, playerTwo: game.player2Name })}
             </span>
-            <span className={styles.publicTournamentMeta}>{liveGameMeta(game)}</span>
+            <span className={styles.publicTournamentMeta}>
+              {game.kind === 'tournament'
+                ? t('home.tournamentMeta', {
+                  round: t('home.round', { round: game.round }),
+                  lifeSummary: t('home.lifeSummary', { playerOneLife: game.player1Life, playerTwoLife: game.player2Life }),
+                })
+                : t('home.quickGameMeta', {
+                  lifeSummary: t('home.lifeSummary', { playerOneLife: game.player1Life, playerTwoLife: game.player2Life }),
+                })}
+            </span>
           </div>
           <button
             onClick={() => onSpectate(game.gameSessionId)}
             disabled={disabled}
             className={styles.spectateButton}
           >
-            Spectate
+            {t('home.spectate')}
           </button>
         </div>
       ))}
     </div>
   )
-}
-
-function liveGameMeta(game: LiveGameEntry): string {
-  const lifeSummary = nbsp(`${game.player1Life} / ${game.player2Life} life`)
-  if (game.kind === 'tournament') {
-    return `Tournament · ${nbsp(`Round ${game.round}`)} · ${lifeSummary}`
-  }
-  return `${nbsp('Quick Game')} · ${lifeSummary}`
-}
-
-/**
- * Non-breaking spaces inside each fact, so the rail's narrow column only ever wraps at a `·` —
- * "1/2" and "players" on separate lines read as two facts rather than one.
- */
-function nbsp(text: string): string {
-  return text.replace(/ /g, ' ')
 }
 
 /**
@@ -753,6 +750,7 @@ function WaitingForOpponent({
 }: {
   sessionId: string
 }) {
+  const { t } = useTranslation()
   const cancelGame = useGameStore((state) => state.cancelGame)
   const [copied, setCopied] = useState(false)
 
@@ -771,17 +769,17 @@ function WaitingForOpponent({
         data-copied={copied}
       >
         <span className={welcome.inviteText}>
-          <span className={welcome.inviteLabel}>Invite code — send it to your opponent</span>
+          <span className={welcome.inviteLabel}>{t('home.inviteCodeShare')}</span>
           <span className={welcome.inviteCode}>{sessionId}</span>
         </span>
-        <span className={welcome.inviteAction}>{copied ? 'Copied!' : 'Copy'}</span>
+        <span className={welcome.inviteAction}>{copied ? t('home.copied') : t('home.copy')}</span>
       </button>
       <div className={welcome.status} role="status">
         <span className={welcome.spinner} aria-hidden />
-        Waiting for your opponent to join…
+        {t('home.waitingForOpponentToJoin')}
       </div>
       <button type="button" onClick={cancelGame} className={welcome.secondary}>
-        Cancel game
+        {t('home.cancelGame')}
       </button>
     </div>
   )

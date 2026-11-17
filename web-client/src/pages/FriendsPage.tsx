@@ -5,6 +5,7 @@
  * accept/unfriend. Prompts sign-in when anonymous, and reports gracefully when accounts are disabled.
  */
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { setPresenceHidden } from '@/api/friends'
 import { type BlockedPlayer, fetchBlocked, unblock } from '@/api/blocks'
@@ -17,6 +18,7 @@ import { useFriendsStore } from '@/store/friendsStore'
 const POLL_INTERVAL_MS = 25_000
 
 export function FriendsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const status = useAuthStore((s) => s.status)
@@ -39,7 +41,7 @@ export function FriendsPage() {
   const [loginOpen, setLoginOpen] = useState(false)
   const [codeInput, setCodeInput] = useState('')
   const [addError, setAddError] = useState<string | null>(null)
-  const [addNotice, setAddNotice] = useState<string | null>(null)
+  const [addNotice, setAddNotice] = useState(false)
   const [sending, setSending] = useState(false)
   const [copied, setCopied] = useState(false)
   const [hideBusy, setHideBusy] = useState(false)
@@ -61,11 +63,11 @@ export function FriendsPage() {
     if (!code) return
     setSending(true)
     setAddError(null)
-    setAddNotice(null)
+    setAddNotice(false)
     try {
       await sendRequest(code)
       setCodeInput('')
-      setAddNotice('Friend request sent.')
+      setAddNotice(true)
     } catch (e) {
       setAddError(e instanceof Error ? e.message : 'Could not send the request.')
     } finally {
@@ -100,50 +102,50 @@ export function FriendsPage() {
 
   if (status === 'authenticated' && user) {
     return (
-      <AccountPage title="Friends">
+      <AccountPage title={t('friends.title')}>
         <div>
-          <h1 className={p.h1}>Friends</h1>
+          <h1 className={p.h1}>{t('friends.title')}</h1>
           <p className={p.lede}>
             {friends.length === 0
-              ? 'Share your friend code to add people, then see when they’re online.'
-              : `${friends.length} friend${friends.length === 1 ? '' : 's'}${onlineFriendCount > 0 ? ` · ${onlineFriendCount} online now` : ''}`}
+              ? t('friends.emptyLede')
+              : `${t(friends.length === 1 ? 'friends.friendCountOne' : 'friends.friendCountMany', { count: friends.length })}${onlineFriendCount > 0 ? ` · ${t('friends.onlineNowCount', { count: onlineFriendCount })}` : ''}`}
           </p>
         </div>
 
         <div className={a.friendsGrid}>
           {/* Your friend code + presence visibility */}
           <section className={`${p.panel} ${a.stack}`}>
-            <h2 className={p.panelTitle}>Your friend code</h2>
-            <p className={a.muted}>Share this so others can add you — it isn’t your email.</p>
+            <h2 className={p.panelTitle}>{t('friends.friendCode')}</h2>
+            <p className={a.muted}>{t('friends.shareCodeHint')}</p>
             <div className={a.codeRow}>
               <code className={a.code}>{user.id}</code>
               <button type="button" className={p.button} onClick={() => void copyCode()}>
-                {copied ? 'Copied!' : 'Copy'}
+                {copied ? t('friends.copied') : t('friends.copy')}
               </button>
             </div>
             <label className={a.toggle}>
               <input type="checkbox" checked={user.hidePresence} disabled={hideBusy} onChange={() => void toggleHidden()} />
               <span>
-                Hide my online status
-                <span className={a.dim}> — friends will always see you as offline</span>
+                {t('friends.hideOnlineStatus')}
+                <span className={a.dim}>{t('friends.offlineHint')}</span>
               </span>
             </label>
           </section>
 
           {/* Add a friend */}
           <section className={`${p.panel} ${a.stack}`}>
-            <h2 className={p.panelTitle}>Add a friend</h2>
-            <p className={a.muted}>Paste the friend code they shared with you.</p>
+            <h2 className={p.panelTitle}>{t('friends.addFriend')}</h2>
+            <p className={a.muted}>{t('friends.pasteCodeHint')}</p>
             <div className={a.addRow}>
               <input
                 className={p.input}
-                placeholder="Friend code"
-                aria-label="Friend code"
+                placeholder={t('friends.friendCodePlaceholder')}
+                aria-label={t('friends.friendCodePlaceholder')}
                 value={codeInput}
                 onChange={(e) => {
                   setCodeInput(e.target.value)
                   setAddError(null)
-                  setAddNotice(null)
+                  setAddNotice(false)
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') void submitCode()
@@ -155,18 +157,18 @@ export function FriendsPage() {
                 disabled={sending || !codeInput.trim()}
                 onClick={() => void submitCode()}
               >
-                {sending ? 'Sending…' : 'Send request'}
+                {sending ? t('friends.sending') : t('friends.sendRequest')}
               </button>
             </div>
             {addError && <p className={a.error}>{addError}</p>}
-            {addNotice && <p className={a.notice}>{addNotice}</p>}
+            {addNotice && <p className={a.notice}>{t('friends.requestSent')}</p>}
           </section>
 
           {/* Incoming requests */}
           {incoming.length > 0 && (
             <section className={`${p.panel} ${a.full}`}>
               <div className={a.sectionHead}>
-                <h2 className={a.sectionTitle}>Friend requests</h2>
+                <h2 className={a.sectionTitle}>{t('friends.requests')}</h2>
                 <span className={a.count}>{incoming.length}</span>
               </div>
               {incoming.map((r) => (
@@ -177,10 +179,10 @@ export function FriendsPage() {
                   </span>
                   <span className={a.rowActions}>
                     <button type="button" className={p.buttonPrimary} onClick={() => void accept(r.requestId)}>
-                      Accept
+                      {t('friends.accept')}
                     </button>
                     <button type="button" className={p.buttonGhost} onClick={() => void removeRequest(r.requestId)}>
-                      Decline
+                      {t('friends.decline')}
                     </button>
                   </span>
                 </div>
@@ -191,17 +193,17 @@ export function FriendsPage() {
           {/* Friends list */}
           <section className={`${p.panel} ${a.full}`}>
             <div className={a.sectionHead}>
-              <h2 className={a.sectionTitle}>Your friends</h2>
+              <h2 className={a.sectionTitle}>{t('friends.yourFriends')}</h2>
               {friends.length > 0 && (
                 <span className={a.count}>
                   {friends.length}
-                  {onlineFriendCount > 0 && <span className={a.win}> · {onlineFriendCount} online</span>}
+                  {onlineFriendCount > 0 && <span className={a.win}> · {t('friends.onlineCount', { count: onlineFriendCount })}</span>}
                 </span>
               )}
             </div>
             {storeError && <p className={a.error}>{storeError}</p>}
             {friends.length === 0 ? (
-              <p className={a.muted}>{loading ? 'Loading…' : 'No friends yet. Share your code to get started.'}</p>
+              <p className={a.muted}>{loading ? t('friends.loading') : t('friends.emptyFriends')}</p>
             ) : (
               friends.map((f) => (
                 <div key={f.accountId} className={a.personRow}>
@@ -209,18 +211,18 @@ export function FriendsPage() {
                     <Avatar name={f.displayName} avatar={f.avatar} small online={f.online} />
                     <span className={a.cellStack}>
                       <span className={a.personName}>{f.displayName}</span>
-                      <span className={a.personStatus} data-online={f.online}>{f.online ? 'Online' : 'Offline'}</span>
+                      <span className={a.personStatus} data-online={f.online}>{f.online ? t('friends.online') : t('friends.offline')}</span>
                     </span>
                   </span>
                   <span className={a.rowActions}>
                     <button type="button" className={a.miniButton} onClick={() => navigate(`/messages/${f.accountId}`)}>
-                      Message
+                      {t('friends.message')}
                     </button>
                     <button type="button" className={a.miniButton} onClick={() => navigate(`/u/${f.accountId}`)}>
-                      Profile
+                      {t('friends.profile')}
                     </button>
                     <button type="button" className={a.miniButton} onClick={() => void unfriend(f.accountId)}>
-                      Unfriend
+                      {t('friends.unfriend')}
                     </button>
                   </span>
                 </div>
@@ -232,7 +234,7 @@ export function FriendsPage() {
           {outgoing.length > 0 && (
             <section className={`${p.panel} ${a.full}`}>
               <div className={a.sectionHead}>
-                <h2 className={a.sectionTitle}>Sent requests</h2>
+                <h2 className={a.sectionTitle}>{t('friends.sentRequests')}</h2>
                 <span className={a.count}>{outgoing.length}</span>
               </div>
               {outgoing.map((r) => (
@@ -241,11 +243,11 @@ export function FriendsPage() {
                     <Avatar name={r.displayName} avatar={r.avatar} small />
                     <span className={a.cellStack}>
                       <span className={a.personName}>{r.displayName}</span>
-                      <span className={a.pendingTag}>Awaiting reply</span>
+                      <span className={a.pendingTag}>{t('friends.awaitingReply')}</span>
                     </span>
                   </span>
                   <button type="button" className={a.miniButton} onClick={() => void removeRequest(r.requestId)}>
-                    Cancel
+                    {t('friends.cancel')}
                   </button>
                 </div>
               ))}
@@ -261,21 +263,21 @@ export function FriendsPage() {
   const resolving = status === 'idle' || status === 'loading'
 
   return (
-    <AccountPage title="Friends">
+    <AccountPage title={t('friends.title')}>
       <MessageCard>
-        <h1 className={p.h1}>Friends</h1>
+        <h1 className={p.h1}>{t('friends.title')}</h1>
         {accountsEnabled ? (
           <>
-            <p className={p.lede}>Sign in to add friends and see when they’re online.</p>
+            <p className={p.lede}>{t('friends.signInToUse')}</p>
             <button type="button" className={`${p.buttonPrimary} ${a.fullButton}`} onClick={() => setLoginOpen(true)}>
-              Sign in
+              {t('friends.signIn')}
             </button>
             <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
           </>
         ) : resolving ? (
-          <p className={a.muted}>Loading…</p>
+          <p className={a.muted}>{t('friends.loading')}</p>
         ) : (
-          <p className={a.muted}>Accounts aren’t available on this server.</p>
+          <p className={a.muted}>{t('friends.accountsUnavailable')}</p>
         )}
       </MessageCard>
     </AccountPage>
@@ -287,6 +289,7 @@ export function FriendsPage() {
  * anyone, and an empty "Blocked" heading would only suggest they should.
  */
 function BlockedPlayersSection() {
+  const { t } = useTranslation()
   const [blocked, setBlocked] = useState<BlockedPlayer[]>([])
   useEffect(() => {
     let cancelled = false
@@ -303,10 +306,10 @@ function BlockedPlayersSection() {
   return (
     <section className={`${p.panel} ${a.full}`}>
       <div className={a.sectionHead}>
-        <h2 className={a.sectionTitle}>Blocked</h2>
+        <h2 className={a.sectionTitle}>{t('friends.blocked')}</h2>
         <span className={a.count}>{blocked.length}</span>
       </div>
-      <p className={a.muted}>You won’t be matched with these players, and their messages and emotes don’t reach you.</p>
+      <p className={a.muted}>{t('friends.blockedDescription')}</p>
       {blocked.map((b) => (
         <div key={b.accountId} className={a.personRow}>
           <span className={a.person}>
@@ -314,7 +317,7 @@ function BlockedPlayersSection() {
             <span className={a.personName}>{b.displayName}</span>
           </span>
           <button type="button" className={a.miniButton} onClick={() => doUnblock(b.accountId)}>
-            Unblock
+            {t('friends.unblock')}
           </button>
         </div>
       ))}

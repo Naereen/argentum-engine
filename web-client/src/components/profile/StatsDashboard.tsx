@@ -7,6 +7,7 @@
  * is shown when provided (public profiles); the signed-in page keeps its own paginated table.
  */
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type React from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -63,11 +64,6 @@ export interface StatsDashboardData {
   onFilterChange?: (next: StatsFilter) => void
 }
 
-const MODE_LABELS: Record<RankedModeName, string> = {
-  LIMITED: 'Limited',
-  CONSTRUCTED: 'Constructed',
-  COMMANDER: 'Commander',
-}
 const MODE_COLORS: Record<RankedModeName, string> = {
   LIMITED: '#5fd0b8',
   CONSTRUCTED: '#7d9bff',
@@ -88,9 +84,15 @@ const paletteColor = (i: number): string => PALETTE[i % PALETTE.length]!
 
 export function StatsDashboard(props: StatsDashboardData) {
   const { stats, ratings, ratingHistory, colors, cardTypes, curve, creatureTypes, modes, sets, topCards, opponents, tournaments, recentGames, filter, onFilterChange } = props
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const hasData = (stats?.games ?? 0) > 0
   const [openTournament, setOpenTournament] = useState<number | null>(null)
+  const modeLabels: Record<RankedModeName, string> = {
+    LIMITED: t('library.statsPage.limited'),
+    CONSTRUCTED: t('library.statsPage.constructed'),
+    COMMANDER: t('library.statsPage.commander'),
+  }
 
   return (
     <>
@@ -101,10 +103,10 @@ export function StatsDashboard(props: StatsDashboardData) {
         <div className={a.overview} data-donut={hasData}>
           <div className={a.overviewMain}>
             <div className={a.tiles}>
-              <Stat label="Games" value={stats?.games ?? 0} />
-              <Stat label="Wins" value={stats?.wins ?? 0} />
-              <Stat label="Losses" value={stats?.losses ?? 0} />
-              <Stat label="Win rate" value={stats && hasData ? `${Math.round(stats.winRate * 100)}%` : '—'} />
+              <Stat label={t('library.statsPage.gamesLabel')} value={stats?.games ?? 0} />
+              <Stat label={t('library.statsPage.winsLabel')} value={stats?.wins ?? 0} />
+              <Stat label={t('library.statsPage.lossesLabel')} value={stats?.losses ?? 0} />
+              <Stat label={t('library.statsPage.winRateLabel')} value={stats && hasData ? `${Math.round(stats.winRate * 100)}%` : '—'} />
             </div>
             {stats && (
               <div className={a.overviewFoot}>
@@ -121,8 +123,8 @@ export function StatsDashboard(props: StatsDashboardData) {
                 <PieChart>
                   <Pie
                     data={[
-                      { name: 'Wins', value: stats.wins },
-                      { name: 'Losses', value: stats.losses },
+                      { name: t('library.statsPage.winsLabel'), value: stats.wins },
+                      { name: t('library.statsPage.lossesLabel'), value: stats.losses },
                     ]}
                     dataKey="value"
                     innerRadius={52}
@@ -140,7 +142,7 @@ export function StatsDashboard(props: StatsDashboardData) {
               </ResponsiveContainer>
               <div className={a.donutCenter}>
                 <div className={a.donutPct}>{Math.round(stats.winRate * 100)}%</div>
-                <div className={a.donutLabel}>win rate</div>
+                <div className={a.donutLabel}>{t('library.statsPage.winRateLabel')}</div>
               </div>
             </div>
           )}
@@ -149,25 +151,25 @@ export function StatsDashboard(props: StatsDashboardData) {
 
       {/* Ranked rating */}
       {ratings.some((r) => r.gamesPlayed > 0) && (
-        <Panel title="Ranked rating">
+        <Panel title={t('library.statsPage.rankedRating')}>
           <div className={a.ratingRow}>
             {ratings.map((r) => (
-              <RatingCard key={r.mode} rating={r} />
+              <RatingCard key={r.mode} rating={r} modeLabels={modeLabels} />
             ))}
           </div>
-          <RatingChart points={ratingHistory} />
+          <RatingChart points={ratingHistory} modeLabels={modeLabels} />
         </Panel>
       )}
 
       <div className={a.grid}>
         {colors.length > 0 && (
-          <Panel title="Colors you play">
+          <Panel title={t('library.statsPage.colorsYouPlay')}>
             <ColorsList colors={colors} />
           </Panel>
         )}
 
         {cardTypes.length > 0 && (
-          <Panel title="Card types">
+          <Panel title={t('library.statsPage.cardTypes')}>
             <ResponsiveContainer width="100%" height={180}>
               <PieChart>
                 <Pie data={cardTypes} dataKey="count" nameKey="label" cx="50%" cy="50%" innerRadius={44} outerRadius={78} stroke="none" paddingAngle={1}>
@@ -191,7 +193,7 @@ export function StatsDashboard(props: StatsDashboardData) {
         )}
 
         {curve.some((c) => c.count > 0) && (
-          <Panel title="Mana curve">
+          <Panel title={t('library.statsPage.manaCurve')}>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={curve} margin={{ top: 8, right: 8, bottom: 4, left: -16 }}>
                 <CartesianGrid stroke={GRID} vertical={false} />
@@ -205,7 +207,7 @@ export function StatsDashboard(props: StatsDashboardData) {
         )}
 
         {creatureTypes.length > 0 && (
-          <Panel title="Creature types you play most">
+          <Panel title={t('library.statsPage.creatureTypes')}>
             <ResponsiveContainer width="100%" height={Math.max(160, creatureTypes.length * 26)}>
               <BarChart data={creatureTypes} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 8 }}>
                 <XAxis type="number" stroke={AXIS} tickLine={false} fontSize={11} allowDecimals={false} />
@@ -218,7 +220,7 @@ export function StatsDashboard(props: StatsDashboardData) {
         )}
 
         {modes.length > 0 && (
-          <Panel title="Game modes">
+          <Panel title={t('library.statsPage.gameModes')}>
             <div className={a.chips}>
               {mergeModes(modes).map((m) => (
                 <span key={`${m.primary}-${m.variant ?? ''}`} className={a.chip}>
@@ -232,7 +234,7 @@ export function StatsDashboard(props: StatsDashboardData) {
         )}
 
         {sets.length > 0 && (
-          <Panel title="Sets you play">
+          <Panel title={t('library.statsPage.setsYouPlay')}>
             <div className={a.chips}>
               {sets.map((sb) => (
                 <span key={sb.label} className={a.chip}>
@@ -245,15 +247,15 @@ export function StatsDashboard(props: StatsDashboardData) {
         )}
 
         {opponents.length > 0 && (
-          <Panel title="Head to head">
-            <p className={a.subtle}>Most-played human opponents (AI excluded).</p>
+          <Panel title={t('library.statsPage.headToHead')}>
+            <p className={a.subtle}>{t('library.statsPage.mostPlayedHumanOpponents')}</p>
             <div className={a.tableWrap}>
               <table className={a.table}>
                 <thead>
                   <tr>
-                    <th>Opponent</th>
-                    <th className={a.num}>W</th>
-                    <th className={a.num}>L</th>
+                    <th>{t('library.statsPage.opponent')}</th>
+                    <th className={a.num}>{t('library.statsPage.winsTableLabel')}</th>
+                    <th className={a.num}>{t('library.statsPage.lossesTableLabel')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -279,21 +281,21 @@ export function StatsDashboard(props: StatsDashboardData) {
         )}
 
         {topCards.length > 0 && (
-          <Panel title="Most-played cards">
+          <Panel title={t('library.statsPage.mostPlayedCards')}>
             <TopCards cards={topCards} />
           </Panel>
         )}
 
         {tournaments.length > 0 && (
-          <Panel title="Tournaments" wide>
-            <p className={a.subtle}>Open a tournament to see its final standings and every game’s replay.</p>
+          <Panel title={t('library.statsPage.tournaments')} wide>
+            <p className={a.subtle}>{t('library.statsPage.tournamentHint')}</p>
             <TournamentList tournaments={tournaments} onOpen={setOpenTournament} />
           </Panel>
         )}
       </div>
 
       {recentGames && recentGames.length > 0 && (
-        <Panel title="Recent games">
+        <Panel title={t('library.statsPage.recentGames')}>
           <GameHistoryList games={recentGames} />
         </Panel>
       )}
@@ -401,17 +403,24 @@ function tierColor(tier: string): string {
   }
 }
 
-function RatingCard({ rating }: { rating: RatingEntry }) {
+function RatingCard({
+  rating,
+  modeLabels,
+}: {
+  rating: RatingEntry
+  modeLabels: Record<RankedModeName, string>
+}) {
+  const { t } = useTranslation()
   const games = rating.gamesPlayed
   const record =
     games === 0
-      ? 'Unrated'
+      ? t('library.statsPage.unrated')
       : rating.provisional
-        ? `${games}/10 placement`
+        ? t('library.statsPage.placementGames', { count: games })
         : `${rating.wins}–${rating.losses}${rating.draws ? `–${rating.draws}` : ''}`
   return (
     <div className={a.ratingCard} style={{ borderTopColor: MODE_COLORS[rating.mode] }}>
-      <span className={a.ratingMode}>{MODE_LABELS[rating.mode]}</span>
+      <span className={a.ratingMode}>{modeLabels[rating.mode]}</span>
       <span className={a.ratingValue}>{rating.rating}</span>
       <span className={a.ratingTier} style={{ color: tierColor(rating.tier) }}>{rating.tier}</span>
       <span className={a.ratingRecord}>{record}</span>
@@ -420,9 +429,16 @@ function RatingCard({ rating }: { rating: RatingEntry }) {
 }
 
 /** Rating over time, one filled line per mode (each connected across its own games). */
-function RatingChart({ points }: { points: RatingPoint[] }) {
+function RatingChart({
+  points,
+  modeLabels,
+}: {
+  points: RatingPoint[]
+  modeLabels: Record<RankedModeName, string>
+}) {
+  const { t } = useTranslation()
   if (points.length === 0) {
-    return <p className={a.muted} style={{ marginTop: 12 }}>Play ranked games to see your rating over time.</p>
+    return <p className={a.muted} style={{ marginTop: 12 }}>{t('library.statsPage.noRatingHint')}</p>
   }
   const sorted = [...points].sort((a, b) => a.endedAt.localeCompare(b.endedAt))
   const data = sorted.map((p, i) => ({ idx: i, label: p.endedAt.slice(0, 10), [p.mode]: p.ratingAfter }))
@@ -448,7 +464,7 @@ function RatingChart({ points }: { points: RatingPoint[] }) {
               key={m}
               type="monotone"
               dataKey={m}
-              name={MODE_LABELS[m]}
+              name={modeLabels[m]}
               stroke={MODE_COLORS[m]}
               strokeWidth={2}
               fill={`url(#grad-${m})`}
@@ -462,7 +478,7 @@ function RatingChart({ points }: { points: RatingPoint[] }) {
         {modes.map((m) => (
           <span key={m} className={a.legendItem}>
             <span className={a.legendSwatch} style={{ backgroundColor: MODE_COLORS[m] }} />
-            {MODE_LABELS[m]}
+            {modeLabels[m]}
           </span>
         ))}
       </div>

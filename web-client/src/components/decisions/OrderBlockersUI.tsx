@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import type { EntityId, OrderObjectsDecision, SearchCardInfo, ClientCard } from '@/types'
 import { calculateFittingCardWidth, type ResponsiveSizes } from '@/hooks/useResponsive.ts'
@@ -25,6 +26,7 @@ interface OrderBlockersUIProps {
  * - "Confirm Order" button to submit the arrangement
  */
 export function OrderBlockersUI({ decision, responsive }: OrderBlockersUIProps) {
+  const { t } = useTranslation()
   const [orderedBlockers, setOrderedBlockers] = useState<EntityId[]>([...decision.objects])
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -232,7 +234,7 @@ export function OrderBlockersUI({ decision, responsive }: OrderBlockersUIProps) 
         {/* Scroll long orders without putting either end outside the viewport. */}
         <div
           role="region"
-          aria-label="Cards to order"
+          aria-label={t('decisions.cardsToOrder')}
           tabIndex={0}
           style={{
             display: 'flex',
@@ -395,6 +397,7 @@ function BlockerCard({
   onMouseEnter: (e: React.MouseEvent) => void
   onMouseLeave: () => void
 }) {
+  const { t } = useTranslation()
   const cardName = stateCard?.name || cardInfo?.name || 'Unknown Card'
   const imageUri = stateCard?.imageUri || cardInfo?.imageUri
   const cardImageUrl = imageUri || `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(cardName)}&format=image&version=normal`
@@ -440,7 +443,7 @@ function BlockerCard({
             alignItems: 'center',
             justifyContent: 'center',
           }}
-          title="Move earlier in the order"
+          title={t('decisions.moveEarlier')}
         >
           &#8592;
         </button>
@@ -460,7 +463,7 @@ function BlockerCard({
             alignItems: 'center',
             justifyContent: 'center',
           }}
-          title="Move later in the order"
+          title={t('decisions.moveLater')}
         >
           &#8594;
         </button>

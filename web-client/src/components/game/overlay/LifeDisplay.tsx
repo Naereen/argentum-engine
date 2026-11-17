@@ -1,5 +1,6 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import type { EntityId, ClientPlayerEffect, ClientCommanderDamage } from '@/types'
 import { useResponsiveContext, getEffectIcon } from '../board/shared'
@@ -74,6 +75,7 @@ export function LifeDisplay({
   /** Team members behind [teamName], for the orb's tooltip ("Bob & Carol"). */
   teamMembers?: string
 }) {
+  const { t } = useTranslation()
   const responsive = useResponsiveContext()
   const targetingState = useGameStore((state) => state.targetingState)
   const pendingDecision = useGameStore((state) => state.pendingDecision)
@@ -519,7 +521,7 @@ export function LifeDisplay({
         </div>
       )}
       {radCounters > 0 && (
-        <div title="Radiation: at this player's precombat main phase, they mill this many cards. Each nonland costs 1 life and removes a rad counter."
+        <div title={t('gameCore.radiationHint')}
           style={{ marginTop: 4, color: '#a3e635', fontSize: 11, fontWeight: 800 }}>
           ☢ {radCounters} RAD
         </div>

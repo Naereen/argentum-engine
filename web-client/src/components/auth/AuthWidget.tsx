@@ -18,6 +18,7 @@
  * when the server has accounts disabled — a login form there could only fail.
  */
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { LoginModal } from '@/components/auth/LoginModal'
 import { AvatarArt, hasAvatarArt } from '@/components/profile/AvatarArt'
@@ -28,6 +29,7 @@ import { unreadBadgeCount, useMessagesStore } from '@/store/messagesStore'
 import styles from './AuthWidget.module.css'
 
 export function AuthWidget() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const accountsEnabled = useAuthStore((s) => s.accountsEnabled)
   const status = useAuthStore((s) => s.status)
@@ -78,7 +80,7 @@ export function AuthWidget() {
     return (
       <>
         <button type="button" className={styles.login} onClick={() => setLoginOpen(true)}>
-          Log in
+          {t('auth.logIn')}
         </button>
         <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
       </>
@@ -96,8 +98,8 @@ export function AuthWidget() {
     logout()
   }
   const statusParts = [
-    ...(onlineCount > 0 ? [`${onlineCount} ${onlineCount === 1 ? 'friend' : 'friends'} online`] : []),
-    ...(incomingCount > 0 ? [`${incomingCount} pending friend ${incomingCount === 1 ? 'request' : 'requests'}`] : []),
+    ...(onlineCount > 0 ? [t(onlineCount === 1 ? 'auth.onlineFriendOne' : 'auth.onlineFriendMany', { count: onlineCount })] : []),
+    ...(incomingCount > 0 ? [t(incomingCount === 1 ? 'auth.requestOne' : 'auth.requestMany', { count: incomingCount })] : []),
   ]
   const portrait = hasAvatarArt(user.avatar)
 
@@ -125,12 +127,12 @@ export function AuthWidget() {
               {onlineCount > 0 && (
                 <span className={styles.presence} data-testid="account-menu-online-count">
                   <span className={styles.onlineDot} />
-                  {onlineCount} online
+                  {t(onlineCount === 1 ? 'auth.onlineFriendOne' : 'auth.onlineFriendMany', { count: onlineCount })}
                 </span>
               )}
               {incomingCount > 0 && (
                 <span className={styles.pending} data-testid="account-menu-request-count">
-                  {incomingCount} {incomingCount === 1 ? 'request' : 'requests'}
+                  {t(incomingCount === 1 ? 'auth.requestOne' : 'auth.requestMany', { count: incomingCount })}
                 </span>
               )}
             </span>
@@ -142,53 +144,53 @@ export function AuthWidget() {
       </button>
 
       {menuOpen && (
-        <div className={styles.menu} role="menu" aria-label="Account">
+        <div className={styles.menu} role="menu" aria-label={t('auth.account')}>
           <div className={styles.menuHeader}>
-            <span className={styles.menuMuted}>Signed in as</span>
+            <span className={styles.menuMuted}>{t('auth.signedInAs')}</span>
             <span className={styles.menuName}>{user.displayName}</span>
           </div>
           <button type="button" role="menuitem" className={styles.item} onClick={() => go('/profile')}>
-            Profile
+            {t('auth.profile')}
           </button>
           <button
             type="button"
             role="menuitem"
             className={styles.item}
             onClick={() => go('/preferences')}
-            title="Auto-pass stops, battlefield stacking, motion"
+            title={t('auth.preferencesDescription')}
           >
-            Preferences
+            {t('auth.preferences')}
           </button>
           <button
             type="button"
             role="menuitem"
             className={styles.item}
             onClick={() => go('/stats')}
-            title="Your win rate, ELO and game history"
+            title={t('auth.statsDescription')}
           >
-            Stats
+            {t('auth.stats')}
           </button>
           <button type="button" role="menuitem" className={styles.item} onClick={() => go('/messages')}>
-            Messages
+            {t('auth.messages')}
             {unreadMessages > 0 && (
               <span className={styles.itemMeta}>
-                <span className={styles.unreadCount} aria-label={`${unreadMessages} unread`}>
+                <span className={styles.unreadCount} aria-label={t('auth.unreadCount', { count: unreadMessages })}>
                   {unreadMessages > 99 ? '99+' : unreadMessages}
                 </span>
               </span>
             )}
           </button>
           <button type="button" role="menuitem" className={styles.item} onClick={() => go('/friends')}>
-            Friends
+            {t('auth.friends')}
             <span className={styles.itemMeta}>
               {onlineCount > 0 && (
-                <span className={styles.online} aria-label={`${onlineCount} friends online`}>
+                <span className={styles.online} aria-label={t('auth.friendsOnlineCount', { count: onlineCount })}>
                   <span className={styles.onlineDot} aria-hidden />
                   {onlineCount}
                 </span>
               )}
               {incomingCount > 0 && (
-                <span className={styles.requests} aria-label={`${incomingCount} pending friend requests`}>
+                <span className={styles.requests} aria-label={t('auth.pendingRequestCount', { count: incomingCount })}>
                   {incomingCount}
                 </span>
               )}
@@ -196,12 +198,12 @@ export function AuthWidget() {
           </button>
           {user.isAdmin && (
             <button type="button" role="menuitem" className={styles.item} onClick={() => go('/admin')}>
-              Admin
+              {t('auth.admin')}
             </button>
           )}
           <div className={styles.separator} role="separator" />
           <button type="button" role="menuitem" className={`${styles.item} ${styles.logout}`} onClick={signOut}>
-            Log out
+            {t('auth.logOut')}
           </button>
         </div>
       )}

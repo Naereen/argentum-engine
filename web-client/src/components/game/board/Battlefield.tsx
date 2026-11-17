@@ -1,5 +1,6 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { useBattlefieldCards, selectViewingPlayerId } from '@/store/selectors.ts'
 import { useGameStore } from '@/store/gameStore.ts'
 import { useInteraction } from '@/hooks/useInteraction.ts'
@@ -581,6 +582,7 @@ function AttachmentsBrowser({
   linkedExile: readonly ClientCard[]
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const hoverCard = useGameStore((state) => state.hoverCard)
   // Both targeting flows: spell-cast pipeline (targetingState + addTarget/removeTarget)
   // and decision modal like ChooseTargetsDecision (decisionSelectionState + toggleDecisionSelection).
@@ -794,8 +796,8 @@ function AttachmentsBrowser({
     <div style={styles.exileOverlay} onClick={onClose}>
       <div style={styles.exileBrowserContent} onClick={(e) => e.stopPropagation()}>
         <div style={styles.exileBrowserHeader}>
-          <h2 style={styles.exileBrowserTitle}>Attached to {parentName}</h2>
-          <button aria-label="Close attachments" style={styles.exileCloseButton} onClick={onClose}>✕</button>
+          <h2 style={styles.exileBrowserTitle}>{t('gameCore.attachedTo', { parentName })}</h2>
+          <button aria-label={t('gameCore.closeAttachments')} style={styles.exileCloseButton} onClick={onClose}>✕</button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto' }}>
           {renderSection('attachment', attachments)}

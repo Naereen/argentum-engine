@@ -7,6 +7,7 @@ import { AbilityText } from '../ui/ManaSymbols'
 import { DecisionCardPreview } from './DecisionComponents'
 import decisionStyles from './DecisionUI.module.css'
 import styles from './OrderTriggersUI.module.css'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Put your own simultaneous triggered abilities on the stack in the order you choose (CR 603.3b).
@@ -19,6 +20,7 @@ import styles from './OrderTriggersUI.module.css'
  * A player in Full Control is always asked, so there the footer says why instead.
  */
 export function OrderTriggersUI({ decision }: { decision: OrderTriggersDecision }) {
+  const { t } = useTranslation()
   const submitTriggerOrder = useGameStore((s) => s.submitTriggerOrder)
   const cards = useGameStore((s) => s.gameState?.cards)
   const hoverCard = useGameStore((s) => s.hoverCard)
@@ -90,7 +92,7 @@ export function OrderTriggersUI({ decision }: { decision: OrderTriggersDecision 
   if (minimized) {
     return (
       <button className={decisionStyles.floatingReturnButton} onClick={() => setMinimized(false)}>
-        Return to ordering triggers
+        {t('decisions.returnToOrderingTriggers')}
       </button>
     )
   }
@@ -99,16 +101,15 @@ export function OrderTriggersUI({ decision }: { decision: OrderTriggersDecision 
     <div className={decisionStyles.overlay} data-testid="order-triggers">
       <div className={styles.panel} role="dialog" aria-labelledby="order-triggers-title">
         <header className={styles.header}>
-          <h2 id="order-triggers-title" className={styles.title}>Order your triggers</h2>
+          <h2 id="order-triggers-title" className={styles.title}>{t('decisions.orderTriggersTitle')}</h2>
           <p className={styles.lede}>
-            {order.length} of your abilities triggered at once. They resolve from the top down — drag them, or use the
-            arrows, to choose which happens first.
+            {t('decisions.orderTriggersDescription', { count: order.length })}
           </p>
         </header>
 
         <div className={styles.listHead}>
           <span className={styles.endLabel} aria-hidden="true">
-            <span className={styles.endArrow}>▲</span> Resolves first
+            <span className={styles.endArrow}>▲</span> {t('decisions.resolvesFirst')}
           </span>
           {/* Always laid out, so showing it doesn't shift the list. */}
           <button
@@ -117,11 +118,11 @@ export function OrderTriggersUI({ decision }: { decision: OrderTriggersDecision 
             style={{ visibility: changed ? 'visible' : 'hidden' }}
             onClick={() => setOrder(decision.triggers.map((_, i) => i))}
           >
-            Reset order
+            {t('decisions.resetOrder')}
           </button>
         </div>
 
-        <ol className={styles.list} aria-label="Triggered abilities, first to resolve at the top">
+        <ol className={styles.list} aria-label={t('decisions.triggerOrderList')}>
           {order.map((triggerIndex, position) => {
             const trigger = decision.triggers[triggerIndex]!
             const triggeredBy = trigger.triggeringEntityId ? cards?.[trigger.triggeringEntityId]?.name : undefined
@@ -144,7 +145,7 @@ export function OrderTriggersUI({ decision }: { decision: OrderTriggersDecision 
                 className={rowClass}
                 draggable
                 tabIndex={0}
-                aria-label={`${position + 1}. ${trigger.sourceName}: ${trigger.text}`}
+                aria-label={t('decisions.triggerOrderItem', { position: position + 1, cardName: trigger.sourceName, text: trigger.text })}
                 onDragStart={(e) => {
                   e.dataTransfer.effectAllowed = 'move'
                   hidePreview()
@@ -186,14 +187,14 @@ export function OrderTriggersUI({ decision }: { decision: OrderTriggersDecision 
                   <span className={styles.text}><AbilityText text={trigger.text} size={14} /></span>
                   {(triggeredBy || trigger.choosesTargets || trigger.checksOnResolution) && (
                     <span className={styles.meta}>
-                      {triggeredBy && <span>for {triggeredBy}</span>}
-                      {trigger.choosesTargets && <span className={styles.targetsChip}>targets chosen next</span>}
+                      {triggeredBy && <span>{t('decisions.triggeredByCard', { cardName: triggeredBy })}</span>}
+                      {trigger.choosesTargets && <span className={styles.targetsChip}>{t('decisions.targetsChosenNext')}</span>}
                       {trigger.checksOnResolution && (
                         <span
                           className={styles.checksChip}
-                          title="Its condition is checked as it resolves, not when it triggered — resolve it after the abilities that make it true."
+                          title={t('decisions.triggerConditionHint')}
                         >
-                          checks as it resolves
+                          {t('decisions.checksAsItResolves')}
                         </span>
                       )}
                     </span>
@@ -205,8 +206,8 @@ export function OrderTriggersUI({ decision }: { decision: OrderTriggersDecision 
                     className={styles.arrow}
                     disabled={position === 0}
                     onClick={() => move(position, position - 1)}
-                    aria-label={`Resolve ${trigger.sourceName} earlier`}
-                    title="Resolve earlier"
+                    aria-label={t('decisions.resolveCardEarlier', { cardName: trigger.sourceName })}
+                    title={t('decisions.resolveEarlier')}
                   >
                     ▲
                   </button>
@@ -215,8 +216,8 @@ export function OrderTriggersUI({ decision }: { decision: OrderTriggersDecision 
                     className={styles.arrow}
                     disabled={position === order.length - 1}
                     onClick={() => move(position, position + 1)}
-                    aria-label={`Resolve ${trigger.sourceName} later`}
-                    title="Resolve later"
+                    aria-label={t('decisions.resolveCardLater', { cardName: trigger.sourceName })}
+                    title={t('decisions.resolveLater')}
                   >
                     ▼
                   </button>
@@ -227,31 +228,31 @@ export function OrderTriggersUI({ decision }: { decision: OrderTriggersDecision 
         </ol>
 
         <div className={`${styles.endLabel} ${styles.endLabelLast}`} aria-hidden="true">
-          <span className={styles.endArrow}>▼</span> Resolves last
+          <span className={styles.endArrow}>▼</span> {t('decisions.resolvesLast')}
         </div>
 
         <footer className={styles.footer}>
           <div className={styles.buttons}>
             <button onClick={() => setMinimized(true)} className={decisionStyles.viewBattlefieldButton}>
-              View Battlefield
+              {t('decisions.viewBattlefield')}
             </button>
             <button onClick={confirm} className={decisionStyles.confirmButton} autoFocus>
-              Put on the stack
+              {t('decisions.putOnStack')}
             </button>
           </div>
           {fullControl && autoOrderTriggers ? (
             <p className={styles.stopAskingHint}>
-              You’re in Full Control, so you order your own triggers. Switch back to Auto or Stops to have them ordered for you.
+              {t('decisions.fullControlTriggerHint')}
             </p>
           ) : (
             <label className={styles.stopAsking}>
               <input type="checkbox" checked={stopAsking} onChange={(e) => setStopAsking(e.target.checked)} />
               <span>
-                Don’t ask again — order my triggers automatically
+                {t('decisions.stopAskingTriggerOrder')}
                 <span className={styles.stopAskingHint}>
                   {fullControl
-                    ? 'Full Control still asks. You can switch this back in Preferences → Gameplay.'
-                    : 'You can switch this back in Preferences → Gameplay.'}
+                    ? t('decisions.fullControlPreferenceHint')
+                    : t('decisions.preferenceHint')}
                 </span>
               </span>
             </label>

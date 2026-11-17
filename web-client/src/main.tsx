@@ -8,6 +8,13 @@ import 'mana-font/css/mana.min.css'
 import 'keyrune/css/keyrune.min.css'
 import './styles/set-symbols.css'
 import { initAnalytics } from './utils/analytics'
+import i18n from './i18n'
+import { LanguageSwitcher } from './components/ui/LanguageSwitcher'
+
+void i18n.on('languageChanged', (language) => {
+  document.documentElement.lang = language
+})
+document.documentElement.lang = i18n.resolvedLanguage || i18n.language || 'en'
 
 const App = lazy(() => import('./App'))
 const TournamentEntryPage = lazy(() =>
@@ -145,6 +152,7 @@ createRoot(rootElement).render(
         <ChatDock />
         <ConnectionStatusLayer />
       </Suspense>
+      <LanguageSwitcher />
     </BrowserRouter>
   </StrictMode>
 )

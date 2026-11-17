@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import { selectGameState, useStackCards, useZoneCards } from '@/store/selectors.ts'
 import { ante } from '@/types'
@@ -225,6 +226,7 @@ export function AnteZone({
 
 /** Full-screen browser over one player's ante — hover any card for the usual preview. */
 function AnteBrowser({ cards, ownerLabel, onClose }: { cards: readonly ClientCard[]; ownerLabel: string; onClose: () => void }) {
+  const { t } = useTranslation()
   const hoverCard = useGameStore((state) => state.hoverCard)
   const responsive = useResponsiveContext()
   const cardWidth = responsive.isMobile ? 120 : 160
@@ -247,7 +249,7 @@ function AnteBrowser({ cards, ownerLabel, onClose }: { cards: readonly ClientCar
           <button
             style={{ ...styles.exileCloseButton, borderColor: ANTE_DEEP, color: ANTE_HUE }}
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.close')}
           >
             ✕
           </button>

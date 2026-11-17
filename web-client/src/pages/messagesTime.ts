@@ -9,25 +9,27 @@ function startOfDay(d: Date): number {
 }
 
 /** Compact "how long ago" for the conversation list: now, 5m, 3h, Mon, Oct 3, Oct 3 2025. */
-export function sinceLabel(iso: string, now: Date = new Date()): string {
+export function sinceLabel(iso: string, now: Date = new Date(), language = 'en'): string {
   const d = new Date(iso)
   const diff = now.getTime() - d.getTime()
-  if (diff < MINUTE) return 'now'
-  if (diff < HOUR) return `${Math.floor(diff / MINUTE)}m`
-  if (startOfDay(d) === startOfDay(now)) return `${Math.floor(diff / HOUR)}h`
-  if (diff < 6 * DAY) return d.toLocaleDateString(undefined, { weekday: 'short' })
-  if (d.getFullYear() === now.getFullYear()) return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  const relative = new Intl.RelativeTimeFormat(language, { numeric: 'auto', style: 'narrow' })
+  if (diff < MINUTE) return relative.format(0, 'minute')
+  if (diff < HOUR) return relative.format(-Math.floor(diff / MINUTE), 'minute')
+  if (startOfDay(d) === startOfDay(now)) return relative.format(-Math.floor(diff / HOUR), 'hour')
+  if (diff < 6 * DAY) return d.toLocaleDateString(language, { weekday: 'short' })
+  if (d.getFullYear() === now.getFullYear()) return d.toLocaleDateString(language, { month: 'short', day: 'numeric' })
+  return d.toLocaleDateString(language, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 /** A day separator: Today, Yesterday, Monday, October 6, or with the year when it isn't this one. */
-export function dayLabel(iso: string, now: Date = new Date()): string {
+export function dayLabel(iso: string, now: Date = new Date(), language = 'en'): string {
   const d = new Date(iso)
   const days = Math.round((startOfDay(now) - startOfDay(d)) / DAY)
-  if (days === 0) return 'Today'
-  if (days === 1) return 'Yesterday'
-  if (days < 6) return d.toLocaleDateString(undefined, { weekday: 'long' })
-  return d.toLocaleDateString(undefined, {
+  const relative = new Intl.RelativeTimeFormat(language, { numeric: 'auto' })
+  if (days === 0) return relative.format(0, 'day')
+  if (days === 1) return relative.format(-1, 'day')
+  if (days < 6) return d.toLocaleDateString(language, { weekday: 'long' })
+  return d.toLocaleDateString(language, {
     month: 'long',
     day: 'numeric',
     ...(d.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
@@ -35,6 +37,6 @@ export function dayLabel(iso: string, now: Date = new Date()): string {
 }
 
 /** Time of day, "2:41 PM". */
-export function shortTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+export function shortTime(iso: string, language = 'en'): string {
+  return new Date(iso).toLocaleTimeString(language, { hour: 'numeric', minute: '2-digit' })
 }

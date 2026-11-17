@@ -9,13 +9,14 @@
  * everything else.
  */
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { type SharedCubeView, getSharedCube } from '@/api/account'
 import type { CardSummary } from '@/components/deckbuilder/cardFilter'
 import { CubeColumns, CubeColumnsToolbar, CubeRailPreview, useCubeColumns } from '@/components/cube/CubeColumns'
 import { CubePlayButton } from '@/components/cube/CubePlayButton'
 import { CubeStats, PackStrip } from '@/components/cube/CubeStats'
-import { boosterStyleInfo, cubeToText, isBoosterStyle, uniqueCubeName } from '@/components/cube/cubeModel'
+import { cubeToText, isBoosterStyle, uniqueCubeName } from '@/components/cube/cubeModel'
 import { useCardCatalog } from '@/components/cube/useCardCatalog'
 import { PageShell, pageStyles as p } from '@/components/ui/PageShell'
 import { useHoverStore } from '@/components/ui/hoverStore'
@@ -31,6 +32,7 @@ type Load =
   | { state: 'ready'; view: SharedCubeView }
 
 export function SharedCubePage() {
+  const { t } = useTranslation()
   const { code = '' } = useParams<{ code: string }>()
   const [load, setLoad] = useState<Load>({ state: 'loading' })
 
@@ -42,7 +44,7 @@ export function SharedCubePage() {
         if (!cancelled) setLoad(view ? { state: 'ready', view } : { state: 'missing' })
       })
       .catch((err: unknown) => {
-        if (!cancelled) setLoad({ state: 'error', message: err instanceof Error ? err.message : 'Could not load the cube' })
+        if (!cancelled) setLoad({ state: 'error', message: err instanceof Error ? err.message : '' })
       })
     return () => {
       cancelled = true
@@ -51,30 +53,31 @@ export function SharedCubePage() {
 
   if (load.state === 'ready') {
     return (
-      <PageShell title="Shared cube" fit width="full" plain>
+      <PageShell title={t('library.sharedCube.pageTitle')} fit width="full" plain>
         <SharedCube view={load.view} />
       </PageShell>
     )
   }
   return (
-    <PageShell title="Shared cube" width="wide">
-      {load.state === 'loading' && <p className={p.empty}>Loading cube…</p>}
-      {(load.state === 'missing' || load.state === 'error') && <NotFound message={load.state === 'error' ? load.message : null} />}
+    <PageShell title={t('library.sharedCube.pageTitle')} width="wide">
+      {load.state === 'loading' && <p className={p.empty}>{t('library.sharedCube.loading')}</p>}
+      {(load.state === 'missing' || load.state === 'error') && <NotFound message={load.state === 'error' ? load.message || null : null} />}
     </PageShell>
   )
 }
 
 function NotFound({ message }: { message: string | null }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   return (
     <div className={p.panel}>
-      <h1 className={p.h1}>This cube link doesn’t open</h1>
+      <h1 className={p.h1}>{t('library.sharedCube.notFoundTitle')}</h1>
       <p className={p.lede}>
-        {message ?? 'Its owner may have stopped sharing it or deleted the cube. Ask them for a new link.'}
+        {message ?? t('library.sharedCube.notFoundBody')}
       </p>
       <p>
         <button type="button" className={p.button} onClick={() => navigate('/library?tab=cubes')}>
-          Go to your cubes
+          {t('library.sharedCube.yourCubes')}
         </button>
       </p>
     </div>
@@ -82,6 +85,7 @@ function NotFound({ message }: { message: string | null }) {
 }
 
 function SharedCube({ view }: { view: SharedCubeView }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const catalog = useCardCatalog()
   const library = useUnifiedCubes()
@@ -117,7 +121,7 @@ function SharedCube({ view }: { view: SharedCubeView }) {
       const saved = await library.saveCube({ ...cubeToShared(cube), name })
       setCopied(saved)
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : 'Could not save a copy')
+      setNotice(err instanceof Error ? err.message : t('library.sharedCube.saveError'))
     } finally {
       setBusy(false)
     }
@@ -126,9 +130,9 @@ function SharedCube({ view }: { view: SharedCubeView }) {
   async function copyList() {
     try {
       await navigator.clipboard.writeText(cubeToText(cube))
-      setNotice('Cube list copied')
+      setNotice(t('library.sharedCube.listCopied'))
     } catch {
-      setNotice('Your browser blocked the clipboard.')
+      setNotice(t('library.sharedCube.clipboardBlocked'))
     }
   }
 
@@ -138,9 +142,9 @@ function SharedCube({ view }: { view: SharedCubeView }) {
         <CubeRailPreview hover={hover} fallback={firstCard} />
         {rarityMatters && (
           <div className={styles.packCard}>
-            <span className={styles.packLabel}>Each pack</span>
+            <span className={styles.packLabel}>{t('library.sharedCube.eachPack')}</span>
             <PackStrip style={style} />
-            <span className={styles.packBlurb}>{boosterStyleInfo(style).blurb}</span>
+            <span className={styles.packBlurb}>{t(`library.cubeStyles.${style}.blurb`)}</span>
           </div>
         )}
       </aside>
@@ -150,15 +154,15 @@ function SharedCube({ view }: { view: SharedCubeView }) {
           <div className={styles.titleBlock}>
             <h1 className={styles.title}>{cube.name}</h1>
             <span className={styles.byline}>
-              {view.ownerName ? `Shared by ${view.ownerName}` : 'A shared cube'} · {total} cards ·{' '}
-              {boosterStyleInfo(style).label}
+              {view.ownerName ? t('library.sharedCube.sharedBy', { name: view.ownerName }) : t('library.sharedCube.aSharedCube')} ·{' '}
+              {t('library.sharedCube.cardCount', { count: total })} · {t(`library.cubeStyles.${style}.label`)}
             </span>
             {cube.description && <p className={styles.description}>{cube.description}</p>}
           </div>
           <div className={styles.actions}>
             <CubePlayButton
               cube={cube}
-              blockedReason={unresolved > 0 ? `${unresolved} cards in this cube aren’t implemented yet` : null}
+              blockedReason={unresolved > 0 ? t('library.sharedCube.unimplementedCards', { count: unresolved }) : null}
             />
             {copied ? (
               <button
@@ -166,15 +170,15 @@ function SharedCube({ view }: { view: SharedCubeView }) {
                 className={p.button}
                 onClick={() => navigate(`/cubes/edit/${encodeURIComponent(copied.id)}`)}
               >
-                Open your copy
+                {t('library.sharedCube.openCopy')}
               </button>
             ) : (
               <button type="button" className={p.button} disabled={busy || !library.ready} onClick={() => void saveCopy()}>
-                {busy ? 'Saving…' : 'Save a copy'}
+                {busy ? t('library.sharedCube.saving') : t('library.sharedCube.saveCopy')}
               </button>
             )}
             <button type="button" className={p.buttonGhost} onClick={() => void copyList()}>
-              Copy list
+              {t('library.sharedCube.copyList')}
             </button>
           </div>
         </header>
@@ -182,7 +186,10 @@ function SharedCube({ view }: { view: SharedCubeView }) {
         {(copied || notice) && (
           <p className={styles.notice} role="status">
             {copied
-              ? `Saved as “${copied.name}” ${copied.online ? 'in your account' : 'on this device'}. Your copy won’t change when the original does.`
+              ? t('library.sharedCube.copySaved', {
+                  name: copied.name,
+                  location: t(copied.online ? 'library.sharedCube.inAccount' : 'library.sharedCube.onDevice'),
+                })
               : notice}
           </p>
         )}

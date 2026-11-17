@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { ClientDungeon } from '@/types'
 
 /**
@@ -41,6 +42,7 @@ export function DungeonMap({
   onSelect?: (roomIndex: number) => void
   scale?: number
 }) {
+  const { t } = useTranslation()
   const [hovered, setHovered] = useState<number | null>(null)
   const { rows } = useMemo(() => layoutDungeon(dungeon), [dungeon])
   const roomW = ROOM_W * scale
@@ -146,7 +148,7 @@ export function DungeonMap({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 12 * scale, lineHeight: 1.15 }}>
-              {isCurrent && <span aria-label="Venture marker">🧭</span>}
+              {isCurrent && <span aria-label={t('gameCore.ventureMarker')}>🧭</span>}
               <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{room.name}</span>
             </div>
             <div style={{ fontSize: 10 * scale, lineHeight: 1.2, color: '#c9bfa6', marginTop: 2 }}>{room.text}</div>

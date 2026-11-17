@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import type { ChooseReplacementDecision, OptionMetadata } from '@/types'
 import { useResponsive } from '@/hooks/useResponsive.ts'
@@ -46,6 +47,7 @@ function ReplacementColumn({
   selectedIndex: number | null
   onSelect: (index: number) => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className={styles.replacementColumn}>
       <h3 className={styles.replacementColumnTitle}>{title}</h3>
@@ -54,7 +56,7 @@ function ReplacementColumn({
           type="text"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          placeholder="Search..."
+          placeholder={t('decisions.search')}
           className={styles.optionSearchInput}
         />
       )}
@@ -74,7 +76,7 @@ function ReplacementColumn({
             </button>
           )
         })}
-        {rows.length === 0 && <p className={styles.noCardsMessage}>No matching options</p>}
+        {rows.length === 0 && <p className={styles.noCardsMessage}>{t('decisions.noMatchingOptions')}</p>}
       </div>
     </div>
   )
@@ -86,6 +88,7 @@ function ReplacementColumn({
  * `allowedToByFrom` once a FROM is chosen (Crystal Spray keeps colors↔colors, lands↔lands).
  */
 export function ChooseReplacementDecisionUI({ decision }: { decision: ChooseReplacementDecision }) {
+  const { t } = useTranslation()
   const submitReplacementDecision = useGameStore((s) => s.submitReplacementDecision)
   const gameState = useGameStore((s) => s.gameState)
   const responsive = useResponsive()
@@ -130,7 +133,7 @@ export function ChooseReplacementDecisionUI({ decision }: { decision: ChooseRepl
   if (minimized) {
     return (
       <button className={styles.floatingReturnButton} onClick={() => setMinimized(false)}>
-        Return to {decision.prompt}
+        {t('decisions.returnToPrompt', { prompt: decision.prompt })}
       </button>
     )
   }
@@ -155,14 +158,14 @@ export function ChooseReplacementDecisionUI({ decision }: { decision: ChooseRepl
       <h2 className={styles.title}>{decision.prompt}</h2>
 
       <div className={styles.replacementPreview}>
-        <PreviewChip word={fromWord} meta={fromMeta} placeholder="Choose a word" />
+        <PreviewChip word={fromWord} meta={fromMeta} placeholder={t('decisions.chooseWord')} />
         <span className={styles.replacementArrow}>→</span>
-        <PreviewChip word={toWord} meta={toMeta} placeholder="Choose a replacement" />
+        <PreviewChip word={toWord} meta={toMeta} placeholder={t('decisions.chooseReplacement')} />
       </div>
 
       <div className={styles.replacementColumns}>
         <ReplacementColumn
-          title="Replace"
+          title={t('decisions.replace')}
           searchable={decision.fromOptions.length > 20}
           filter={fromFilter}
           setFilter={setFromFilter}
@@ -172,7 +175,7 @@ export function ChooseReplacementDecisionUI({ decision }: { decision: ChooseRepl
           onSelect={handleSelectFrom}
         />
         <ReplacementColumn
-          title="With"
+          title={t('decisions.with')}
           searchable={decision.toOptions.length > 20}
           filter={toFilter}
           setFilter={setToFilter}

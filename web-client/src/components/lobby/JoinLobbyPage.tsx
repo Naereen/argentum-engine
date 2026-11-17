@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useGameStore } from '@/store/gameStore.ts'
 import { useConnectName } from '@/store/useConnectName'
 import { EntryCard } from './EntryCard'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Entry point for the `/join/:lobbyId` deep link — the target of a lobby's QR code / share link.
@@ -19,6 +20,7 @@ import { EntryCard } from './EntryCard'
  * Once any lobby state arrives, navigate to "/" where the normal lobby UI takes over.
  */
 export function JoinLobbyPage() {
+  const { t } = useTranslation()
   const { lobbyId } = useParams<{ lobbyId: string }>()
   const navigate = useNavigate()
 
@@ -81,12 +83,12 @@ export function JoinLobbyPage() {
 
   return (
     <EntryCard
-      kicker="You're invited"
-      title="Join a game"
+      kicker={t('lobby.invited')}
+      title={t('lobby.joinGame')}
       code={lobbyId}
       error={errorMessage}
-      nameEntry={showNameEntry ? { value: playerName, onChange: setPlayerName, onSubmit: handleConnect, submitLabel: 'Join lobby' } : undefined}
-      progressText={joining ? 'Joining lobby…' : 'Connecting…'}
+      nameEntry={showNameEntry ? { value: playerName, onChange: setPlayerName, onSubmit: handleConnect, submitLabel: t('lobby.joinLobby') } : undefined}
+      progressText={joining ? t('lobby.joiningLobby') : t('lobby.connecting')}
     />
   )
 }

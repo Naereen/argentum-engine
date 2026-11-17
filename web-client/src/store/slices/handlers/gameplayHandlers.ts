@@ -99,6 +99,7 @@ function appendGameLogTail(
     const e = log[i]!
     entries.push({
       description: e.description,
+      event: e,
       playerId: getEventPlayerId(e),
       timestamp: now,
       type: getEventLogType(e.type),

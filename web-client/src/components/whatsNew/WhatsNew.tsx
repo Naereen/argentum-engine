@@ -6,6 +6,8 @@
  * data simply starts again from the first-visit baseline in `readState.ts`.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { SetIcon } from '@/components/ui/SetIcon'
 import { ANNOUNCEMENTS, type Announcement, type AnnouncementKind } from './announcements'
 import {
@@ -22,16 +24,16 @@ const STORAGE_KEY = 'argentum-whats-new'
 
 type Filter = 'all' | 'set' | 'other'
 
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'set', label: 'Sets' },
-  { key: 'other', label: 'Modes & features' },
+const FILTERS: { key: Filter; labelKey: 'whatsNew.all' | 'whatsNew.sets' | 'whatsNew.modesFeatures' }[] = [
+  { key: 'all', labelKey: 'whatsNew.all' },
+  { key: 'set', labelKey: 'whatsNew.sets' },
+  { key: 'other', labelKey: 'whatsNew.modesFeatures' },
 ]
 
-const KIND_LABEL: Record<AnnouncementKind, string> = {
-  set: 'New set',
-  mode: 'Game mode',
-  feature: 'Feature',
+const KIND_LABEL_KEY: Record<AnnouncementKind, 'whatsNew.newSet' | 'whatsNew.gameMode' | 'whatsNew.feature'> = {
+  set: 'whatsNew.newSet',
+  mode: 'whatsNew.gameMode',
+  feature: 'whatsNew.feature',
 }
 
 function loadReadState(): ReadState {
@@ -63,6 +65,7 @@ function saveReadState(state: ReadState) {
  * everything else in the bar; the headline is the first entry the panel shows.
  */
 export function WhatsNew({ compact = false }: { compact?: boolean } = {}) {
+  const { t, i18n } = useTranslation()
   const [readState, setReadState] = useState<ReadState>(loadReadState)
   const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState<Filter>('all')
@@ -84,7 +87,8 @@ export function WhatsNew({ compact = false }: { compact?: boolean } = {}) {
     () => ANNOUNCEMENTS.filter((a) => filter === 'all' || (filter === 'set') === (a.kind === 'set')),
     [filter],
   )
-  const groups = useMemo(() => groupByMonth(visible), [visible])
+  const locale = i18n.resolvedLanguage ?? 'en'
+  const groups = useMemo(() => groupByMonth(visible, locale), [visible, locale])
 
   // Close on a click outside or Escape, handing focus back to the bell for keyboard users.
   useEffect(() => {
@@ -116,11 +120,11 @@ export function WhatsNew({ compact = false }: { compact?: boolean } = {}) {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="dialog"
-        aria-label={unread.length > 0 ? `What's new, ${unread.length} unread` : "What's new"}
-        title="What's new in Argentum"
+        aria-label={unread.length > 0 ? t('whatsNew.labelWithUnread', { count: unread.length }) : t('whatsNew.label')}
+        title={t('whatsNew.title')}
       >
         <BellIcon className={styles.bellIcon} />
-        <span className={styles.bellLabel}>What&rsquo;s new</span>
+        <span className={styles.bellLabel}>{t('whatsNew.label')}</span>
         {unread.length > 0 && (
           <span className={styles.badge} aria-hidden>
             {unread.length}
@@ -131,20 +135,20 @@ export function WhatsNew({ compact = false }: { compact?: boolean } = {}) {
       {/* The newest unread headline, readable without opening anything. Gone once it's read. */}
       {!open && !compact && latestUnread && (
         <button type="button" className={styles.peek} onClick={() => setOpen(true)}>
-          <span className={styles.peekTag}>New</span>
+          <span className={styles.peekTag}>{t('whatsNew.new')}</span>
           <span className={styles.peekTitle}>{latestUnread.title}</span>
         </button>
       )}
 
       {open && (
-        <div className={styles.panel} role="dialog" aria-label="What's new">
+        <div className={styles.panel} role="dialog" aria-label={t('whatsNew.title')}>
           <header className={styles.header}>
             <div className={styles.headerText}>
-              <h2 className={styles.heading}>What&rsquo;s new</h2>
+              <h2 className={styles.heading}>{t('whatsNew.label')}</h2>
               <span className={styles.subheading}>
                 {unread.length > 0
-                  ? `${unread.length} unread ${unread.length === 1 ? 'update' : 'updates'}`
-                  : 'You’re all caught up'}
+                  ? t(unread.length === 1 ? 'whatsNew.unreadCountOne' : 'whatsNew.unreadCountMany', { count: unread.length })
+                  : t('whatsNew.caughtUp')}
               </span>
             </div>
             <button
@@ -154,12 +158,12 @@ export function WhatsNew({ compact = false }: { compact?: boolean } = {}) {
               disabled={unread.length === 0}
             >
               <CheckIcon className={styles.markAllIcon} />
-              Mark all as read
+              {t('whatsNew.markAllRead')}
             </button>
           </header>
 
-          <div className={styles.filters} role="tablist" aria-label="Filter updates">
-            {FILTERS.map(({ key, label }) => {
+          <div className={styles.filters} role="tablist" aria-label={t('whatsNew.filterUpdates')}>
+            {FILTERS.map(({ key, labelKey }) => {
               const count = unread.filter(
                 (a) => key === 'all' || (key === 'set') === (a.kind === 'set'),
               ).length
@@ -172,7 +176,7 @@ export function WhatsNew({ compact = false }: { compact?: boolean } = {}) {
                   className={`${styles.filter} ${filter === key ? styles.filterActive : ''}`}
                   onClick={() => setFilter(key)}
                 >
-                  {label}
+                  {t(labelKey)}
                   {count > 0 && <span className={styles.filterCount}>{count}</span>}
                 </button>
               )
@@ -192,22 +196,22 @@ export function WhatsNew({ compact = false }: { compact?: boolean } = {}) {
                           type="button"
                           className={`${styles.entry} ${styles[`kind_${entry.kind}`]} ${read ? '' : styles.entryUnread}`}
                           onClick={() => update((s) => markRead(s, entry))}
-                          aria-label={`${read ? '' : 'Unread: '}${entry.title}`}
+                          aria-label={read ? entry.title : t('whatsNew.unreadAnnouncement', { title: entry.title })}
                         >
                           <span className={styles.tile} aria-hidden>
                             <EntryIcon entry={entry} />
                           </span>
                           <span className={styles.entryText}>
                             <span className={styles.meta}>
-                              <span className={styles.kind}>{KIND_LABEL[entry.kind]}</span>
+                              <span className={styles.kind}>{t(KIND_LABEL_KEY[entry.kind])}</span>
                               <span className={styles.metaSep}>·</span>
-                              <time dateTime={entry.date}>{relativeDay(entry.date, today)}</time>
+                              <time dateTime={entry.date}>{relativeDay(entry.date, today, locale, t)}</time>
                             </span>
                             <span className={styles.title}>{entry.title}</span>
                             <span className={styles.body}>{entry.body}</span>
                             {entry.tryIf && (
                               <span className={styles.tryIf}>
-                                <span className={styles.tryIfLabel}>Try it if you like</span> {entry.tryIf}
+                                <span className={styles.tryIfLabel}>{t('whatsNew.tryIf')}</span> {entry.tryIf}
                               </span>
                             )}
                           </span>
@@ -233,17 +237,15 @@ function EntryIcon({ entry }: { entry: Announcement }) {
   return entry.kind === 'mode' ? <ModeIcon className={styles.kindGlyph} /> : <SparkIcon className={styles.kindGlyph} />
 }
 
-const MONTH = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
-const SHORT_DAY = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-
 function utcDay(iso: string): Date {
   return new Date(`${iso}T00:00:00Z`)
 }
 
-function groupByMonth(entries: readonly Announcement[]): { month: string; entries: Announcement[] }[] {
+function groupByMonth(entries: readonly Announcement[], locale: string): { month: string; entries: Announcement[] }[] {
   const groups: { month: string; entries: Announcement[] }[] = []
+  const monthFormat = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' })
   for (const entry of entries) {
-    const month = MONTH.format(utcDay(entry.date))
+    const month = monthFormat.format(utcDay(entry.date))
     const last = groups[groups.length - 1]
     if (last?.month === month) last.entries.push(entry)
     else groups.push({ month, entries: [entry] })
@@ -251,13 +253,13 @@ function groupByMonth(entries: readonly Announcement[]): { month: string; entrie
   return groups
 }
 
-function relativeDay(iso: string, today: Date): string {
+function relativeDay(iso: string, today: Date, locale: string, t: TFunction): string {
   const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
   const days = Math.round((todayUtc - utcDay(iso).getTime()) / 86_400_000)
-  if (days <= 0) return 'Today'
-  if (days === 1) return 'Yesterday'
-  if (days < 7) return `${days} days ago`
-  return SHORT_DAY.format(utcDay(iso))
+  if (days <= 0) return t('whatsNew.today')
+  if (days === 1) return t('whatsNew.yesterday')
+  if (days < 7) return t('whatsNew.daysAgo', { count: days })
+  return new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(utcDay(iso))
 }
 
 function BellIcon({ className }: { className?: string | undefined }) {

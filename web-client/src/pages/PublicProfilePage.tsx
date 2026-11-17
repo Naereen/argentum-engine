@@ -11,6 +11,7 @@
  * page. A Message button opens the conversation with them (a message request if you aren't friends).
  */
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { type PublicProfile, ProfileNotFoundError, fetchPublicProfile } from '@/api/account'
 import { StatsDashboard } from '@/components/profile/StatsDashboard'
@@ -21,6 +22,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useFriendsStore } from '@/store/friendsStore'
 
 export function PublicProfilePage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { userId } = useParams<{ userId: string }>()
   const [profile, setProfile] = useState<PublicProfile | null>(null)
@@ -90,7 +92,7 @@ export function PublicProfilePage() {
     try {
       await sendRequest(userId)
     } catch (e) {
-      setFriendError(e instanceof Error ? e.message : 'Could not send the request.')
+      setFriendError(e instanceof Error ? e.message : t('library.publicProfile.sendError'))
     } finally {
       setFriendBusy(false)
     }
@@ -103,32 +105,32 @@ export function PublicProfilePage() {
     try {
       await acceptRequest(incomingRequest.requestId)
     } catch (e) {
-      setFriendError(e instanceof Error ? e.message : 'Could not accept the request.')
+      setFriendError(e instanceof Error ? e.message : t('library.publicProfile.acceptError'))
     } finally {
       setFriendBusy(false)
     }
   }
 
-  const title = state === 'ready' && profile ? profile.displayName : 'Player'
+  const title = state === 'ready' && profile ? profile.displayName : t('library.publicProfile.player')
 
   return (
     <AccountPage title={title} width="wide" plain>
       {state === 'loading' && (
         <MessageCard center>
           <span className={a.spinner} aria-hidden />
-          <p className={a.muted}>Loading profile…</p>
+          <p className={a.muted}>{t('library.publicProfile.loading')}</p>
         </MessageCard>
       )}
       {(state === 'notfound' || state === 'error') && (
         <MessageCard>
-          <h1 className={p.h1}>{state === 'notfound' ? 'Player not found' : 'Couldn’t load profile'}</h1>
+          <h1 className={p.h1}>{state === 'notfound' ? t('library.publicProfile.notFound') : t('library.publicProfile.couldNotLoad')}</h1>
           <p className={a.muted}>
             {state === 'notfound'
-              ? 'This profile doesn’t exist or is no longer available.'
-              : 'Something went wrong fetching this player’s stats.'}
+              ? t('library.publicProfile.notFoundDescription')
+              : t('library.publicProfile.loadErrorDescription')}
           </p>
           <button type="button" className={p.button} onClick={() => navigate(-1)}>
-            ← Go back
+            {t('library.publicProfile.goBack')}
           </button>
         </MessageCard>
       )}
@@ -140,26 +142,26 @@ export function PublicProfilePage() {
               <div className={a.identityText}>
                 <h1 className={p.h1}>{profile.displayName}</h1>
                 <p className={a.muted}>
-                  {isOwnProfile ? 'This is how others see your profile' : 'Player profile'}
-                  {profile.stats.games > 0 && ` · ${profile.stats.games} game${profile.stats.games === 1 ? '' : 's'} played`}
+                  {isOwnProfile ? t('library.publicProfile.ownProfile') : t('library.publicProfile.playerProfile')}
+                  {profile.stats.games > 0 && ` · ${t('library.publicProfile.gamesPlayed', { count: profile.stats.games })}`}
                 </p>
               </div>
               {canBefriend && (
                 <div className={a.identityActions}>
                   <button type="button" className={p.button} onClick={() => navigate(`/messages/${userId}`)}>
-                    Message
+                    {t('library.publicProfile.message')}
                   </button>
                   {isFriend ? (
-                    <span className={a.badgeFriends}>✓ Friends</span>
+                    <span className={a.badgeFriends}>{t('library.publicProfile.friends')}</span>
                   ) : incomingRequest ? (
                     <button type="button" className={p.buttonPrimary} disabled={friendBusy} onClick={() => void acceptFriend()}>
-                      {friendBusy ? 'Accepting…' : 'Accept friend request'}
+                      {friendBusy ? t('library.publicProfile.accepting') : t('library.publicProfile.acceptRequest')}
                     </button>
                   ) : outgoingPending ? (
-                    <span className={a.badgePending}>Friend request sent</span>
+                    <span className={a.badgePending}>{t('library.publicProfile.requestSent')}</span>
                   ) : (
                     <button type="button" className={p.buttonPrimary} disabled={friendBusy} onClick={() => void addFriend()}>
-                      {friendBusy ? 'Sending…' : '+ Add friend'}
+                      {friendBusy ? t('library.publicProfile.sending') : t('library.publicProfile.addFriend')}
                     </button>
                   )}
                 </div>

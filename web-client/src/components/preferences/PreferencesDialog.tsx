@@ -7,8 +7,10 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { PreferencesPanel } from './PreferencesPanel'
 import d from './PreferencesDialog.module.css'
+import { useTranslation } from 'react-i18next'
 
 export function PreferencesDialog({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -24,8 +26,8 @@ export function PreferencesDialog({ onClose }: { onClose: () => void }) {
     <div className={d.backdrop} onPointerDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className={d.dialog} role="dialog" aria-modal="true" aria-labelledby="preferences-dialog-title">
         <header className={d.head}>
-          <h2 id="preferences-dialog-title" className={d.title}>Preferences</h2>
-          <button type="button" className={d.close} onClick={onClose} aria-label="Close preferences">
+          <h2 id="preferences-dialog-title" className={d.title}>{t('settings.preferences')}</h2>
+          <button type="button" className={d.close} onClick={onClose} aria-label={t('settings.closePreferences')}>
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
               <path d="M6 6l12 12M18 6L6 18" />
             </svg>

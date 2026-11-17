@@ -62,8 +62,11 @@ import { useSetupLibrary } from '@/store/setupLibrary'
 import { useCaptureRecipe } from './useCaptureRecipe'
 import { useLobbyCommands } from './useLobbyCommands'
 import styles from '../ui/GameUI.module.css'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 
 export function LobbyScreen() {
+  const { t } = useTranslation()
   const quickLobby = useGameStore((s) => s.quickGameLobbyState)
   const lobbyState = useGameStore((s) => s.lobbyState)
   const aiEnabled = useGameStore((s) => s.aiEnabled)
@@ -237,9 +240,9 @@ export function LobbyScreen() {
               className={styles.saveSetupButton}
               data-testid="save-setup"
               onClick={() => setSavingSetup(true)}
-              title="Save this lobby — sets, packs, timer, deck and all — to launch again in one click"
+              title={t('lobby.saveSetupTitle')}
             >
-              ★ Save setup
+              ★ {t('lobby.saveSetup')}
             </button>
           )}
         </div>
@@ -256,7 +259,7 @@ export function LobbyScreen() {
             <button
               type="button"
               className={styles.lobbyNotesDismiss}
-              aria-label="Dismiss"
+              aria-label={t('common.dismiss')}
               onClick={() => setNotes([])}
             >
               ×
@@ -271,13 +274,13 @@ export function LobbyScreen() {
               onClick={copyLobbyId}
               className={lobby.inviteButton}
               data-copied={copied}
-              aria-label={copied ? 'Invite code copied' : `Copy invite code ${view.lobbyId}`}
+              aria-label={copied ? t('lobby.inviteCodeCopied') : t('lobby.copyInviteCode', { inviteCode: view.lobbyId })}
             >
               <span className={lobby.inviteText}>
-                <span className={lobby.inviteLabel}>Invite code</span>
+                <span className={lobby.inviteLabel}>{t('lobby.inviteCode')}</span>
                 <span className={lobby.inviteCode} data-testid="invite-code">{view.lobbyId}</span>
               </span>
-              <span className={lobby.inviteAction}>{copied ? 'Copied!' : 'Copy'}</span>
+              <span className={lobby.inviteAction}>{copied ? t('lobby.copied') : t('lobby.copy')}</span>
             </button>
             <JoinQrModal url={buildJoinUrl(view.lobbyId)} buttonClassName={lobby.qrButton} />
           </div>
@@ -301,12 +304,12 @@ export function LobbyScreen() {
             roster, whether it is backed by the quick or tournament implementation. */}
         <div className={styles.playerListPanel}>
           <div className={styles.playerListHeader}>
-            <span className={styles.playerListTitle}>Players</span>
+            <span className={styles.playerListTitle}>{t('lobby.players')}</span>
             <span className={styles.playerCount}>{view.players.length} / {view.maxPlayers}</span>
             {/* Beside the count rather than under a list that can be eight rows long — at a full
                 pod the old placement put "+ Add AI Player" below the fold of its own panel. */}
             {view.canAddAi && (
-              <button onClick={commands.addAi} className={styles.addAiInlineButton}>+ Add AI</button>
+              <button onClick={commands.addAi} className={styles.addAiInlineButton}>+ {t('lobby.addAi')}</button>
             )}
           </div>
           {seatRows(view).map(({ player, seat, teamHeader }) => (
@@ -326,7 +329,7 @@ export function LobbyScreen() {
                 <span className={styles.seatNumber}>{seat}</span>
                 <div className={`${styles.statusDot} ${player.isConnected ? styles.statusDotOnline : styles.statusDotOffline}`} />
                 <span className={styles.playerName}>{player.name}</span>
-                {player.isYou && <span className={styles.hostBadge}>You</span>}
+                {player.isYou && <span className={styles.hostBadge}>{t('lobby.you')}</span>}
                 {player.isAi && <span className={styles.hostBadge}>AI</span>}
                 {view.teams.mode !== 'NONE' && (
                   <TeamChip
@@ -335,7 +338,7 @@ export function LobbyScreen() {
                     onClick={() => commands.togglePlayerTeam(player.playerId)}
                   />
                 )}
-                {player.isHost && <span className={styles.hostBadge}>Host</span>}
+                {player.isHost && <span className={styles.hostBadge}>{t('lobby.host')}</span>}
               </div>
               <div className={styles.playerActions}>
                 {view.kind === 'QUICK' && !isMomir && player.isYou && (
@@ -344,15 +347,15 @@ export function LobbyScreen() {
                     onClick={() => { setDeckPickerMounted(true); setQuickDeckSeat('human') }}
                     disabled={player.tone === 'ready'}
                     className={`${styles.playerStatus} ${styles.playerDeckButton} ${player.needsDeck ? styles.playerDeckButtonCta : player.tone === 'ready' ? statusClass(player.tone) : styles.playerDeckButtonChosen}`}
-                    title={player.tone === 'ready' ? 'Cancel ready before changing your deck' : 'Change your deck'}
+                    title={player.tone === 'ready' ? t('lobby.cancelReadyToChangeDeck') : t('lobby.changeYourDeck')}
                     data-testid="your-deck-button"
                   >
                     {/* Your own row is where a deck is chosen, so until one is it names the action
                         rather than reporting a state ("Choosing deck…" read as somebody else's).
                         Once chosen it names the deck you know — the server only knows "Custom (60)". */}
                     {player.needsDeck
-                      ? 'Choose deck'
-                      : ownDeckLabel(player.status, player.tone === 'ready', savedDeckName ?? exampleName)}{' '}
+                      ? t('lobby.chooseDeck')
+                      : ownDeckLabel(player.status, player.tone === 'ready', savedDeckName ?? exampleName, t)}{' '}
                     <span aria-hidden>✎</span>
                   </button>
                 )}
@@ -362,9 +365,9 @@ export function LobbyScreen() {
                     onClick={() => setQuickDeckSeat('ai')}
                     disabled={view.you?.tone === 'ready'}
                     className={`${styles.playerStatus} ${styles.playerDeckButton} ${statusClass(player.tone)}`}
-                    title={view.you?.tone === 'ready' ? 'Cancel ready before changing the AI deck' : `Choose what ${player.name} plays`}
+                    title={view.you?.tone === 'ready' ? t('lobby.cancelReadyToChangeAiDeck') : t('lobby.choosePlayerDeck', { playerName: player.name })}
                   >
-                    {player.status} <span aria-hidden>✎</span>
+                    {playerStatusLabel(player.status, t)} <span aria-hidden>✎</span>
                   </button>
                 )}
                 {view.kind === 'TOURNAMENT' && view.isWaiting &&
@@ -373,11 +376,11 @@ export function LobbyScreen() {
                       type="button"
                       onClick={() => { setTournamentDeckMounted(true); setTournamentDeckOpen(true) }}
                       className={`${styles.playerStatus} ${styles.playerDeckButton} ${player.tone === 'ready' ? statusClass(player.tone) : styles.playerDeckButtonCta}`}
-                      title={player.tone === 'ready' ? 'View or change your submitted deck' : 'Choose and submit your deck'}
+                      title={player.tone === 'ready' ? t('lobby.viewOrChangeSubmittedDeck') : t('lobby.chooseAndSubmitDeck')}
                     >
                       {/* Every other seat shows its state here, but on your own seat this is the only
                           control that submits a deck — so it says what pressing it does instead. */}
-                      {player.tone === 'ready' ? '✓ Deck ready · Change' : 'Choose deck'}{' '}
+                      {player.tone === 'ready' ? t('lobby.deckReadyChange') : t('lobby.chooseDeck')}{' '}
                       <span aria-hidden>✎</span>
                     </button>
                 )}
@@ -387,21 +390,23 @@ export function LobbyScreen() {
                   <button
                     onClick={() => setAiDeckSeat(player.playerId)}
                     className={styles.settingsButton}
-                    title={`Choose what ${player.name} plays`}
+                    title={t('lobby.choosePlayerDeck', { playerName: player.name })}
                   >
-                    {aiDeckSummary(player.aiDeck)}
+                    {aiDeckSummary(player.aiDeck, t)}
                   </button>
                 )}
                 {!(view.kind === 'QUICK' && !isMomir && (player.isYou || (player.isAi && view.isHost))) &&
                   !(view.kind === 'TOURNAMENT' && view.isWaiting &&
                     view.axes.cards.kind === 'BRING_A_DECK' && player.isYou) && (
-                  <span className={`${styles.playerStatus} ${statusClass(player.tone)}`}>{player.status}</span>
+                  <span className={`${styles.playerStatus} ${statusClass(player.tone)}`}>
+                    {playerStatusLabel(player.status, t)}
+                  </span>
                 )}
                 {view.isWaiting && view.isHost && player.isAi && (
                   <button
                     onClick={() => commands.removeAi(player.playerId)}
                     className={styles.removeAiButton}
-                    title="Remove AI player"
+                    title={t('lobby.removeAiPlayer')}
                   >
                     ×
                   </button>
@@ -411,7 +416,7 @@ export function LobbyScreen() {
             </Fragment>
           ))}
           {view.players.length === 0 && (
-            <div className={styles.emptyPlayerList}>Waiting for players to join...</div>
+            <div className={styles.emptyPlayerList}>{t('lobby.waitingForPlayers')}</div>
           )}
           {view.players.length === 1 && view.invitable && (
             <div
@@ -491,7 +496,7 @@ export function LobbyScreen() {
       </div>
         <div className={lobby.actionBar}>
           <div className={lobby.actionBarInner}>
-            <button onClick={commands.leave} className={lobby.leave} type="button">Leave</button>
+            <button onClick={commands.leave} className={lobby.leave} type="button">{t('lobby.leave')}</button>
             {/* Said, not just hovered: a `title` on a disabled button is the least discoverable
                 place to put the one sentence explaining why it can't be pressed. */}
             {view.primaryAction?.disabled && view.primaryAction.reason && (
@@ -514,17 +519,17 @@ export function LobbyScreen() {
 
       {deckPickerMounted && quickLobby && !isMomir && (
         <DeckPickerModal
-          title="Your deck"
+          title={t('lobby.yourDeck')}
           subtitle={view.invitable
-            ? 'Pick what you bring to this game. Your opponent chooses their own.'
-            : 'Pick what you play against the AI.'}
+            ? t('lobby.yourDeckInviteSubtitle')
+            : t('lobby.yourDeckAiSubtitle')}
           hidden={quickDeckSeat !== 'human'}
           onClose={() => setQuickDeckSeat(null)}
           selection={quickLobby?.players.find((p) => p.playerId === quickLobby.youPlayerId)?.deckSelected ? lastPicked : null}
           primary={view.primaryAction?.kind === 'READY'
             ? {
                 // Against the AI, ready *is* start — the AI is always ready.
-                label: view.invitable ? 'Ready up' : 'Start game',
+                label: view.invitable ? t('lobby.readyUp') : t('lobby.startGame'),
                 disabled: view.primaryAction.disabled || deckSubmitPending,
                 reason: deckSubmitPending ? undefined : view.primaryAction.reason,
                 onRun: runPrimary,
@@ -568,7 +573,7 @@ export function LobbyScreen() {
       {tournamentDeckMounted && lobbyState && view.kind === 'TOURNAMENT' && view.isWaiting &&
         lobbyState.settings.format === 'PREMADE_DECKS' && (
           <DeckPickerModal
-            title="Your deck"
+            title={t('lobby.yourDeck')}
             hidden={!tournamentDeckOpen}
             onClose={() => setTournamentDeckOpen(false)}
           >
@@ -673,32 +678,32 @@ function seatRows(view: UnifiedLobbyView): Array<{
 
 /** Ranked is a 1v1-bracket concept server-side, so it refines **Event** rather than the lobby. */
 function RankedRow({ on, onChange }: { on: boolean; onChange: (ranked: boolean) => void }) {
+  const { t } = useTranslation()
   return (
     <div className={styles.settingsRow}>
-      <SettingsLabel topicId="ranked">Ranked</SettingsLabel>
+      <SettingsLabel topicId="ranked">{t('lobby.ranked')}</SettingsLabel>
       <div className={styles.variantGroup}>
         <div className={styles.settingsButtons}>
           <button
             type="button"
             onClick={() => onChange(false)}
             className={`${styles.settingsButton} ${!on ? styles.settingsButtonActive : ''}`}
-            title="Casual — no rating change"
+            title={t('lobby.casualTitle')}
           >
-            Casual
+            {t('lobby.casual')}
           </button>
           <button
             type="button"
             onClick={() => onChange(true)}
             className={`${styles.settingsButton} ${on ? styles.settingsButtonActive : ''}`}
-            title="Ranked — adjusts each player's ELO"
+            title={t('lobby.rankedTitle')}
           >
-            Ranked
+            {t('lobby.ranked')}
           </button>
         </div>
         {on && (
           <div className={styles.variantCaption}>
-            Ranked games adjust each player's ELO. All players must be signed in for it to count —
-            otherwise it just plays unranked.
+            {t('lobby.rankedDescription')}
           </div>
         )}
       </div>
@@ -719,10 +724,11 @@ function AnteRow({
   lockedReason: string | null
   onChange: (playingForAnte: boolean) => void
 }) {
+  const { t } = useTranslation()
   const locked = lockedReason !== null
   return (
     <div className={styles.settingsRow} data-testid="ante-row">
-      <SettingsLabel topicId="playing-for-ante">Play for ante</SettingsLabel>
+      <SettingsLabel topicId="playing-for-ante">{t('lobby.playForAnte')}</SettingsLabel>
       <div className={styles.variantGroup}>
         <div className={styles.settingsButtons}>
           <button
@@ -730,26 +736,26 @@ function AnteRow({
             onClick={() => onChange(false)}
             disabled={locked}
             className={`${styles.settingsButton} ${!on ? styles.settingsButtonActive : ''}`}
-            title={lockedReason ?? 'Play for fun — every card goes home with its owner'}
+            title={lockedReason ?? t('lobby.playForFun')}
           >
-            Off
+            {t('lobby.off')}
           </button>
           <button
             type="button"
             onClick={() => onChange(true)}
             disabled={locked}
             className={`${styles.settingsButton} ${on ? styles.settingsButtonActive : ''}`}
-            title={lockedReason ?? 'Each player antes a random card; the winner takes the ante'}
+            title={lockedReason ?? t('lobby.anteWinnerTitle')}
           >
-            For ante
+            {t('lobby.forAnte')}
           </button>
         </div>
         <div className={styles.variantCaption}>
           {locked
             ? lockedReason
             : on
-              ? 'Each player antes a random card from their deck. The winner takes the ante — in a Limited tournament it joins their pool for the rest of the event; otherwise it’s a trophy on their profile. Enables the ante cards (Contract from Below, Darkpact, …).'
-              : 'Wager a random card from each deck on the outcome.'}
+              ? t('lobby.anteDescription')
+              : t('lobby.anteOffDescription')}
         </div>
       </div>
     </div>
@@ -763,23 +769,24 @@ function VisibilityRow({
   isPublic: boolean
   onChange: (isPublic: boolean) => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className={styles.settingsRow}>
-      <span className={styles.settingsLabel}>Visibility</span>
+      <span className={styles.settingsLabel}>{t('lobby.visibility')}</span>
       <div className={styles.settingsButtons}>
         <button
           type="button"
           onClick={() => onChange(false)}
           className={`${styles.settingsButton} ${!isPublic ? styles.settingsButtonActive : ''}`}
         >
-          Private
+          {t('lobby.private')}
         </button>
         <button
           type="button"
           onClick={() => onChange(true)}
           className={`${styles.settingsButton} ${isPublic ? styles.settingsButtonActive : ''}`}
         >
-          Public
+          {t('lobby.public')}
         </button>
       </div>
     </div>
@@ -795,9 +802,29 @@ function statusClass(tone: 'ready' | 'joined' | 'disconnected'): string {
 }
 
 /** Your own seat's deck chip: the deck's own name where the picker knows it, and an explicit Change. */
-function ownDeckLabel(status: string, ready: boolean, localName: string | null): string {
-  if (!localName) return ready ? status : `${status} · Change`
-  return ready ? `✓ Ready · ${localName}` : `${localName} · Change`
+function playerStatusLabel(status: string, t: TFunction): string {
+  if (status === 'Choosing deck…') return t('lobby.choosingDeck')
+  if (status === 'Deck ready') return t('lobby.deckReady')
+  if (status === 'No deck yet') return t('lobby.noDeckYet')
+  if (status === 'Joined') return t('lobby.joined')
+  if (status === 'Disconnected') return t('lobby.disconnected')
+  const readyDeck = status.match(/^✓ Ready · (.*)$/)
+  if (readyDeck) return t('lobby.readyWithDeck', { deckLabel: readyDeck[1] })
+  const selectedDeck = status.match(/^Deck: (.*)$/)
+  if (selectedDeck) return t('lobby.deckStatus', { deckLabel: selectedDeck[1] })
+  return status
+}
+
+function ownDeckLabel(
+  status: string,
+  ready: boolean,
+  localName: string | null,
+  t: TFunction,
+): string {
+  if (!localName) return ready ? playerStatusLabel(status, t) : `${playerStatusLabel(status, t)} · ${t('lobby.changeDeck')}`
+  return ready
+    ? t('lobby.readyWithDeck', { deckLabel: localName })
+    : `${localName} · ${t('lobby.changeDeck')}`
 }
 
 function capitalize(value: string): string {
@@ -844,32 +871,31 @@ function RecreateConfirm({
   onCancel: () => void
   onConfirm: () => void
 }) {
+  const { t } = useTranslation()
   const others = view.players.filter((p) => !p.isYou && !p.isAi).length
   const ais = view.players.filter((p) => p.isAi).length
 
   return (
     <div className={styles.confirmBackdrop} role="dialog" aria-modal="true" onClick={onCancel}>
       <div className={styles.confirmPanel} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.confirmTitle}>Start a new lobby?</div>
+        <div className={styles.confirmTitle}>{t('lobby.startNewLobbyTitle')}</div>
         <p className={styles.confirmBody}>
-          “{recreateTargetLabel(spec)}” runs on a different lobby to this one, so switching opens a
-          fresh one.
+          {t('lobby.startNewLobbyDescription', { target: recreateTargetLabel(spec) })}
         </p>
         <ul className={styles.confirmCosts}>
-          <li>Your invite code changes — you'll need to re-share it.</li>
+          <li>{t('lobby.inviteCodeChanges')}</li>
           {others > 0 && (
             <li>
-              {others === 1 ? '1 player who has' : `${others} players who have`} joined will be
-              dropped.
+              {t(others === 1 ? 'lobby.joinedPlayerDropped' : 'lobby.joinedPlayersDropped', { count: others })}
             </li>
           )}
-          {ais > 0 && <li>{ais === 1 ? 'The AI seat' : `${ais} AI seats`} will need adding again.</li>}
-          {view.kind === 'TOURNAMENT' && <li>Set selection and any submitted decks are reset.</li>}
+          {ais > 0 && <li>{t(ais === 1 ? 'lobby.aiSeatDropped' : 'lobby.aiSeatsDropped', { count: ais })}</li>}
+          {view.kind === 'TOURNAMENT' && <li>{t('lobby.tournamentDecksReset')}</li>}
         </ul>
         <div className={styles.confirmActions}>
-          <button type="button" onClick={onCancel} className={styles.leaveButton}>Cancel</button>
+          <button type="button" onClick={onCancel} className={styles.leaveButton}>{t('common.cancel')}</button>
           <button type="button" onClick={onConfirm} className={styles.startButton} data-testid="confirm-recreate">
-            Switch
+            {t('lobby.switch')}
           </button>
         </div>
       </div>
@@ -1029,16 +1055,16 @@ function SaveSetupDialog({
   onCancel: () => void
   onSave: (name: string) => void
 }) {
+  const { t } = useTranslation()
   const [name, setName] = useState(defaultName)
   const trimmed = name.trim()
 
   return (
     <div className={styles.confirmBackdrop} role="dialog" aria-modal="true" onClick={onCancel}>
       <div className={styles.confirmPanel} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.confirmTitle}>Save this setup</div>
+        <div className={styles.confirmTitle}>{t('lobby.saveThisSetup')}</div>
         <p className={styles.confirmBody}>
-          It comes back on the home screen as one click — sets, packs, timer, ban list, cube and the
-          deck you picked.
+          {t('lobby.saveSetupDescription')}
         </p>
         <input
           className={styles.settingsSelect}
@@ -1047,10 +1073,10 @@ function SaveSetupDialog({
           autoFocus
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && trimmed) onSave(trimmed) }}
-          aria-label="Setup name"
+          aria-label={t('lobby.setupName')}
         />
         <div className={styles.confirmActions}>
-          <button type="button" onClick={onCancel} className={styles.leaveButton}>Cancel</button>
+          <button type="button" onClick={onCancel} className={styles.leaveButton}>{t('common.cancel')}</button>
           <button
             type="button"
             onClick={() => onSave(trimmed)}
@@ -1058,7 +1084,7 @@ function SaveSetupDialog({
             className={styles.startButton}
             data-testid="confirm-save-setup"
           >
-            Save
+            {t('common.save')}
           </button>
         </div>
       </div>
@@ -1088,6 +1114,7 @@ function PremadeDeckPickerPanel({
   /** Submit the preselected deck by itself, once, as soon as it resolves and validates. */
   autoSubmit: boolean
 }) {
+  const { t } = useTranslation()
   const submitLobbyDeck = useGameStore((s) => s.submitLobbyDeck)
   const unsubmitLobbyDeck = useGameStore((s) => s.unsubmitLobbyDeck)
 
@@ -1149,10 +1176,10 @@ function PremadeDeckPickerPanel({
       <div className={styles.deckSubmittedCard} role="status">
         <div className={styles.deckSubmittedIcon} aria-hidden>✓</div>
         <div className={styles.deckSubmittedBody}>
-          <span className={styles.deckSubmittedTitle}>Deck submitted</span>
-          <span className={styles.deckSubmittedSubtitle}>Waiting for the host to start.</span>
+          <span className={styles.deckSubmittedTitle}>{t('lobby.deckSubmitted')}</span>
+          <span className={styles.deckSubmittedSubtitle}>{t('lobby.waitingForHostToStart')}</span>
         </div>
-        <button onClick={unsubmitLobbyDeck} className={styles.deckSubmittedEditButton}>Edit deck</button>
+        <button onClick={unsubmitLobbyDeck} className={styles.deckSubmittedEditButton}>{t('lobby.editDeck')}</button>
       </div>
     )
   }
@@ -1160,11 +1187,11 @@ function PremadeDeckPickerPanel({
   return (
     <div className={styles.settingsPanel}>
       <div className={styles.settingsRow} style={{ alignItems: 'flex-start', flexDirection: 'column', gap: 12 }}>
-        <span className={styles.settingsLabel}>Your Deck</span>
+        <span className={styles.settingsLabel}>{t('lobby.yourDeck')}</span>
         {deckFormat && (
           <span className={styles.formatRestrictionNotice}>
             <span className={styles.formatRestrictionBadge}>{labelForFormat(deckFormat)}</span>
-            <span>Only cards legal in this format will be accepted.</span>
+            <span>{t('lobby.formatLegalityNotice')}</span>
           </span>
         )}
         <DeckPicker
@@ -1189,12 +1216,12 @@ function PremadeDeckPickerPanel({
           title={
             canSubmit ? undefined
               : needsCommander
-                ? 'Pick a deck with a designated commander to play this format'
-                : 'Pick a valid deck of at least 40 cards'
+                ? t('lobby.pickDeckWithCommander')
+                : t('lobby.pickDeckAtLeast40')
           }
           className={styles.startButton}
         >
-          Submit Deck
+          {t('lobby.submitDeck')}
         </button>
       </div>
     </div>

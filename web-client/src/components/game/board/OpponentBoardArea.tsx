@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type React from 'react'
+import { useTranslation } from 'react-i18next'
 import type { RefObject } from 'react'
 import { useGameStore } from '@/store/gameStore'
 import type { ClientPlayer } from '@/types'
@@ -691,6 +692,7 @@ export function BoardNamePlate({
    */
   handCount?: number
 }) {
+  const { t } = useTranslation()
   const seat = useIdentityColor(player.playerId)
   const playerId = player.playerId
   // Two-Headed Giant (CR 810): the team's single shared life lives on the center-HUD team orb,
@@ -872,7 +874,7 @@ export function BoardNamePlate({
       {isAlly && (
         <span
           aria-hidden
-          title="Your teammate"
+          title={t('gameCore.yourTeammate')}
           style={{
             fontSize: 9,
             fontWeight: 800,

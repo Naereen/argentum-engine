@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import type { ChooseNumberDecision } from '@/types'
 import { ManaDistributionUI, parseManaDistributionPrompt } from './ManaDistributionUI'
@@ -33,6 +34,7 @@ function NumberPickerUI({
   decision: ChooseNumberDecision
   onMinimize?: (() => void) | undefined
 }) {
+  const { t } = useTranslation()
   const [selectedNumber, setSelectedNumber] = useState(decision.minValue)
   const submitNumberDecision = useGameStore((s) => s.submitNumberDecision)
   const gameState = useGameStore((s) => s.gameState)
@@ -77,7 +79,7 @@ function NumberPickerUI({
               className={styles.stepperButton}
               onClick={() => setSelectedNumber((n) => clamp(n - 1))}
               disabled={selectedNumber <= decision.minValue}
-              aria-label="Decrease"
+              aria-label={t('decisions.decrease')}
             >
               −
             </button>
@@ -94,7 +96,7 @@ function NumberPickerUI({
               className={styles.stepperButton}
               onClick={() => setSelectedNumber((n) => clamp(n + 1))}
               disabled={selectedNumber >= decision.maxValue}
-              aria-label="Increase"
+              aria-label={t('decisions.increase')}
             >
               +
             </button>

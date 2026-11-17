@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import type { EntityId, ReorderLibraryDecision, SearchCardInfo } from '@/types'
 import { calculateFittingCardWidth, type ResponsiveSizes } from '@/hooks/useResponsive.ts'
@@ -394,6 +395,7 @@ function ReorderCard({
   onMouseEnter: (e: React.MouseEvent) => void
   onMouseLeave: () => void
 }) {
+  const { t } = useTranslation()
   const cardName = cardInfo?.name || 'Unknown Card'
   const cardImageUrl = getCardImageUrl(cardName, cardInfo?.imageUri)
 
@@ -432,7 +434,7 @@ function ReorderCard({
             alignItems: 'center',
             justifyContent: 'center',
           }}
-          title="Move left (towards top)"
+          title={t('decisions.moveEarlier')}
         >
           &#8592;
         </button>
@@ -452,7 +454,7 @@ function ReorderCard({
             alignItems: 'center',
             justifyContent: 'center',
           }}
-          title="Move right (towards bottom)"
+          title={t('decisions.moveLater')}
         >
           &#8594;
         </button>

@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { otariaBoard, otariaGameState, otariaViewer } from '@/test/otariaFixtures'
 import type { ChooseOptionDecision } from '@/types'
 import { OtariaMovementDecisionUI, otariaMovementChoices } from './OtariaMovementDecisionUI'
+import { I18nextProvider } from 'react-i18next'
+import i18n from '@/i18n'
 
 const decision: ChooseOptionDecision = {
   type: 'ChooseOptionDecision',
@@ -24,12 +26,12 @@ describe('Otaria movement decision', () => {
       { position: { column: 7, row: 8 }, index: 1, label: 'Southern Pit-Arena' },
     ])
     const html = renderToStaticMarkup(
-      <OtariaMovementDecisionUI decision={decision} gameState={gameState} board={board} choices={choices ?? []} />,
+      <I18nextProvider i18n={i18n}><OtariaMovementDecisionUI decision={decision} gameState={gameState} board={board} choices={choices ?? []} /></I18nextProvider>,
     )
     expect(html.match(/role="button"/g)).toHaveLength(2)
     expect(html).toContain('aria-label="Order Encampment"')
     expect(html).toContain('Confirm move')
-    expect(html).toContain('aria-pressed="false">Zoom!</button>')
+    expect(html).toContain('aria-pressed="false">Zoom in</button>')
     expect(html).toContain('aria-pressed="true">Full map</button>')
     expect(html).toContain('viewBox="-8 -8 390 512"')
     expect(html).toContain('disabled=""')

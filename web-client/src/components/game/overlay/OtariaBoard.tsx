@@ -3,17 +3,7 @@ import { createPortal } from 'react-dom'
 import { Color } from '@/types'
 import type { ClientGameState, ClientOtariaReserveCard, ClientOtariaState, EntityId, OtariaLocation, OtariaPosition } from '@/types'
 import styles from './OtariaBoard.module.css'
-
-const locationNames: Record<OtariaLocation, string> = {
-  KROSIAN_FOREST: 'Krosian Forest',
-  ORDER_ENCAMPMENT: 'Order Encampment',
-  SOUTHERN_PIT_ARENA: 'Southern Pit-Arena',
-  BALSHAN_BAY: 'Balshan Bay',
-  PARDIC_MOUNTAINS: 'Pardic Mountains',
-  ORDER_SOUTHERN_ENCAMPMENT: 'Order Southern Encampment',
-  CABAL_CITY: 'Cabal City',
-  CEPHALID_SOUTHERN_PALACE: 'Cephalid Southern Palace',
-}
+import { useTranslation } from 'react-i18next'
 
 const terrainColors: Record<Color, string> = {
   [Color.WHITE]: '#d8c99e',
@@ -24,12 +14,12 @@ const terrainColors: Record<Color, string> = {
 }
 const seatColors = ['#ffe19a', '#b6dafe', '#f9b4a8', '#bde7b2', '#dcc0ff']
 const terrainOrder = [Color.GREEN, Color.RED, Color.BLACK, Color.BLUE, Color.WHITE]
-const turnActions = { MOVE: 'Move', EXPLORE: 'Explore', PREPARE: 'Prepare', COMBAT: 'Combat' }
 
 function ReserveCards({ cards }: { cards: readonly ClientOtariaReserveCard[] }) {
+  const { t } = useTranslation()
   return (
     <>
-      {cards.length === 0 && <p className={styles.muted}>No cards in reserve.</p>}
+      {cards.length === 0 && <p className={styles.muted}>{t('otaria.noCardsReserve')}</p>}
       {cards.map((card) => (
         <details key={card.id} className={styles.reserveCard}>
           <summary><span>{card.name}</span><span>{card.manaCost}</span></summary>
@@ -81,6 +71,29 @@ export function OtariaMap({
   selectedIndex?: number | null
   onChoose?: (index: number) => void
 }) {
+  const { t } = useTranslation()
+  const displayColor = (color: Color) => {
+    switch (color) {
+      case Color.WHITE: return t('otaria.colorList.WHITE')
+      case Color.BLUE: return t('otaria.colorList.BLUE')
+      case Color.BLACK: return t('otaria.colorList.BLACK')
+      case Color.RED: return t('otaria.colorList.RED')
+      case Color.GREEN: return t('otaria.colorList.GREEN')
+      default: return String(color)
+    }
+  }
+  const locationName = (location: OtariaLocation) => {
+    switch (location) {
+      case 'KROSIAN_FOREST': return t('otaria.locationNames.KROSIAN_FOREST')
+      case 'ORDER_ENCAMPMENT': return t('otaria.locationNames.ORDER_ENCAMPMENT')
+      case 'SOUTHERN_PIT_ARENA': return t('otaria.locationNames.SOUTHERN_PIT_ARENA')
+      case 'BALSHAN_BAY': return t('otaria.locationNames.BALSHAN_BAY')
+      case 'PARDIC_MOUNTAINS': return t('otaria.locationNames.PARDIC_MOUNTAINS')
+      case 'ORDER_SOUTHERN_ENCAMPMENT': return t('otaria.locationNames.ORDER_SOUTHERN_ENCAMPMENT')
+      case 'CABAL_CITY': return t('otaria.locationNames.CABAL_CITY')
+      case 'CEPHALID_SOUTHERN_PALACE': return t('otaria.locationNames.CEPHALID_SOUTHERN_PALACE')
+    }
+  }
   const orderedPlayers = [...board.players].sort((a, b) =>
     gameState.players.findIndex((player) => player.playerId === a.playerId) -
     gameState.players.findIndex((player) => player.playerId === b.playerId))
@@ -105,7 +118,7 @@ export function OtariaMap({
   }
   return (
     <span className={styles.mapFrame}>
-      <svg viewBox={viewBox} role={choices.length ? 'group' : 'img'} aria-label="Otaria's terrain, starred locations, and player positions">
+      <svg viewBox={viewBox} role={choices.length ? 'group' : 'img'} aria-label={t('otaria.mapDescription')}>
         {board.tiles.map((tile) => {
           const x = 25 + tile.position.column * 27
           const y = 25 + tile.position.row * 31.18 + (tile.position.column % 2) * 15.59
@@ -129,7 +142,7 @@ export function OtariaMap({
                 }
               } : undefined}
             >
-              <title>{choice?.label ?? (tile.location ? locationNames[tile.location] : `${tile.color} terrain`)}</title>
+              <title>{choice?.label ?? (tile.location ? locationName(tile.location) : t('otaria.terrain', { color: displayColor(tile.color) }))}</title>
               <polygon
                 points={points}
                 fill={terrainColors[tile.color]}
@@ -186,6 +199,7 @@ export function OtariaMap({
 
 /** The board is an independent view of server-supplied state, not a source of legal actions. */
 export function OtariaBoardButton({ gameState, miniature = false }: { gameState: ClientGameState; miniature?: boolean }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const button = useRef<HTMLButtonElement>(null)
   const dialog = useRef<HTMLDivElement>(null)
@@ -204,12 +218,12 @@ export function OtariaBoardButton({ gameState, miniature = false }: { gameState:
         ref={button}
         type="button"
         className={miniature ? styles.miniMap : styles.badge}
-        aria-label={miniature ? 'Open Otaria map' : undefined}
+        aria-label={miniature ? t('otaria.openMap') : undefined}
         onClick={() => setOpen(true)}
       >
         {miniature
           ? <span aria-hidden="true"><OtariaMap gameState={gameState} board={gameState.otaria} miniature /></span>
-          : <><span aria-hidden>✦</span> Otaria map</>}
+          : <><span aria-hidden>✦</span> {t('otaria.mapButton')}</>}
       </button>
       {open && createPortal(
         <div className={styles.backdrop} onPointerDown={(event) => {
@@ -243,11 +257,11 @@ export function OtariaBoardButton({ gameState, miniature = false }: { gameState:
           >
             <header className={styles.header}>
               <div>
-                <p className={styles.eyebrow}>Explorer of Otaria</p>
-                <h2 id="otaria-board-title">The map of Otaria</h2>
-                <p>Player positions, exploration supplies, and your private reserve.</p>
+                <p className={styles.eyebrow}>{t('otaria.explorerOf')}</p>
+                <h2 id="otaria-board-title">{t('otaria.mapTitle')}</h2>
+                <p>{t('otaria.mapSummary')}</p>
               </div>
-              <button type="button" className={styles.close} aria-label="Close Otaria map" onClick={() => setOpen(false)}>×</button>
+              <button type="button" className={styles.close} aria-label={t('otaria.closeMap')} onClick={() => setOpen(false)}>×</button>
             </header>
             <OtariaBoardContents gameState={gameState} board={gameState.otaria} />
           </div>
@@ -259,6 +273,7 @@ export function OtariaBoardButton({ gameState, miniature = false }: { gameState:
 }
 
 export function OtariaReserveButton({ gameState }: { gameState: ClientGameState }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const button = useRef<HTMLButtonElement>(null)
   const dialog = useRef<HTMLDivElement>(null)
@@ -279,10 +294,10 @@ export function OtariaReserveButton({ gameState }: { gameState: ClientGameState 
         ref={button}
         type="button"
         className={styles.badge}
-        aria-label={`Open your reserve, ${reserve.length} ${reserve.length === 1 ? 'card' : 'cards'}`}
+        aria-label={t('otaria.openReserve', { count: reserve.length, cardLabel: t(reserve.length === 1 ? 'otaria.card' : 'otaria.cards') })}
         onClick={() => setOpen(true)}
       >
-        Reserve · {reserve.length}
+        {t('otaria.reserve')} · {reserve.length}
       </button>
       {open && createPortal(
         <div className={styles.backdrop} onPointerDown={(event) => {
@@ -316,11 +331,11 @@ export function OtariaReserveButton({ gameState }: { gameState: ClientGameState 
           >
             <header className={styles.header}>
               <div>
-                <p className={styles.eyebrow}>Explorer of Otaria</p>
-                <h2 id="otaria-reserve-title">Your reserve</h2>
-                <p>{reserve.length} {reserve.length === 1 ? 'card' : 'cards'} available to prepare.</p>
+                <p className={styles.eyebrow}>{t('otaria.explorerOf')}</p>
+                <h2 id="otaria-reserve-title">{t('otaria.yourReserve')}</h2>
+                <p>{t('otaria.reserveAvailable', { count: reserve.length, cardLabel: t(reserve.length === 1 ? 'otaria.card' : 'otaria.cards') })}</p>
               </div>
-              <button type="button" className={styles.close} aria-label="Close reserve" onClick={() => setOpen(false)}>×</button>
+              <button type="button" className={styles.close} aria-label={t('otaria.closeReserve')} onClick={() => setOpen(false)}>×</button>
             </header>
             <div className={styles.reserveList}>
               <ReserveCards cards={reserve} />
@@ -334,19 +349,42 @@ export function OtariaReserveButton({ gameState }: { gameState: ClientGameState 
 }
 
 export function OtariaBoardContents({ gameState, board }: { gameState: ClientGameState; board: ClientOtariaState }) {
+  const { t } = useTranslation()
+  const displayColor = (color: Color) => {
+    switch (color) {
+      case Color.WHITE: return t('otaria.colorList.WHITE')
+      case Color.BLUE: return t('otaria.colorList.BLUE')
+      case Color.BLACK: return t('otaria.colorList.BLACK')
+      case Color.RED: return t('otaria.colorList.RED')
+      case Color.GREEN: return t('otaria.colorList.GREEN')
+      default: return String(color)
+    }
+  }
+  const locationName = (location: OtariaLocation) => {
+    switch (location) {
+      case 'KROSIAN_FOREST': return t('otaria.locationNames.KROSIAN_FOREST')
+      case 'ORDER_ENCAMPMENT': return t('otaria.locationNames.ORDER_ENCAMPMENT')
+      case 'SOUTHERN_PIT_ARENA': return t('otaria.locationNames.SOUTHERN_PIT_ARENA')
+      case 'BALSHAN_BAY': return t('otaria.locationNames.BALSHAN_BAY')
+      case 'PARDIC_MOUNTAINS': return t('otaria.locationNames.PARDIC_MOUNTAINS')
+      case 'ORDER_SOUTHERN_ENCAMPMENT': return t('otaria.locationNames.ORDER_SOUTHERN_ENCAMPMENT')
+      case 'CABAL_CITY': return t('otaria.locationNames.CABAL_CITY')
+      case 'CEPHALID_SOUTHERN_PALACE': return t('otaria.locationNames.CEPHALID_SOUTHERN_PALACE')
+    }
+  }
   const orderedPlayers = [...board.players].sort((a, b) =>
     gameState.players.findIndex((player) => player.playerId === a.playerId) -
     gameState.players.findIndex((player) => player.playerId === b.playerId))
   const positionName = (position: OtariaPosition) => {
     const tile = board.tiles.find((candidate) => samePosition(candidate.position, position))
-    return tile?.location ? locationNames[tile.location] : `column ${position.column + 1}, row ${position.row + 1}`
+    return tile?.location ? locationName(tile.location) : t('otaria.columnRow', { column: position.column + 1, row: position.row + 1 })
   }
   const pending = board.pendingExploration
   const pendingName = pending?.card?.name
 
   return (
     <div className={styles.layout}>
-      <section className={styles.mapSection} aria-label="Otaria map">
+      <section className={styles.mapSection} aria-label={t('otaria.mapButton')}>
         <OtariaMap gameState={gameState} board={board} />
         <ul className={styles.seats}>
           {orderedPlayers.map((player, index) => (
@@ -361,7 +399,7 @@ export function OtariaBoardContents({ gameState, board }: { gameState: ClientGam
               >
                 <strong>{seatName(gameState, player.playerId)}</strong> · {positionName(player.position)}
               </span>
-              <span className={styles.muted}>{player.reserveCount} in reserve</span>
+              <span className={styles.muted}>{t('otaria.inReserve', { count: player.reserveCount })}</span>
             </li>
           ))}
         </ul>
@@ -369,49 +407,47 @@ export function OtariaBoardContents({ gameState, board }: { gameState: ClientGam
 
       <div className={styles.sidebar}>
         {board.turn && (
-          <section className={styles.section} aria-label="Current Otaria turn">
-            <h3>Current turn</h3>
-            <p><strong>{seatName(gameState, gameState.activePlayerId)}</strong> · {turnActions[board.turn.action]}</p>
+          <section className={styles.section} aria-label={t('otaria.currentTurnAria')}>
+            <h3>{t('otaria.currentTurn')}</h3>
+            <p><strong>{seatName(gameState, gameState.activePlayerId)}</strong> · {t(`otaria.${board.turn.action.toLowerCase() as 'move' | 'explore' | 'prepare' | 'combat'}`)}</p>
             {board.turn.action === 'MOVE' && !board.turn.movementAllowed && (
-              <p className={styles.muted}>Movement is no longer available this turn.</p>
+              <p className={styles.muted}>{t('otaria.movementUnavailable')}</p>
             )}
             {board.turn.action === 'EXPLORE' && board.turn.explorationFinished && (
-              <p className={styles.muted}>Exploration completed.</p>
+              <p className={styles.muted}>{t('otaria.explorationCompleted')}</p>
             )}
           </section>
         )}
         {pending && (
           <section className={styles.section}>
-            <h3>Current exploration</h3>
+            <h3>{t('otaria.currentExploration')}</h3>
             <p>
-              <strong>{seatName(gameState, pending.explorerId)}</strong> explores;{' '}
-              <strong>{seatName(gameState, pending.managerId)}</strong> manages the draw.
+              {t('otaria.exploresManages', { explorer: seatName(gameState, pending.explorerId), manager: seatName(gameState, pending.managerId) })}
             </p>
             <p className={styles.encounter}>
               {pending.faceDown
-                ? (pendingName ? `Face-down creature: ${pendingName} (private)` : 'Face-down creature')
-                : (pendingName ?? 'Exploration')}
+                ? (pendingName ? t('otaria.faceDownPrivate', { name: pendingName }) : t('otaria.faceDownCreature'))
+                : (pendingName ?? t('otaria.exploration'))}
             </p>
             {pending.card?.kind === 'EVENT' && pending.card.imageUri && (
               <img className={styles.eventImage} src={pending.card.imageUri} alt={pending.card.name} />
             )}
-            {pending.stage === 'CHOOSING_LOCATION' && <p className={styles.muted}>Choosing whether to take a location.</p>}
+            {pending.stage === 'CHOOSING_LOCATION' && <p className={styles.muted}>{t('otaria.choosingLocation')}</p>}
           </section>
         )}
         {board.encounters && board.encounters.length > 0 && (
-          <section className={styles.section} aria-label="Active encounters">
-            <h3>Active encounters</h3>
+          <section className={styles.section} aria-label={t('otaria.activeEncountersAria')}>
+            <h3>{t('otaria.activeEncounters')}</h3>
             <ul className={styles.encounterList}>
               {board.encounters.map((encounter) => (
                 <li key={encounter.actorId}>
                   <p className={styles.encounter}>{positionName(encounter.position)}</p>
                   <p>
-                    <strong>{seatName(gameState, encounter.explorerId)}</strong> explores;{' '}
-                    <strong>{seatName(gameState, encounter.managerId)}</strong> manages the encounter.
+{t('otaria.managesEncounter', { explorer: seatName(gameState, encounter.explorerId), manager: seatName(gameState, encounter.managerId) })}
                   </p>
-                  <p className={styles.muted}>Participants: {encounter.participants.map((id) => seatName(gameState, id)).join(', ')}</p>
+                  <p className={styles.muted}>{t('otaria.participants', { names: encounter.participants.map((id) => seatName(gameState, id)).join(', ') })}</p>
                   {encounter.initiative && (
-                    <p className={styles.muted}>Initiative: {encounter.initiative === 'EXPLORER' ? 'explorer' : 'encounter'}.</p>
+                    <p className={styles.muted}>Initiative: {t(encounter.initiative === 'EXPLORER' ? 'otaria.initiativeExplorer' : 'otaria.initiativeEncounter')}.</p>
                   )}
                 </li>
               ))}
@@ -419,33 +455,33 @@ export function OtariaBoardContents({ gameState, board }: { gameState: ClientGam
           </section>
         )}
         <section className={styles.section}>
-          <h3>Starred locations</h3>
-          <p className={styles.muted}>Explorations used / limit</p>
+          <h3>{t('otaria.starredLocations')}</h3>
+          <p className={styles.muted}>{t('otaria.explorationsUsed')}</p>
           <ul className={styles.locationList}>
             {board.locations.map(({ location, used, limit }) => (
-              <li key={location}><span>{locationNames[location]}</span><strong>{used} / {limit}</strong></li>
+              <li key={location}><span>{t(`otaria.locationNames.${location}`)}</span><strong>{used} / {limit}</strong></li>
             ))}
           </ul>
         </section>
         <section className={styles.section}>
-          <h3>Exploration supplies</h3>
+          <h3>{t('otaria.explorationSupplies')}</h3>
           <div className={styles.piles}>
-            <span>★ Star pile <strong>{board.starPile.remaining}</strong></span>
+            <span>★ {t('otaria.starPile')} <strong>{board.starPile.remaining}</strong></span>
             {terrainOrder.map((color) => (
-              <span key={color}><i style={{ backgroundColor: terrainColors[color] }} />{color.toLowerCase()} <strong>{board.colorPiles[color].remaining}</strong></span>
+              <span key={color}><i style={{ backgroundColor: terrainColors[color] }} />{displayColor(color)} <strong>{board.colorPiles[color].remaining}</strong></span>
             ))}
-            <span>Treasures <strong>{board.treasureCount}</strong></span>
-            <span>Locations <strong>{board.locationCount}</strong></span>
+            <span>{t('otaria.treasures')} <strong>{board.treasureCount}</strong></span>
+            <span>{t('otaria.locationsCount')} <strong>{board.locationCount}</strong></span>
           </div>
         </section>
         {orderedPlayers.filter((player) => player.privateData != null).map((player) => {
           const privateData = player.privateData!
           return (
             <section key={player.playerId} className={styles.section}>
-              <h3>{player.playerId === gameState.viewingPlayerId ? 'Your private reserve' : `${seatName(gameState, player.playerId)}'s private reserve`}</h3>
+              <h3>{player.playerId === gameState.viewingPlayerId ? t('otaria.yourPrivateReserve') : t('otaria.playerPrivateReserve', { name: seatName(gameState, player.playerId) })}</h3>
               <ReserveCards cards={privateData.reserve} />
               {privateData.locationCards.length > 0 && (
-                <p><strong>Location cards:</strong> {privateData.locationCards.map((location) => locationNames[location]).join(', ')}</p>
+                <p><strong>{t('otaria.locationCards')}</strong> {privateData.locationCards.map((location) => t(`otaria.locationNames.${location}`)).join(', ')}</p>
               )}
               {Object.entries(privateData.treasureTokens).map(([kind, count]) => (
                 <p key={kind}>{kind.toLowerCase()}: {count}</p>
@@ -454,9 +490,9 @@ export function OtariaBoardContents({ gameState, board }: { gameState: ClientGam
           )
         })}
       </div>
-      <nav className={styles.links} aria-label="Otaria resources">
-        <a href="/help/playing#otaria-map" target="_blank" rel="noopener noreferrer">Otaria interface guide (new tab)</a>
-        {import.meta.env.DEV && <a href="/otaria">New local playtest</a>}
+      <nav className={styles.links} aria-label={t('otaria.otariaResources')}>
+        <a href="/help/playing#otaria-map" target="_blank" rel="noopener noreferrer">{t('otaria.guideNewTab')}</a>
+        {import.meta.env.DEV && <a href="/otaria">{t('otaria.newLocalPlaytest')}</a>}
       </nav>
     </div>
   )

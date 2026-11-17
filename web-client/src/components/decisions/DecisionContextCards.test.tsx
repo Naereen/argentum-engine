@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { entityId, type ClientCard, type ClientGameState, type DecisionContext } from '@/types'
+import i18n from '@/i18n'
 import { DecisionContextCards, hasDecisionContextCards, resolveDecisionCards } from './DecisionContextCards'
 
 vi.mock('@/utils/cardImages.ts', () => ({
@@ -31,7 +32,11 @@ function markup(value: ReturnType<typeof resolveDecisionCards>): string {
 }
 
 describe('resolution decision targets', () => {
-  it('shows multiple card and player targets in their announced order', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('en')
+  })
+
+  it('shows multiple card and player targets in their announced order', async () => {
     const resolved = resolveDecisionCards(context(['second', 'opponent', 'first']), state([
       card('first', 'Grizzly Bears'), card('second', 'Hill Giant'),
     ]))

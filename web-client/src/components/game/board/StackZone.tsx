@@ -1,5 +1,6 @@
 import type React from 'react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import { useStackCards, selectGameState, selectTeamMap, identitySeatColor } from '@/store/selectors.ts'
 import type { EntityId } from '@/types'
@@ -26,6 +27,7 @@ import { findYield, yieldTags, YIELD_TONE } from '../yields'
  * {@link groupStackCards}. The full stack order, targeting, and resolution are unaffected.
  */
 export function StackDisplay() {
+  const { t } = useTranslation()
   const stackCards = useStackCards()
   const responsive = useResponsiveContext()
   const hoverCard = useGameStore((state) => state.hoverCard)
@@ -335,7 +337,7 @@ export function StackDisplay() {
         {opts.collapseControl && (
           <div
             style={styles.stackCollapseChip}
-            title="Collapse identical items"
+            title={t('gameCore.collapseIdenticalItems')}
             onClick={(e) => {
               e.stopPropagation()
               opts.collapseControl!.onCollapse()
@@ -410,7 +412,7 @@ export function StackDisplay() {
             {card.manaPaidCost && (
               <div style={styles.stackManaPaidBadge} title={`Paid ${card.manaPaidCost}`}>
                 {/* The word only fits when it has the row to itself. */}
-                {!card.castProvenanceLabel && <span style={{ opacity: 0.75 }}>Paid</span>}
+                {!card.castProvenanceLabel && <span style={{ opacity: 0.75 }}>{t('gameCore.paid')}</span>}
                 <ManaCost cost={card.manaPaidCost} size={9} gap={1} />
               </div>
             )}
@@ -437,26 +439,26 @@ export function StackDisplay() {
         {card.giftPromised && (
           <div
             style={{ ...styles.stackGiftBadge, top: topOf('gift') }}
-            title="Gift promised"
+            title={t('gameCore.giftPromised')}
           >
             <i className="ms ms-ability-gift" style={{ fontSize: 12 }} />
-            <span>Gift</span>
+            <span>{t('gameCore.giftLabel')}</span>
           </div>
         )}
         {/* Show blight-paid badge when the optional Blight additional cost was paid (Lorwyn Eclipsed) */}
         {card.wasBlightPaid && (
           <div
             style={{ ...styles.stackBlightPaidBadge, top: topOf('blight') }}
-            title="Blight cost paid"
+            title={t('gameCore.blightCostPaid')}
           >
             <i className="ms ms-counter-minus" style={{ fontSize: 12 }} />
-            <span>Blight</span>
+            <span>{t('gameCore.blight')}</span>
           </div>
         )}
         {/* Show copy badge for storm/copy effects */}
         {card.copyIndex != null && card.copyTotal != null && (
           <div style={styles.stackCopyBadge}>
-            Copy {card.copyIndex}/{card.copyTotal}
+            {t('gameCore.copyCount', { index: card.copyIndex, total: card.copyTotal })}
           </div>
         )}
         {/* Show chosen creature type for spells like Aphetto Dredging */}
@@ -620,7 +622,7 @@ export function StackDisplay() {
                 <button
                   type="button"
                   onClick={(e) => openYieldMenuBeside(topCard, e)}
-                  title="Stop being asked about this ability — auto-pass it, or always answer its “you may”"
+                  title={t('gameCore.stopAskingAboutAbility')}
                   aria-haspopup="menu"
                   style={{
                     marginTop: 6,

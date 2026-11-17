@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useZoneCards, useZone } from '@/store/selectors.ts'
 import type { ZoneId, ClientCard } from '@/types'
 import { calculateFittingCardWidth } from '@/hooks/useResponsive.ts'
@@ -56,6 +57,7 @@ export function CardRow({
    */
   fan?: boolean
 }) {
+  const { t } = useTranslation()
   const cards = useZoneCards(zoneId)
   const zone = useZone(zoneId)
   const responsive = useResponsiveContext()
@@ -68,7 +70,7 @@ export function CardRow({
 
   // Show empty message only if no cards at all (no revealed, no placeholders, no ghost cards)
   if (cards.length === 0 && !showPlaceholders && unrevealedCount === 0 && ghostCards.length === 0) {
-    return <div style={{ ...styles.emptyZone, fontSize: responsive.fontSize.small }}>No cards</div>
+    return <div style={{ ...styles.emptyZone, fontSize: responsive.fontSize.small }}>{t('gameCore.noCards')}</div>
   }
 
   // Calculate available width for the hand (viewport - padding - reserved sides).

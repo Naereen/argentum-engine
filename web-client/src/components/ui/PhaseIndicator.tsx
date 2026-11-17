@@ -1,6 +1,7 @@
 import { Phase, Step, StepDisplayNames } from '@/types'
 import { useResponsive } from '@/hooks/useResponsive.ts'
 import type { PriorityMode } from '@/store/selectors.ts'
+import { useTranslation } from 'react-i18next'
 
 interface PhaseIndicatorProps {
   phase: Phase
@@ -47,19 +48,20 @@ export function PhaseIndicator({
   activePlayerName,
 }: PhaseIndicatorProps) {
   const responsive = useResponsive()
+  const { t } = useTranslation()
   const colors = modeColors[priorityMode]
 
   // Determine the status text based on mode
   // If activePlayerName is provided (spectator mode), use that
   const statusText = activePlayerName
-    ? `${activePlayerName}'s Turn`
+    ? t('phases.playerTurn', { playerName: activePlayerName })
     : priorityMode === 'ownTurn'
-    ? 'Your Turn'
+    ? t('phases.yourTurn')
     : priorityMode === 'responding'
-    ? 'Responding'
+    ? t('phases.responding')
     : isActivePlayer
-    ? 'Your Turn'
-    : "Opponent's Turn"
+    ? t('phases.yourTurn')
+    : t('phases.opponentTurn')
 
   return (
     <div
@@ -94,13 +96,13 @@ export function PhaseIndicator({
       <div style={{ display: 'flex', alignItems: 'center', gap: responsive.isMobile ? 4 : 8 }}>
         <PhaseIcon phase={phase} isMobile={responsive.isMobile} />
         <span style={{ color: '#fff', fontSize: responsive.isMobile ? 11 : 14, fontWeight: 500 }}>
-          {StepDisplayNames[step]}
+          {t(`phases.steps.${step}`, { defaultValue: StepDisplayNames[step] })}
         </span>
       </div>
 
       {/* Turn number */}
       <span style={{ color: '#666', fontSize: responsive.isMobile ? 8 : 10 }}>
-        Turn {turnNumber}
+        {t('phases.turn', { turnNumber })}
       </span>
     </div>
   )

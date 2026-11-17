@@ -6,6 +6,7 @@ import type { ServerRestartState } from './serverRestart'
 import type {
   EntityId,
   ClientGameState,
+  ClientEvent,
   GameAction,
   LegalActionInfo,
   ConvokeCreatureInfo,
@@ -880,6 +881,7 @@ export type SubgameTransition =
  */
 export interface LogEntry {
   description: string
+  event?: ClientEvent
   playerId: EntityId | null
   timestamp: number
   type: 'action' | 'turn' | 'combat' | 'system'

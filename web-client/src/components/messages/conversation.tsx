@@ -8,6 +8,7 @@
  * to another page. `compact` is the dock's narrower layout.
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type React from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
@@ -36,6 +37,7 @@ export interface MenuItem {
 // ── Conversation list ───────────────────────────────────────────────────────
 
 export function ThreadRow({ thread, myId, selected, onOpen }: { thread: ThreadSummary; myId: string; selected: boolean; onOpen: () => void }) {
+  const { t, i18n } = useTranslation()
   const mine = thread.lastMessage.senderId === myId
   const unread = thread.unread > 0 && !selected
   return (
@@ -44,16 +46,16 @@ export function ThreadRow({ thread, myId, selected, onOpen }: { thread: ThreadSu
       <span className={m.threadText}>
         <span className={m.threadTop}>
           <span className={m.threadName}>{thread.other.displayName}</span>
-          <span className={m.threadTime}>{sinceLabel(thread.lastMessage.createdAt)}</span>
+          <span className={m.threadTime}>{sinceLabel(thread.lastMessage.createdAt, new Date(), i18n.resolvedLanguage ?? 'en')}</span>
         </span>
         <span className={m.threadBottom}>
           <span className={m.threadPreview}>
-            {thread.state === 'INCOMING_REQUEST' ? <span className={m.pendingNote}>Request · </span>
-              : thread.state === 'OUTGOING_REQUEST' ? <span className={m.pendingNote}>Request sent · </span>
-                : mine ? 'You: ' : ''}
+            {thread.state === 'INCOMING_REQUEST' ? <span className={m.pendingNote}>{t('library.messagesUI.request')} · </span>
+              : thread.state === 'OUTGOING_REQUEST' ? <span className={m.pendingNote}>{t('library.messagesUI.requestSent')} · </span>
+                : mine ? t('library.messagesUI.youPrefix') : ''}
             {thread.lastMessage.body}
           </span>
-          {unread && <span className={m.unreadBadge} aria-label={`${thread.unread} unread`}>{thread.unread > 99 ? '99+' : thread.unread}</span>}
+          {unread && <span className={m.unreadBadge} aria-label={t('library.messagesUI.unread', { count: thread.unread })}>{thread.unread > 99 ? '99+' : thread.unread}</span>}
         </span>
       </span>
     </button>
@@ -67,6 +69,7 @@ export function ThreadRow({ thread, myId, selected, onOpen }: { thread: ThreadSu
  * list yet. Online friends first; a friend you already talk to opens that conversation.
  */
 export function NewMessagePicker({ onPick, autoFocus = false, onAway }: { onPick: (accountId: string) => void; autoFocus?: boolean; onAway?: () => void }) {
+  const { t } = useTranslation()
   const friends = useFriendsStore((s) => s.friends)
   const loading = useFriendsStore((s) => s.loading)
   const loadFriends = useFriendsStore((s) => s.load)
@@ -109,8 +112,8 @@ export function NewMessagePicker({ onPick, autoFocus = false, onAway }: { onPick
             ref={inputRef}
             className={m.pickerInput}
             type="search"
-            placeholder="Search friends"
-            aria-label="Search friends"
+            placeholder={t('library.messagesUI.searchFriends')}
+            aria-label={t('library.messagesUI.searchFriends')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
@@ -124,20 +127,20 @@ export function NewMessagePicker({ onPick, autoFocus = false, onAway }: { onPick
               <span className={a.spinner} aria-hidden />
             ) : (
               <>
-                <p className={m.emptyTitle}>No friends yet</p>
+                <p className={m.emptyTitle}>{t('library.messagesUI.noFriends')}</p>
                 <p className={a.muted}>
-                  Add friends from your <Link className={a.link} to="/friends" onClick={onAway}>friends list</Link>, or message
-                  any player from their profile.
+                  {t('library.messagesUI.addFriendsIntro')} <Link className={a.link} to="/friends" onClick={onAway}>{t('library.messagesUI.friendsList')}</Link>,{' '}
+                  {t('library.messagesUI.orMessageAnyPlayer')}
                 </p>
               </>
             )}
           </div>
         ) : shown.length === 0 ? (
           <div className={m.listEmpty}>
-            <p className={a.muted}>No friend matches “{query.trim()}”.</p>
+            <p className={a.muted}>{t('library.messagesUI.noFriendMatches', { query: query.trim() })}</p>
           </div>
         ) : (
-          <ul className={m.threadList} aria-label="Friends">
+          <ul className={m.threadList} aria-label={t('library.messagesUI.friends')}>
             {shown.map((f) => (
               <li key={f.accountId}>
                 <button type="button" className={m.threadRow} onClick={() => onPick(f.accountId)}>
@@ -145,8 +148,8 @@ export function NewMessagePicker({ onPick, autoFocus = false, onAway }: { onPick
                   <span className={m.threadText}>
                     <span className={m.threadName}>{f.displayName}</span>
                     <span className={m.pickerStatus} data-online={f.online}>
-                      {f.online ? 'Online' : 'Offline'}
-                      {talkingTo.has(f.accountId) ? ' · in your chats' : ''}
+                      {f.online ? t('library.messagesUI.online') : t('library.messagesUI.offline')}
+                      {talkingTo.has(f.accountId) ? t('library.messagesUI.inYourChats') : ''}
                     </span>
                   </span>
                 </button>
@@ -180,6 +183,7 @@ export interface ConversationPaneProps {
 }
 
 export function ConversationPane(props: ConversationPaneProps) {
+  const { t } = useTranslation()
   const { accountId, onBack, compact = false, headerEnd, className = '' } = props
   const entry = useMessagesStore((s) => s.conversations[accountId])
   const openConversation = useMessagesStore((s) => s.openConversation)
@@ -224,13 +228,13 @@ export function ConversationPane(props: ConversationPaneProps) {
         {headerEnd}
       </div>
       <div className={m.emptyInner}>
-        <h2 className={m.emptyHeading}>{entry.status === 'unavailable' ? 'Can’t message this player' : 'Couldn’t load this conversation'}</h2>
+        <h2 className={m.emptyHeading}>{entry.status === 'unavailable' ? t('library.messagesUI.cannotMessage') : t('library.messagesUI.couldNotLoadConversation')}</h2>
         <p className={a.muted}>
-          {entry.status === 'unavailable' ? 'This account isn’t available to message.' : entry.message}
+          {entry.status === 'unavailable' ? t('library.messagesUI.accountUnavailable') : entry.message}
         </p>
         {entry.status === 'error' && (
           <button type="button" className={p.button} onClick={() => void openConversation(accountId)}>
-            Try again
+            {t('library.messagesUI.tryAgain')}
           </button>
         )}
       </div>
@@ -239,9 +243,11 @@ export function ConversationPane(props: ConversationPaneProps) {
 }
 
 /** Shown on phones only, where the list and the conversation take turns — unless [always]. */
-export function BackButton({ onClick, always = false, label = 'Back to conversations' }: { onClick: () => void; always?: boolean; label?: string }) {
+export function BackButton({ onClick, always = false, label }: { onClick: () => void; always?: boolean; label?: string }) {
+  const { t } = useTranslation()
+  const accessibleLabel = label ?? t('library.messagesUI.backToConversations')
   return (
-    <button type="button" onClick={onClick} className={m.back} data-always={always} aria-label={label} title={label}>
+    <button type="button" onClick={onClick} className={m.back} data-always={always} aria-label={accessibleLabel} title={accessibleLabel}>
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d="M15 18l-6-6 6-6" />
       </svg>
@@ -261,6 +267,7 @@ function ReadyConversation({
   className = '',
   conversation: c,
 }: ConversationPaneProps & { conversation: OpenConversation }) {
+  const { t } = useTranslation()
   const accept = useMessagesStore((s) => s.accept)
   const remove = useMessagesStore((s) => s.remove)
   const block = useMessagesStore((s) => s.block)
@@ -278,21 +285,21 @@ function ReadyConversation({
       setConfirm(null)
       after?.()
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Something went wrong.')
+      setActionError(e instanceof Error ? e.message : t('library.messagesUI.genericError'))
     } finally {
       setBusy(false)
     }
   }
 
   const statusLine = c.isFriend
-    ? c.other.online ? 'Online' : 'Friend'
-    : 'Not on your friends list'
+    ? c.other.online ? t('library.messagesUI.online') : t('library.messagesUI.onlineFriend')
+    : t('library.messagesUI.notFriend')
 
   return (
-    <section className={`${m.convPane} ${className}`} data-compact={compact} aria-label={`Conversation with ${name}`}>
+    <section className={`${m.convPane} ${className}`} data-compact={compact} aria-label={t('library.messagesUI.conversationWith', { name })}>
       <header className={m.convHead}>
         <BackButton onClick={onBack} />
-        <Link to={`/u/${accountId}`} className={m.convWho} title="View profile" onClick={onAway}>
+        <Link to={`/u/${accountId}`} className={m.convWho} title={t('library.messagesUI.viewProfile')} onClick={onAway}>
           <Avatar name={name} avatar={c.other.avatar} small online={c.isFriend ? c.other.online : undefined} />
           <span className={m.convWhoText}>
             <span className={m.convName}>{name}</span>
@@ -302,8 +309,8 @@ function ReadyConversation({
         <OverflowMenu
           items={[
             ...menuItems,
-            ...(c.messages.length > 0 ? [{ label: 'Delete conversation', onSelect: () => setConfirm('delete') }] : []),
-            ...(c.messages.length > 0 ? [{ label: `Block ${name}`, danger: true, onSelect: () => setConfirm('block') }] : []),
+            ...(c.messages.length > 0 ? [{ label: t('library.messagesUI.deleteConversation'), onSelect: () => setConfirm('delete') }] : []),
+            ...(c.messages.length > 0 ? [{ label: t('library.messagesUI.blockPerson', { name }), danger: true, onSelect: () => setConfirm('block') }] : []),
           ]}
         />
         {headerEnd}
@@ -314,17 +321,17 @@ function ReadyConversation({
       {c.state === 'INCOMING_REQUEST' ? (
         <div className={m.requestBar}>
           <p className={m.requestText}>
-            <strong>{name}</strong> isn’t on your friends list. Accept the request to reply.
+            {t('library.messagesUI.incomingRequest', { name })}
           </p>
           <div className={m.requestActions}>
             <button type="button" className={p.buttonPrimary} disabled={busy} onClick={() => void run(() => accept(accountId))}>
-              Accept
+              {t('library.messagesUI.accept')}
             </button>
             <button type="button" className={p.button} disabled={busy} onClick={() => setConfirm('delete')}>
-              Delete
+              {t('library.messagesUI.delete')}
             </button>
             <button type="button" className={`${p.buttonGhost} ${m.danger}`} disabled={busy} onClick={() => setConfirm('block')}>
-              Block
+              {t('library.messagesUI.block')}
             </button>
           </div>
           {actionError && <p className={a.error}>{actionError}</p>}
@@ -335,13 +342,13 @@ function ReadyConversation({
 
       {confirm === 'delete' && (
         <ConfirmDialog
-          title={c.state === 'INCOMING_REQUEST' ? 'Delete this request?' : 'Delete this conversation?'}
+          title={t(c.state === 'INCOMING_REQUEST' ? 'library.messagesUI.deleteRequestTitle' : 'library.messagesUI.deleteConversationTitle')}
           body={
             c.state === 'INCOMING_REQUEST'
-              ? `It’s removed from your requests. ${name} isn’t told, and could message you again — block them to stop that.`
-              : `It’s removed for you only — ${name} keeps their copy. If either of you writes again, it starts fresh.`
+              ? t('library.messagesUI.deleteRequestBody', { name })
+              : t('library.messagesUI.deleteConversationBody', { name })
           }
-          confirmLabel="Delete"
+          confirmLabel={t('library.messagesUI.delete')}
           busy={busy}
           error={actionError}
           onCancel={() => { setConfirm(null); setActionError(null) }}
@@ -350,9 +357,9 @@ function ReadyConversation({
       )}
       {confirm === 'block' && (
         <ConfirmDialog
-          title={`Block ${name}?`}
-          body={`They won’t be able to message you, you won’t be matched against each other, and their emotes won’t reach you. ${c.isFriend ? 'They’ll also be removed from your friends. ' : ''}They aren’t told. You can unblock them from your Friends page.`}
-          confirmLabel="Block"
+          title={t('library.messagesUI.blockTitle', { name })}
+          body={t('library.messagesUI.blockBody', { friendNotice: c.isFriend ? t('library.messagesUI.removedFromFriends') : '' })}
+          confirmLabel={t('library.messagesUI.block')}
           danger
           busy={busy}
           error={actionError}
@@ -366,6 +373,8 @@ function ReadyConversation({
 
 /** The scrolling message history: day separators, sender groups, load-older at the top. */
 function MessageList({ conversation: c, myId, onLoadOlder }: { conversation: OpenConversation; myId: string; onLoadOlder: () => void }) {
+  const { t, i18n } = useTranslation()
+  const language = i18n.resolvedLanguage ?? 'en'
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const nearBottom = useRef(true)
   const prevHeight = useRef(0)
@@ -400,14 +409,14 @@ function MessageList({ conversation: c, myId, onLoadOlder }: { conversation: Ope
     prevHeight.current = el.scrollHeight
   }, [c.messages, myId])
 
-  const groups = useMemo(() => groupMessages(c.messages), [c.messages])
+  const groups = useMemo(() => groupMessages(c.messages, language), [c.messages, language])
 
   return (
     <div className={m.messages} ref={scrollRef} onScroll={onScroll} role="log" aria-live="polite">
       {c.hasMore && (
         <div className={m.olderRow}>
           <button type="button" className={a.miniButton} disabled={c.loadingOlder} onClick={onLoadOlder}>
-            {c.loadingOlder ? 'Loading…' : 'Load older messages'}
+            {c.loadingOlder ? t('library.messagesUI.loadingOlder') : t('library.messagesUI.loadOlder')}
           </button>
         </div>
       )}
@@ -417,8 +426,8 @@ function MessageList({ conversation: c, myId, onLoadOlder }: { conversation: Ope
           <p className={m.introName}>{c.other.displayName}</p>
           <p className={a.muted}>
             {c.isFriend
-              ? 'This is the start of your conversation.'
-              : `${c.other.displayName} isn’t on your friends list, so your first messages arrive as a request they can accept.`}
+              ? t('library.messagesUI.conversationStart')
+              : t('library.messagesUI.firstRequestIntro', { name: c.other.displayName })}
           </p>
         </div>
       )}
@@ -428,11 +437,11 @@ function MessageList({ conversation: c, myId, onLoadOlder }: { conversation: Ope
         ) : (
           <div key={g.key} className={m.group} data-mine={g.senderId === myId}>
             {g.messages.map((msg) => (
-              <div key={msg.id} className={m.bubble} data-mine={msg.senderId === myId} data-pending={!!msg.pending} title={new Date(msg.createdAt).toLocaleString()}>
+              <div key={msg.id} className={m.bubble} data-mine={msg.senderId === myId} data-pending={!!msg.pending} title={new Date(msg.createdAt).toLocaleString(language)}>
                 {msg.body}
               </div>
             ))}
-            <GroupTime last={g.messages[g.messages.length - 1]} />
+            <GroupTime last={g.messages[g.messages.length - 1]} language={language} />
           </div>
         ),
       )}
@@ -440,23 +449,24 @@ function MessageList({ conversation: c, myId, onLoadOlder }: { conversation: Ope
   )
 }
 
-function GroupTime({ last }: { last: ChatMessage | undefined }) {
+function GroupTime({ last, language }: { last: ChatMessage | undefined; language: string }) {
+  const { t } = useTranslation()
   if (!last) return null
-  return <span className={m.groupTime}>{last.pending ? 'Sending…' : shortTime(last.createdAt)}</span>
+  return <span className={m.groupTime}>{last.pending ? t('library.messagesUI.sending') : shortTime(last.createdAt, language)}</span>
 }
 
 type Group =
   | { kind: 'day'; key: string; label: string }
   | { kind: 'messages'; key: string; senderId: string; messages: ChatMessage[] }
 
-function groupMessages(messages: ChatMessage[]): Group[] {
+function groupMessages(messages: ChatMessage[], language: string): Group[] {
   const out: Group[] = []
   let lastDay = ''
   let current: Extract<Group, { kind: 'messages' }> | null = null
   for (const msg of messages) {
     const day = new Date(msg.createdAt).toDateString()
     if (day !== lastDay) {
-      out.push({ kind: 'day', key: `day-${day}`, label: dayLabel(msg.createdAt) })
+      out.push({ kind: 'day', key: `day-${day}`, label: dayLabel(msg.createdAt, new Date(), language) })
       lastDay = day
       current = null
     }
@@ -472,6 +482,7 @@ function groupMessages(messages: ChatMessage[]): Group[] {
 }
 
 function Composer({ accountId, myId, conversation: c }: { accountId: string; myId: string; conversation: OpenConversation }) {
+  const { t } = useTranslation()
   const send = useMessagesStore((s) => s.send)
   const [text, setText] = useState(() => drafts.get(accountId) ?? '')
   const [error, setError] = useState<string | null>(null)
@@ -508,7 +519,7 @@ function Composer({ accountId, myId, conversation: c }: { accountId: string; myI
       await send(accountId, myId, trimmed)
     } catch (e) {
       update(trimmed)
-      setError(e instanceof Error ? e.message : 'Couldn’t send the message.')
+      setError(e instanceof Error ? e.message : t('library.messagesUI.sendError'))
     }
   }
 
@@ -522,7 +533,7 @@ function Composer({ accountId, myId, conversation: c }: { accountId: string; myI
   if (blockedByRequest) {
     return (
       <div className={m.composerNote}>
-        <p className={a.muted}>Waiting for <strong className={m.strong}>{c.other.displayName}</strong> to accept your message request.</p>
+        <p className={a.muted}>{t('library.messagesUI.waitingForAcceptance', { name: c.other.displayName })}</p>
       </div>
     )
   }
@@ -532,8 +543,8 @@ function Composer({ accountId, myId, conversation: c }: { accountId: string; myI
       {outgoingRequest && (
         <p className={m.requestHint}>
           {c.messages.length === 0
-            ? `This will arrive as a message request — you can send up to ${left} ${left === 1 ? 'message' : 'messages'} until they accept.`
-            : `Sent as a message request. You can send ${left} more until they accept.`}
+            ? t('library.messagesUI.firstRequestHint', { count: left })
+            : t('library.messagesUI.moreRequestHint', { count: left })}
         </p>
       )}
       <div className={m.composer}>
@@ -541,21 +552,21 @@ function Composer({ accountId, myId, conversation: c }: { accountId: string; myI
           ref={inputRef}
           className={m.input}
           rows={1}
-          placeholder={`Message ${c.other.displayName}`}
-          aria-label={`Message ${c.other.displayName}`}
+          placeholder={t('library.messagesUI.messagePlaceholder', { name: c.other.displayName })}
+          aria-label={t('library.messagesUI.messagePlaceholder', { name: c.other.displayName })}
           value={text}
           maxLength={c.maxLength + 200}
           onChange={(e) => update(e.target.value)}
           onKeyDown={onKeyDown}
         />
-        <button type="button" className={m.send} disabled={!trimmed || tooLong} onClick={() => void submit()} aria-label="Send">
+        <button type="button" className={m.send} disabled={!trimmed || tooLong} onClick={() => void submit()} aria-label={t('library.messagesUI.send')}>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M5 12h13M13 6l6 6-6 6" />
           </svg>
         </button>
       </div>
       <div className={m.composerMeta}>
-        {error ? <span className={a.error}>{error}</span> : <span className={m.hint}>Enter to send · Shift+Enter for a new line</span>}
+        {error ? <span className={a.error}>{error}</span> : <span className={m.hint}>{t('library.messagesUI.composerHint')}</span>}
         {trimmed.length > c.maxLength * 0.8 && (
           <span className={m.charCount} data-over={tooLong}>{trimmed.length}/{c.maxLength}</span>
         )}
@@ -567,6 +578,7 @@ function Composer({ accountId, myId, conversation: c }: { accountId: string; myI
 // ── Small pieces ────────────────────────────────────────────────────────────
 
 function OverflowMenu({ items }: { items: readonly MenuItem[] }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
@@ -591,7 +603,7 @@ function OverflowMenu({ items }: { items: readonly MenuItem[] }) {
 
   return (
     <div className={m.menuRoot} ref={rootRef} onKeyDown={onKeyDown}>
-      <button type="button" className={m.menuButton} aria-haspopup="menu" aria-expanded={open} aria-label="Conversation options" onClick={() => setOpen((o) => !o)}>
+      <button type="button" className={m.menuButton} aria-haspopup="menu" aria-expanded={open} aria-label={t('library.messagesUI.conversationOptions')} onClick={() => setOpen((o) => !o)}>
         <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden>
           <circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" />
         </svg>
@@ -638,6 +650,7 @@ function ConfirmDialog({
   onCancel: () => void
   onConfirm: () => void
 }) {
+  const { t } = useTranslation()
   // Portalled: the glass panel's backdrop-filter would otherwise contain the fixed backdrop.
   return createPortal(
     <AccountModal title={title} size="small" onClose={onCancel}>
@@ -645,10 +658,10 @@ function ConfirmDialog({
       {error && <p className={a.error}>{error}</p>}
       <div className={m.confirmActions}>
         <button type="button" className={p.buttonGhost} onClick={onCancel} disabled={busy}>
-          Cancel
+          {t('library.messagesUI.cancel')}
         </button>
         <button type="button" className={danger ? m.dangerButton : p.buttonPrimary} onClick={onConfirm} disabled={busy} autoFocus>
-          {busy ? `${confirmLabel}…` : confirmLabel}
+          {busy ? t('common.confirming') : confirmLabel}
         </button>
       </div>
     </AccountModal>,

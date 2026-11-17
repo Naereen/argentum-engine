@@ -3,6 +3,7 @@
  * stores it, and bounces home. Shown only briefly; renders an error with a retry path on failure.
  */
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { verifyLogin } from '@/api/account'
 import { useAuthStore } from '@/store/authStore'
@@ -10,6 +11,7 @@ import { AccountPage, MessageCard, accountStyles as a } from '@/components/profi
 import { pageStyles as p } from '@/components/ui/PageShell'
 
 export function LoginVerifyPage() {
+  const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const setSession = useAuthStore((s) => s.setSession)
@@ -21,7 +23,7 @@ export function LoginVerifyPage() {
     ran.current = true
     const token = searchParams.get('token')
     if (!token) {
-      setError('Missing sign-in token.')
+      setError(t('library.loginVerify.missingToken'))
       return
     }
     verifyLogin(token)
@@ -29,26 +31,26 @@ export function LoginVerifyPage() {
         setSession(login)
         navigate('/', { replace: true })
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Sign-in failed.'))
-  }, [searchParams, navigate, setSession])
+      .catch((err) => setError(err instanceof Error ? err.message : t('library.loginVerify.failedFallback')))
+  }, [searchParams, navigate, setSession, t])
 
   return (
-    <AccountPage title="Sign in" width="narrow">
+    <AccountPage title={t('library.loginVerify.title')} width="narrow">
       <MessageCard center>
         {error ? (
           <>
-            <h1 className={p.h1}>Sign-in failed</h1>
+            <h1 className={p.h1}>{t('library.loginVerify.failed')}</h1>
             <p className={a.muted}>{error}</p>
-            <p className={a.muted}>Request a fresh link and use it soon — each one works only once.</p>
+            <p className={a.muted}>{t('library.loginVerify.freshLink')}</p>
             <button type="button" className={p.buttonPrimary} onClick={() => navigate('/', { replace: true })}>
-              Back home
+              {t('library.loginVerify.backHome')}
             </button>
           </>
         ) : (
           <>
             <span className={a.spinner} aria-hidden />
-            <h1 className={p.h1}>Signing you in…</h1>
-            <p className={a.muted}>One moment.</p>
+            <h1 className={p.h1}>{t('library.loginVerify.signingIn')}</h1>
+            <p className={a.muted}>{t('library.loginVerify.oneMoment')}</p>
           </>
         )}
       </MessageCard>

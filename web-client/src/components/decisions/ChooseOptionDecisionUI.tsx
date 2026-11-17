@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import type { EntityId, ChooseOptionDecision } from '@/types'
 import { useResponsive } from '@/hooks/useResponsive.ts'
@@ -20,6 +21,7 @@ export function ChooseOptionDecisionUI({
 }: {
   decision: ChooseOptionDecision
 }) {
+  const { t } = useTranslation()
   // Prefill the search box from defaultSearch only for long lists (e.g. ~280 creature types),
   // where narrowing is essential. Short lists (color words / land types) stay fully visible so
   // the player sees every option — defaultSearch still pre-selects one via initialIndex below.
@@ -142,7 +144,7 @@ export function ChooseOptionDecisionUI({
           type="text"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          placeholder="Search..."
+          placeholder={t('decisions.search')}
           className={styles.optionSearchInput}
           autoFocus
         />
@@ -190,7 +192,7 @@ export function ChooseOptionDecisionUI({
             )
           })}
           {filteredOptions.length === 0 && (
-            <p className={styles.noCardsMessage}>No matching options</p>
+            <p className={styles.noCardsMessage}>{t('decisions.noMatchingOptions')}</p>
           )}
         </div>
       )}

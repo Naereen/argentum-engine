@@ -5,6 +5,7 @@ import { calculateFittingCardWidth, type ResponsiveSizes } from '@/hooks/useResp
 import { getCardImageUrl } from '@/utils/cardImages.ts'
 import { DraggableBanner } from './DraggableBanner'
 import styles from './DecisionUI.module.css'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Split piles decision UI - assign cards to labeled piles (e.g., Surveil).
@@ -223,6 +224,7 @@ export function SplitPilesUI(props: { decision: SplitPilesDecision; responsive: 
 }
 
 function BattlefieldPileSplitUI({ decision }: { decision: SplitPilesDecision }) {
+  const { t } = useTranslation()
   const startSelection = useGameStore((s) => s.startDecisionSelection)
   const cancelSelection = useGameStore((s) => s.cancelDecisionSelection)
   const selection = useGameStore((s) => s.decisionSelectionState)
@@ -255,19 +257,19 @@ function BattlefieldPileSplitUI({ decision }: { decision: SplitPilesDecision }) 
   }
   const displayedPiles = currentPiles()
   return <DraggableBanner className={styles.sideBannerSelection}>
-    <div className={styles.bannerTitleSelection}>Blocker piles</div>
+    <div className={styles.bannerTitleSelection}>{t('decisions.blockerPiles')}</div>
     <p className={styles.hint}>{decision.prompt}</p>
-    <p className={styles.hint}>Select a pile, then click creatures on the battlefield to add or remove them.</p>
+    <p className={styles.hint}>{t('decisions.blockerPilesHint')}</p>
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
       {displayedPiles.map((pile, index) => <button key={index} onClick={() => switchPile(index)}
         aria-pressed={activePile === index} data-testid={`blocker-pile-${index}`}
         className={activePile === index ? styles.yesButton : styles.noButton}>
-        {decision.pileLabels[index] ?? `Pile ${index + 1}`} ({pile.length})
+        {decision.pileLabels[index] ?? t('decisions.pileNumber', { count: index + 1 })} ({pile.length})
       </button>)}
     </div>
     <div className={styles.hint}>
-      {(displayedPiles[activePile] ?? []).map((id) => gameState?.cards[id]?.name ?? 'Creature').join(', ') || 'Empty pile'}
+      {(displayedPiles[activePile] ?? []).map((id) => gameState?.cards[id]?.name ?? t('decisions.creature')).join(', ') || t('decisions.emptyPile')}
     </div>
-    <button onClick={submit} disabled={decision.requiredAssignments != null && displayedPiles.reduce((sum, pile) => sum + pile.length, 0) !== decision.requiredAssignments} className={`${styles.confirmButton} ${styles.confirmButtonSmall}`}>{decision.requiredAssignments == null ? 'Assign Piles Randomly' : 'Confirm Blocks'}</button>
+    <button onClick={submit} disabled={decision.requiredAssignments != null && displayedPiles.reduce((sum, pile) => sum + pile.length, 0) !== decision.requiredAssignments} className={`${styles.confirmButton} ${styles.confirmButtonSmall}`}>{decision.requiredAssignments == null ? t('decisions.assignPilesRandomly') : t('decisions.confirmBlocks')}</button>
   </DraggableBanner>
 }

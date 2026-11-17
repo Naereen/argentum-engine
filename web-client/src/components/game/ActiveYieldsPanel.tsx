@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useGameStore } from '@/store/gameStore.ts'
 import type { ClientYield } from '@/types/gameState'
 import { yieldTags, YIELD_TONE } from './yields'
+import { useTranslation } from 'react-i18next'
 
 /**
  * A small fixed panel listing the player's active persistent yields (MTGO right-click yields —
@@ -10,6 +11,7 @@ import { yieldTags, YIELD_TONE } from './yields'
  * `gameState.activeYields` (masked to the viewer) and dispatches revoke intents.
  */
 export function ActiveYieldsPanel() {
+  const { t } = useTranslation()
   const yields = useGameStore((s) => s.gameState?.activeYields) ?? []
   const clearAbilityYield = useGameStore((s) => s.clearAbilityYield)
   const clearAllYields = useGameStore((s) => s.clearAllYields)
@@ -20,7 +22,7 @@ export function ActiveYieldsPanel() {
   return (
     <div
       role="region"
-      aria-label="Active yields"
+      aria-label={t('gameCore.activeYields')}
       style={{
         position: 'fixed',
         // Clear of the right-hand zone column (deck / graveyard / exile), just above the pass controls.
@@ -41,7 +43,7 @@ export function ActiveYieldsPanel() {
         type="button"
         onClick={() => setCollapsed((c) => !c)}
         aria-expanded={!collapsed}
-        title="Abilities you've told the game to stop asking about"
+        title={t('gameCore.activeYieldsHelp')}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -57,7 +59,7 @@ export function ActiveYieldsPanel() {
         }}
       >
         <span aria-hidden style={{ color: '#cbb8ff', fontSize: 13, fontWeight: 800, lineHeight: 1 }}>»</span>
-        <span style={{ fontWeight: 700, flex: 1 }}>Active yields</span>
+        <span style={{ fontWeight: 700, flex: 1 }}>{t('gameCore.activeYields')}</span>
         <span style={{
           minWidth: 18,
           padding: '0 6px',
@@ -102,7 +104,7 @@ export function ActiveYieldsPanel() {
               textAlign: 'center',
             }}
           >
-            Clear all — ask me again
+            {t('gameCore.clearAllYields')}
           </button>
         </>
       )}
@@ -111,6 +113,7 @@ export function ActiveYieldsPanel() {
 }
 
 function YieldRow({ entry, onRevoke }: { entry: ClientYield; onRevoke: () => void }) {
+  const { t } = useTranslation()
   const tags = yieldTags(entry)
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 10px' }}>
@@ -146,8 +149,8 @@ function YieldRow({ entry, onRevoke }: { entry: ClientYield; onRevoke: () => voi
       <button
         type="button"
         onClick={onRevoke}
-        title="Revoke — ask me again"
-        aria-label={`Revoke yields on ${entry.displayName}`}
+        title={t('gameCore.revokeYield')}
+        aria-label={t('gameCore.revokeYieldOn', { cardName: entry.displayName })}
         onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(180, 70, 70, 0.45)' }}
         onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(150, 60, 60, 0.25)' }}
         style={{

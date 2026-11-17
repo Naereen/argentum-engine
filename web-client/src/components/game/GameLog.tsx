@@ -3,11 +3,14 @@ import { identitySeatColor, selectTeamMap } from '@/store/selectors.ts'
 import type { EntityId } from '@/types'
 import { markLearnSignal } from '@/learn/signals'
 import React, { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 
 /**
  * Collapsible game log panel showing accumulated events.
  */
 export function GameLog() {
+  const { t } = useTranslation()
   const eventLog = useGameStore((state) => state.eventLog)
   const playerId = useGameStore((state) => state.playerId)
   const isOtaria = useGameStore((state) => !!state.gameState?.otaria)
@@ -43,7 +46,7 @@ export function GameLog() {
         }}
         style={styles.toggleButton}
       >
-        Log ({eventLog.length})
+        {t('logs.toggle', { count: eventLog.length })}
       </button>
     )
   }
@@ -51,14 +54,14 @@ export function GameLog() {
   return (
     <div style={{ ...styles.panel, ...(isOtaria ? { bottom: 48, maxHeight: 'min(640px, calc(100dvh - 80px))' } : {}) }}>
       <div style={styles.header}>
-        <span style={styles.headerTitle}>Game Log</span>
+        <span style={styles.headerTitle}>{t('logs.title')}</span>
         <button onClick={() => setExpanded(false)} style={styles.closeButton}>
           &times;
         </button>
       </div>
       <div ref={scrollRef} style={{ ...styles.entries, ...(isOtaria ? { maxHeight: 'min(600px, calc(100dvh - 120px))' } : {}) }}>
         {eventLog.length === 0 && (
-          <div style={styles.empty}>No events yet</div>
+          <div style={styles.empty}>{t('logs.empty')}</div>
         )}
         {eventLog.map((entry, i) => (
           <LogEntryRow
@@ -66,6 +69,8 @@ export function GameLog() {
             entry={entry}
             isPlayer={entry.playerId === playerId}
             seatColor={seatColorFor(entry.playerId)}
+            playerName={players?.find((player) => player.playerId === entry.playerId)?.name}
+            resolvePlayerName={(id) => players?.find((player) => player.playerId === id)?.name}
           />
         ))}
       </div>
@@ -73,11 +78,24 @@ export function GameLog() {
   )
 }
 
-export function LogEntryRow({ entry, isPlayer, seatColor }: { entry: LogEntry; isPlayer: boolean; seatColor: string | null }) {
+export function LogEntryRow({
+  entry,
+  isPlayer,
+  seatColor,
+  playerName,
+  resolvePlayerName,
+}: {
+  entry: LogEntry
+  isPlayer: boolean
+  seatColor: string | null
+  playerName?: string | undefined
+  resolvePlayerName?: (id: EntityId) => string | undefined
+}) {
+  const { t } = useTranslation()
   if (entry.type === 'turn') {
     return (
       <div style={styles.turnSeparator}>
-        {entry.description}
+        {formatLogEntry(entry, t, playerName, resolvePlayerName)}
       </div>
     )
   }
@@ -94,15 +112,83 @@ export function LogEntryRow({ entry, isPlayer, seatColor }: { entry: LogEntry; i
 
   return (
     <div style={{ ...styles.entry, color }}>
-      {entry.description}
+      {formatLogEntry(entry, t, playerName, resolvePlayerName)}
       {entry.cardName && entry.imageUri && (
         <details style={styles.eventCard}>
-          <summary style={styles.eventSummary}>View card: {entry.cardName}</summary>
+          <summary style={styles.eventSummary}>{t('logs.viewCard', { cardName: entry.cardName })}</summary>
           <img src={entry.imageUri} alt={entry.cardName} style={styles.eventImage} />
         </details>
       )}
     </div>
   )
+}
+
+function formatLogEntry(
+  entry: LogEntry,
+  t: TFunction,
+  playerName?: string,
+  resolvePlayerName: (id: EntityId) => string | undefined = () => undefined,
+): string {
+  const event = entry.event
+  if (!event) return entry.description
+  const actor = playerName ?? t('gameLog.aPlayer')
+  const playerNameFor = resolvePlayerName ?? (() => undefined)
+  switch (event.type) {
+    case 'lifeChanged':
+      if (event.change >= 0) {
+        return t('gameLog.lifeGained', { playerName: actor, amount: event.change })
+      }
+      return t('gameLog.lifeLost', { playerName: actor, amount: Math.abs(event.change) })
+    case 'cardDrawn':
+      return event.cardName
+        ? t('gameLog.cardDrawnNamed', { playerName: actor, cardName: event.cardName })
+        : t('gameLog.cardDrawn', { playerName: actor })
+    case 'cardDiscarded':
+      return t('gameLog.cardDiscarded', { playerName: actor, cardName: event.cardName })
+    case 'permanentEntered':
+      return t('gameLog.permanentEntered', { playerName: actor, cardName: event.cardName })
+    case 'permanentLeft':
+      return t('gameLog.permanentLeft', { cardName: event.cardName, destination: t(`gameLog.zones.${event.destination}`) })
+    case 'creatureAttacked':
+      return t('gameLog.creatureAttacked', {
+        cardName: event.creatureName,
+        playerName: playerNameFor(event.defendingPlayerId) ?? t('gameLog.aPlayer'),
+      })
+    case 'creatureBlocked':
+      return t('gameLog.creatureBlocked', { blockerName: event.blockerName, attackerName: event.attackerName })
+    case 'creatureDied':
+      return t('gameLog.creatureDied', { cardName: event.creatureName })
+    case 'spellCast':
+      return t('gameLog.spellCast', { playerName: actor, cardName: event.spellName })
+    case 'spellResolved':
+      return t('gameLog.spellResolved', { cardName: event.spellName })
+    case 'spellCountered':
+      return t('gameLog.spellCountered', { cardName: event.spellName })
+    case 'permanentTapped':
+      return t('gameLog.permanentTapped', { cardName: event.permanentName })
+    case 'permanentUntapped':
+      return t('gameLog.permanentUntapped', { cardName: event.permanentName })
+    case 'counterAdded':
+      return t('gameLog.counterAdded', { count: event.count, counterType: event.counterType, cardName: event.permanentName })
+    case 'counterRemoved':
+      return t('gameLog.counterRemoved', { count: event.count, counterType: event.counterType, cardName: event.permanentName })
+    case 'manaAdded':
+      return t('gameLog.manaAdded', { playerName: actor, mana: event.manaString })
+    case 'turnChanged':
+      return t('gameLog.turnChanged', { playerName: playerNameFor(event.activePlayerId) ?? t('gameLog.aPlayer'), turn: event.turnNumber })
+    case 'gameRestarted':
+      return t('gameLog.gameRestarted', { playerName: playerNameFor(event.startingPlayerId) ?? t('gameLog.aPlayer') })
+    case 'gameEnded':
+      return event.winnerId
+        ? t('gameLog.gameWon', { playerName: playerNameFor(event.winnerId) ?? t('gameLog.aPlayer') })
+        : t('gameLog.gameDrawn')
+    case 'cardCycled':
+      return t('gameLog.cardCycled', { playerName: actor, cardName: event.cardName })
+    case 'libraryShuffled':
+      return t('gameLog.libraryShuffled', { playerName: actor })
+    default:
+      return entry.description
+  }
 }
 
 const styles: Record<string, React.CSSProperties> = {

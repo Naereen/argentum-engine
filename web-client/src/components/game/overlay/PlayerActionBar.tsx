@@ -1,6 +1,7 @@
 import { useGameStore } from '@/store/gameStore.ts'
 import type { GameAction, LegalActionInfo } from '@/types'
 import './PlayerActionBar.css'
+import { useTranslation } from 'react-i18next'
 
 type PlayerAction = Extract<GameAction, { type: 'TakePlayerAction' | 'ClaimOtariaMirariVictory' }>
 type PlayerActionOffer = LegalActionInfo & { readonly action: PlayerAction }
@@ -16,12 +17,13 @@ function actionKey(action: PlayerAction): string {
 
 /** Player-level actions do not require a card to be visible on the battlefield. */
 export function PlayerActionBar() {
+  const { t } = useTranslation()
   const legalActions = useGameStore((state) => state.legalActions)
   const pipelineState = useGameStore((state) => state.pipelineState)
   const actions = legalActions.filter(isPlayerActionOffer)
   if (actions.length === 0 || pipelineState != null) return null
   return (
-    <div className="player-action-bar" aria-label="Player actions">
+    <div className="player-action-bar" aria-label={t('gameCore.playerActions')}>
       {actions.map((offer) => (
         <button key={actionKey(offer.action)}
           disabled={offer.isAffordable === false} onClick={() => {

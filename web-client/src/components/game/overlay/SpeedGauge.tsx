@@ -1,5 +1,6 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { useResponsiveContext } from '../board/shared'
 
 /**
@@ -27,6 +28,7 @@ const STEP_COLORS: readonly string[] = ['#ffc94d', '#ffa22b', '#ff6b2b', '#ff3b3
 const TRACK = 'rgba(255, 255, 255, 0.13)'
 
 export function SpeedGauge({ speed, compact = false }: { speed: number; compact?: boolean }) {
+  const { t } = useTranslation()
   const responsive = useResponsiveContext()
   const gaugeRef = React.useRef<HTMLDivElement>(null)
   const [anchor, setAnchor] = React.useState<DOMRect | null>(null)
@@ -45,7 +47,11 @@ export function SpeedGauge({ speed, compact = false }: { speed: number; compact?
     <div
       ref={gaugeRef}
       role="img"
-      aria-label={`Speed ${level} of ${MAX_SPEED}${atMax ? ' — max speed' : ''}`}
+      aria-label={t('gameCore.speedAria', {
+        speed: level,
+        maxSpeed: MAX_SPEED,
+        status: atMax ? t('gameCore.maxSpeedSuffix') : '',
+      })}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -120,6 +126,7 @@ function SpeedTooltip({
   atMax: boolean
   hue: string
 }) {
+  const { t } = useTranslation()
   const vw = window.innerWidth
   const rawLeft = anchor.left + anchor.width / 2 - TOOLTIP_WIDTH / 2
   const left = Math.max(VIEWPORT_PADDING, Math.min(rawLeft, vw - TOOLTIP_WIDTH - VIEWPORT_PADDING))
@@ -157,15 +164,14 @@ function SpeedTooltip({
           borderBottom: `1px solid ${hue}44`,
         }}
       >
-        <span style={{ color: hue, fontWeight: 700, fontSize: 14, letterSpacing: '0.5px' }}>Speed</span>
+        <span style={{ color: hue, fontWeight: 700, fontSize: 14, letterSpacing: '0.5px' }}>{t('gameCore.speed')}</span>
         <span style={{ fontSize: 11, color: hue, opacity: 0.9, whiteSpace: 'nowrap' }}>
-          {level} / {MAX_SPEED}{atMax ? ' — max speed' : ''}
+          {level} / {MAX_SPEED}{atMax ? t('gameCore.maxSpeedSuffix') : ''}
         </span>
       </div>
 
       <p style={{ margin: '0 0 6px', fontSize: 11.5, lineHeight: 1.4 }}>
-        Your speed increases by 1 the first time one or more opponents lose life during each of your
-        turns, up to a maximum of {MAX_SPEED}. It never decreases.
+        {t('gameCore.speedRules', { maxSpeed: MAX_SPEED })}
       </p>
       <p
         style={{
@@ -178,8 +184,8 @@ function SpeedTooltip({
         }}
       >
         {atMax
-          ? `At max speed, every “Max speed —” ability you control is active.`
-          : `“Max speed —” abilities switch on at ${MAX_SPEED}.`}
+          ? t('gameCore.speedMaxAbilitiesActive')
+          : t('gameCore.speedMaxAbilitiesHint', { maxSpeed: MAX_SPEED })}
       </p>
     </div>,
     document.body,

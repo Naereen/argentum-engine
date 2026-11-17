@@ -12,6 +12,7 @@ import type React from 'react'
 import { Link } from 'react-router-dom'
 import { randomBackground } from '@/utils/background'
 import { AuthWidget } from '@/components/auth/AuthWidget'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/store/authStore'
 import { ArgentumMark } from './ArgentumMark'
 import { FullscreenButton } from './FullscreenButton'
@@ -40,6 +41,7 @@ interface PageShellProps {
 }
 
 export function PageShell({ title, actions, fit = false, width = 'normal', hideAccount = false, plain = false, children }: PageShellProps) {
+  const { t } = useTranslation()
   // The landing screen bootstraps the session through `useConnectName`; a page opened directly
   // has to, or the account menu never learns who is signed in.
   const authStatus = useAuthStore((s) => s.status)
@@ -52,7 +54,7 @@ export function PageShell({ title, actions, fit = false, width = 'normal', hideA
     <div className={shell.page} data-fit={fit} data-plain={plain} style={plain ? undefined : { backgroundImage: `url(${randomBackground})` }}>
       {!plain && <div className={shell.artTint} aria-hidden />}
       <header className={shell.topBar} data-width={width}>
-        <Link to="/" className={shell.brand} aria-label="Argentum — home">
+        <Link to="/" className={shell.brand} aria-label={t('navigation.home')}>
           <BrandMark />
           <span className={shell.brandText}>Argentum</span>
         </Link>

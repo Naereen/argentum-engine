@@ -13,6 +13,7 @@
  * the same thing. `/cubes` redirects here, and the builders' title links back.
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { CubePlayButton } from '@/components/cube/CubePlayButton'
 import { boosterStyleInfo, cubeToText, isBoosterStyle, uniqueCubeName } from '@/components/cube/cubeModel'
@@ -79,6 +80,7 @@ interface Shelved<T> {
 }
 
 export function LibraryPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const tabParam = searchParams.get('tab')
@@ -181,39 +183,47 @@ export function LibraryPage() {
   const counts = { decks: decks.decks.length, cubes: cubes.cubes.length }
   const isLoggedIn = decks.isLoggedIn
   const filtering = filter.trim() !== '' || colorFilter.size > 0
+  const colorName = (key: string) => {
+    switch (key) {
+      case 'WHITE': return t('mana.white')
+      case 'BLUE': return t('mana.blue')
+      case 'BLACK': return t('mana.black')
+      case 'RED': return t('mana.red')
+      case 'GREEN': return t('mana.green')
+      default: return key
+    }
+  }
 
   return (
-    <PageShell title="Decks & Cubes" width="wide">
+    <PageShell title={t('library.title')} width="wide">
       <header className={styles.hero}>
         <div>
-          <h1 className={p.h1}>Decks &amp; cubes</h1>
-          <p className={`${p.lede} ${styles.lede}`}>
-            Everything you build, on one shelf. Decks you bring to a game; cubes you draft or open as sealed.
-          </p>
+          <h1 className={p.h1}>{t('library.heading')}</h1>
+          <p className={`${p.lede} ${styles.lede}`}>{t('library.description')}</p>
         </div>
         {/* Looking comes before building: the card browser is one click from the shelf. Starting a
             new deck or cube is the first entry of the shelf itself. */}
         <button type="button" className={`${p.button} ${styles.heroAction}`} onClick={() => navigate('/cards')}>
-          <SearchIcon /> Browse cards
+          <SearchIcon /> {t('library.browseCards')}
         </button>
       </header>
 
       <div className={styles.bar}>
-        <div className={styles.tabs} role="tablist" aria-label="Library">
-          {(['decks', 'cubes'] as const).map((t) => (
+        <div className={styles.tabs} role="tablist" aria-label={t('library.tabs')}>
+          {(['decks', 'cubes'] as const).map((itemTab) => (
             <button
-              key={t}
+              key={itemTab}
               type="button"
               role="tab"
-              id={`library-tab-${t}`}
+              id={`library-tab-${itemTab}`}
               aria-controls="library-panel"
-              aria-selected={tab === t}
+              aria-selected={tab === itemTab}
               className={styles.tab}
-              onClick={() => selectTab(t)}
+              onClick={() => selectTab(itemTab)}
             >
-              {t === 'decks' ? <DeckIcon /> : <CubeIcon />}
-              {t === 'decks' ? 'Decks' : 'Cubes'}
-              <span className={styles.tabCount}>{counts[t]}</span>
+              {itemTab === 'decks' ? <DeckIcon /> : <CubeIcon />}
+              {itemTab === 'decks' ? t('library.decks') : t('library.cubes')}
+              <span className={styles.tabCount}>{counts[itemTab]}</span>
             </button>
           ))}
         </div>
@@ -230,20 +240,20 @@ export function LibraryPage() {
                 setFilter('')
               }
             }}
-            placeholder={tab === 'decks' ? 'Search decks…' : 'Search cubes…'}
-            aria-label={tab === 'decks' ? 'Search decks by name or note' : 'Search cubes by name or description'}
+            placeholder={tab === 'decks' ? t('library.searchDecks') : t('library.searchCubes')}
+            aria-label={tab === 'decks' ? t('library.searchDecksLabel') : t('library.searchCubesLabel')}
           />
         </label>
 
-        <div className={styles.colors} role="group" aria-label="Filter by colour">
+        <div className={styles.colors} role="group" aria-label={t('library.filterByColor')}>
           {COLOR_TOKENS.map(({ label, key }) => (
             <button
               key={key}
               type="button"
               className={styles.colorChip}
               aria-pressed={colorFilter.has(key)}
-              aria-label={key.toLowerCase()}
-              title={key.charAt(0) + key.slice(1).toLowerCase()}
+              aria-label={colorName(key)}
+              title={colorName(key)}
               onClick={() => toggleColor(key)}
             >
               <ManaSymbol symbol={label} size={18} />
@@ -253,8 +263,8 @@ export function LibraryPage() {
             type="button"
             className={styles.colorChip}
             aria-pressed={colorFilter.has('COLORLESS')}
-            aria-label="colourless"
-            title="Colourless"
+            aria-label={t('library.colorless')}
+            title={t('library.colorless')}
             onClick={() => toggleColor('COLORLESS')}
           >
             <ManaSymbol symbol="C" size={18} />
@@ -262,19 +272,19 @@ export function LibraryPage() {
         </div>
 
         <div className={styles.barEnd}>
-          <select className={styles.sort} value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort">
-            <option value="updated">Recently edited</option>
-            <option value="name">Name (A→Z)</option>
-            <option value="size">Card count</option>
-            <option value="colors">Colour</option>
+          <select className={styles.sort} value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label={t('library.sort')}>
+            <option value="updated">{t('library.recentlyEdited')}</option>
+            <option value="name">{t('library.nameAscending')}</option>
+            <option value="size">{t('library.cardCount')}</option>
+            <option value="colors">{t('library.color')}</option>
           </select>
-          <div className={styles.viewToggle} role="group" aria-label="View">
+          <div className={styles.viewToggle} role="group" aria-label={t('library.view')}>
             <button
               type="button"
               className={styles.viewButton}
               aria-pressed={view === 'grid'}
-              aria-label="Grid view"
-              title="Grid — art tiles"
+              aria-label={t('library.gridView')}
+              title={t('library.gridTitle')}
               onClick={() => chooseView('grid')}
             >
               <GridIcon />
@@ -283,8 +293,8 @@ export function LibraryPage() {
               type="button"
               className={styles.viewButton}
               aria-pressed={view === 'list'}
-              aria-label="List view"
-              title="List — compact rows"
+              aria-label={t('library.listView')}
+              title={t('library.listTitle')}
               onClick={() => chooseView('list')}
             >
               <ListIcon />
@@ -358,7 +368,7 @@ function shelve<T>(rows: Shelved<T>[], filter: string, colorFilter: ReadonlySet<
 // ---------------------------------------------------------------------------
 
 interface ShelfAction {
-  label: string
+  label: 'rename' | 'duplicate' | 'share' | 'delete'
   icon: ReactNode
   onClick: () => void
 }
@@ -385,7 +395,7 @@ interface ShelfEntry {
   actions: ShelfAction[]
   /** The one primary action besides opening it — a cube's Play button. */
   primary?: ReactNode
-  confirmText: string
+  confirmText: 'deleteDeck' | 'deleteCube' | 'deleteSharedCube'
   onDelete: () => void
 }
 
@@ -430,7 +440,9 @@ function Shelf({
 
 /** A full-art tile over its footer bar; the delete confirmation replaces the bar. */
 function GridItem({ entry }: { entry: ShelfEntry }) {
+  const { t, i18n } = useTranslation()
   const [confirming, setConfirming] = useState(false)
+  const short = shortUpdated(entry.updatedAt, Date.now(), i18n.resolvedLanguage ?? 'en')
   return (
     <li className={styles.item} data-confirming={confirming}>
       <DeckTile
@@ -451,7 +463,7 @@ function GridItem({ entry }: { entry: ShelfEntry }) {
         <DeleteConfirm entry={entry} onKeep={() => setConfirming(false)} />
       ) : (
         <div className={styles.footer}>
-          <span className={styles.updated}>{updatedLabel(entry.updatedAt)}</span>
+          <span className={styles.updated}>{short ? t('library.edited', { short }) : ''}</span>
           <EntryActions entry={entry} onDelete={() => setConfirming(true)} />
           {entry.primary}
         </div>
@@ -465,6 +477,7 @@ function GridItem({ entry }: { entry: ShelfEntry }) {
  * the row's button, stretched over the whole row, so any empty part of the row opens it too.
  */
 function ListItem({ entry }: { entry: ShelfEntry }) {
+  const { t, i18n } = useTranslation()
   const [confirming, setConfirming] = useState(false)
   const artUrl = useMemo(() => heroArtUrl(entry.hero), [entry.hero])
   const subtitle = entry.note ?? entry.description
@@ -484,7 +497,7 @@ function ListItem({ entry }: { entry: ShelfEntry }) {
         )}
         <span className={styles.rowMetaCompact}>
           <Pips colors={entry.colors} />
-          <span>{entry.total} cards</span>
+          <span>{t('library.cardsUnit', { count: entry.total })}</span>
         </span>
       </span>
       <span className={styles.rowChips}>
@@ -494,12 +507,9 @@ function ListItem({ entry }: { entry: ShelfEntry }) {
       <span className={styles.rowPips}>
         <Pips colors={entry.colors} />
       </span>
-      <span className={styles.rowCount}>
-        {entry.total}
-        <span className={styles.rowCountUnit}> cards</span>
-      </span>
-      <span className={styles.rowUpdated} title={new Date(entry.updatedAt).toLocaleString()}>
-        {shortUpdated(entry.updatedAt)}
+      <span className={styles.rowCount}>{t('library.cardsUnit', { count: entry.total })}</span>
+      <span className={styles.rowUpdated} title={new Date(entry.updatedAt).toLocaleString(i18n.resolvedLanguage)}>
+        {shortUpdated(entry.updatedAt, Date.now(), i18n.resolvedLanguage ?? 'en')}
       </span>
       {entry.storage ? <StorageMark storage={entry.storage} /> : <span className={styles.storageMark} aria-hidden />}
       {confirming ? (
@@ -515,14 +525,15 @@ function ListItem({ entry }: { entry: ShelfEntry }) {
 }
 
 function DeleteConfirm({ entry, onKeep }: { entry: ShelfEntry; onKeep: () => void }) {
+  const { t } = useTranslation()
   return (
-    <div className={styles.confirm} role="alert" aria-label={`Delete ${entry.name}`}>
-      <span>{entry.confirmText}</span>
+    <div className={styles.confirm} role="alert" aria-label={`${t('library.actionLabels.delete')} ${entry.name}`}>
+      <span>{t(`library.${entry.confirmText}`)}</span>
       <button type="button" className={styles.footerButton} onClick={onKeep} autoFocus>
-        Keep
+        {t('library.actionLabels.keep')}
       </button>
       <button type="button" className={styles.dangerButton} onClick={entry.onDelete}>
-        Delete
+        {t('library.actionLabels.delete')}
       </button>
     </div>
   )
@@ -533,9 +544,10 @@ function DeleteConfirm({ entry, onKeep }: { entry: ShelfEntry; onKeep: () => voi
  * (CSS picks which by the shelf's width). Never hover-only — a touch screen has no hover.
  */
 function EntryActions({ entry, onDelete }: { entry: ShelfEntry; onDelete: () => void }) {
+  const { t } = useTranslation()
   const all: Array<ShelfAction & { danger?: boolean }> = [
     ...entry.actions,
-    { label: 'Delete', icon: <TrashIcon />, onClick: onDelete, danger: true },
+    { label: 'delete', icon: <TrashIcon />, onClick: onDelete, danger: true },
   ]
   return (
     <>
@@ -547,8 +559,8 @@ function EntryActions({ entry, onDelete }: { entry: ShelfEntry; onDelete: () => 
             className={styles.iconButton}
             data-danger={action.danger || undefined}
             onClick={action.onClick}
-            title={action.label}
-            aria-label={`${action.label} ${entry.name}`}
+            title={t(`library.actionLabels.${action.label}`)}
+            aria-label={`${t(`library.actionLabels.${action.label}`)} ${entry.name}`}
           >
             {action.icon}
           </button>
@@ -560,6 +572,7 @@ function EntryActions({ entry, onDelete }: { entry: ShelfEntry; onDelete: () => 
 }
 
 function MoreMenu({ name, actions }: { name: string; actions: Array<ShelfAction & { danger?: boolean }> }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLSpanElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -598,8 +611,8 @@ function MoreMenu({ name, actions }: { name: string; actions: Array<ShelfAction 
         className={styles.iconButton}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`More actions for ${name}`}
-        title="More"
+        aria-label={t('library.moreActionsFor', { name })}
+        title={t('library.more')}
         onClick={() => setOpen((o) => !o)}
       >
         <MoreIcon />
@@ -619,7 +632,7 @@ function MoreMenu({ name, actions }: { name: string; actions: Array<ShelfAction 
               }}
             >
               {action.icon}
-              {action.label}
+              {t(`library.actionLabels.${action.label}`)}
             </button>
           ))}
         </div>
@@ -650,16 +663,17 @@ function Pips({ colors }: { colors: string[] }) {
 }
 
 function StorageMark({ storage }: { storage: 'cloud' | 'local' }) {
+  const { t } = useTranslation()
   return (
     <span
       className={styles.storageMark}
       data-storage={storage}
       title={
         storage === 'cloud'
-          ? 'Saved to your account — available on any device'
-          : 'Saved only in this browser — not backed up to your account'
+          ? t('library.savedToAccount')
+          : t('library.savedToBrowser')
       }
-      aria-label={storage === 'cloud' ? 'Saved to your account' : 'Saved in this browser'}
+      aria-label={storage === 'cloud' ? t('library.savedToAccountLabel') : t('library.savedToBrowserLabel')}
     >
       {storage === 'cloud' ? <CloudIcon /> : <MonitorIcon />}
     </span>
@@ -687,6 +701,7 @@ function DeckShelf({
   onNew: () => void
   onClearFilters: () => void
 }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { save } = useSaveDeck()
   const [editing, setEditing] = useState<UnifiedDeck | null>(null)
@@ -714,11 +729,11 @@ function DeckShelf({
     setError(null)
     try {
       const { id: _id, updatedAt: _updatedAt, online: _online, cloudId: _cloudId, ...rest } = deck
-      const name = uniqueCubeName(`${deck.name} copy`, library.decks.map((d) => d.name))
+      const name = uniqueCubeName(`${deck.name} ${t('library.copySuffix')}`, library.decks.map((d) => d.name))
       await save({ ...rest, name })
       library.reload()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not duplicate the deck')
+      setError(err instanceof Error ? err.message : t('library.duplicateDeckError'))
     }
   }
 
@@ -727,7 +742,7 @@ function DeckShelf({
     try {
       await library.removeDeck(deck)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not delete the deck')
+      setError(err instanceof Error ? err.message : t('library.deleteDeckError'))
     }
   }
 
@@ -744,18 +759,18 @@ function DeckShelf({
       format,
       formatTitle: format
         ? deck.format
-          ? `Saved as ${labelForFormat(format)}`
-          : `Legal in ${labelForFormat(format)}`
+          ? t('library.savedAsFormat', { format: labelForFormat(format) })
+          : t('library.legalInFormat', { format: labelForFormat(format) })
         : undefined,
       storage: showStorage ? (deck.online ? 'cloud' : 'local') : undefined,
       updatedAt: deck.updatedAt,
-      openTitle: `Open ${deck.name} in the deck builder`,
+      openTitle: t('library.openDeck', { name: deck.name }),
       onOpen: () => open(deck),
       actions: [
-        { label: 'Rename', icon: <PencilIcon />, onClick: () => setEditing(deck) },
-        { label: 'Duplicate', icon: <CopyIcon />, onClick: () => void duplicate(deck) },
+        { label: 'rename', icon: <PencilIcon />, onClick: () => setEditing(deck) },
+        { label: 'duplicate', icon: <CopyIcon />, onClick: () => void duplicate(deck) },
       ],
-      confirmText: 'Delete this deck?',
+      confirmText: 'deleteDeck',
       onDelete: () => void remove(deck),
     }
   })
@@ -771,12 +786,12 @@ function DeckShelf({
         noun="decks"
         onClearFilters={onClearFilters}
         start={{
-          title: 'New deck',
-          body: 'Search every implemented card, or start from a list or a ready-made deck.',
+          title: t('library.newDeck'),
+          body: t('library.newDeckDescription'),
           onClick: onNew,
           links: [
-            { label: 'Import a list', onClick: () => navigate('/deckbuilder?open=import') },
-            { label: 'Start from an example', onClick: () => navigate('/deckbuilder?open=examples') },
+            { label: t('library.importList'), onClick: () => navigate('/deckbuilder?open=import') },
+            { label: t('library.startFromExample'), onClick: () => navigate('/deckbuilder?open=examples') },
           ],
         }}
       />
@@ -789,7 +804,7 @@ function DeckShelf({
             const deck = editing
             setEditing(null)
             void library.updateDetails(deck, { name, note }).catch((err: unknown) =>
-              setError(err instanceof Error ? err.message : 'Could not rename the deck'),
+              setError(err instanceof Error ? err.message : t('library.renameDeckError')),
             )
           }}
         />
@@ -823,6 +838,7 @@ function CubeShelf({
   onNew: (from?: 'set' | 'paste') => void
   onClearFilters: () => void
 }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [sharing, setSharing] = useState<UnifiedCube | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -841,11 +857,11 @@ function CubeShelf({
   async function duplicate(cube: UnifiedCube) {
     setError(null)
     try {
-      const name = uniqueCubeName(`${cube.name} copy`, library.cubes.map((c) => c.name))
+      const name = uniqueCubeName(`${cube.name} ${t('library.copySuffix')}`, library.cubes.map((c) => c.name))
       await library.saveCube({ ...cubeToShared(cube), name })
       library.reload()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not duplicate the cube')
+      setError(err instanceof Error ? err.message : t('library.duplicateCubeError'))
     }
   }
 
@@ -854,16 +870,16 @@ function CubeShelf({
     try {
       await library.removeCube(cube)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not delete the cube')
+      setError(err instanceof Error ? err.message : t('library.deleteCubeError'))
     }
   }
 
   const entries: ShelfEntry[] = rows.map(({ item: cube, total, colors, hero }) => {
     const unresolved = unresolvedById.get(cube.id) ?? 0
     const blockedReason = total === 0
-      ? 'This cube is empty'
+      ? t('library.emptyCube')
       : unresolved > 0
-        ? `${unresolved} card${unresolved === 1 ? '' : 's'} in this cube aren’t implemented yet — edit it to drop them`
+        ? t('library.unimplementedCards', { count: unresolved })
         : null
     const booster = isBoosterStyle(cube.boosterStyle)
     return {
@@ -877,34 +893,34 @@ function CubeShelf({
       chips: (booster || cube.shareCode || unresolved > 0) && (
         <>
           {booster && (
-            <span className={styles.chip} data-kind="booster" title="Packs are printed by rarity, like a real set">
+            <span className={styles.chip} data-kind="booster" title={t('library.packsByRarity')}>
               {boosterStyleInfo(cube.boosterStyle).label}
             </span>
           )}
           {cube.shareCode && (
-            <span className={styles.chip} data-kind="shared" title="Anyone with the link can view and copy it">
-              Shared
+            <span className={styles.chip} data-kind="shared" title={t('library.sharedLink')}>
+              {t('library.shared')}
             </span>
           )}
           {unresolved > 0 && (
             <span className={styles.chip} data-kind="warning" title={blockedReason ?? undefined}>
-              {unresolved} missing
+              {t('library.missingCards', { count: unresolved })}
             </span>
           )}
         </>
       ),
       storage: showStorage ? (cube.online ? 'cloud' : 'local') : undefined,
       updatedAt: cube.updatedAt,
-      openTitle: `Open ${cube.name} in the cube builder`,
+      openTitle: t('library.openCube', { name: cube.name }),
       onOpen: () => edit(cube),
       actions: [
-        { label: 'Share', icon: <ShareIcon />, onClick: () => setSharing(cube) },
-        { label: 'Duplicate', icon: <CopyIcon />, onClick: () => void duplicate(cube) },
+        { label: 'share', icon: <ShareIcon />, onClick: () => setSharing(cube) },
+        { label: 'duplicate', icon: <CopyIcon />, onClick: () => void duplicate(cube) },
       ],
       primary: (
         <CubePlayButton cube={cubeToShared(cube)} blockedReason={blockedReason} className={styles.play} panelAlign="end" />
       ),
-      confirmText: cube.shareCode ? 'Delete this cube? Its share link stops working.' : 'Delete this cube?',
+      confirmText: cube.shareCode ? 'deleteSharedCube' : 'deleteCube',
       onDelete: () => void remove(cube),
     }
   })
@@ -920,12 +936,12 @@ function CubeShelf({
         noun="cubes"
         onClearFilters={onClearFilters}
         start={{
-          title: 'New cube',
-          body: 'Your own pool to draft or open as sealed — a classic shuffled cube, or a whole set opened as real boosters.',
+          title: t('library.newCube'),
+          body: t('library.newCubeDescription'),
           onClick: () => onNew(),
           links: [
-            { label: 'Start from a set', onClick: () => onNew('set') },
-            { label: 'Paste a list', onClick: () => onNew('paste') },
+            { label: t('library.startFromSet'), onClick: () => onNew('set') },
+            { label: t('library.pasteList'), onClick: () => onNew('paste') },
           ],
         }}
       />
@@ -1011,11 +1027,12 @@ function Skeletons({ view }: { view: LibraryView }) {
 }
 
 function NoMatches({ noun, onClear }: { noun: string; onClear: () => void }) {
+  const { t } = useTranslation()
   return (
     <div className={styles.noMatches}>
-      No {noun} match the search.{' '}
+      {t(noun === 'decks' ? 'library.noDecksMatch' : 'library.noCubesMatch')}{' '}
       <button type="button" className={styles.startLink} onClick={onClear}>
-        Clear filters
+        {t('library.clearFilters')}
       </button>
     </div>
   )
@@ -1028,23 +1045,23 @@ function colorBucket(colors: string[]): number {
 }
 
 /** "Edited 3 days ago" — coarse on purpose; the tile is no place for a timestamp. */
-export function updatedLabel(updatedAt: number, now: number = Date.now()): string {
-  const short = shortUpdated(updatedAt, now)
+export function updatedLabel(updatedAt: number, now: number = Date.now(), language = 'en'): string {
+  const short = shortUpdated(updatedAt, now, language)
   return short ? `Edited ${short}` : ''
 }
 
 /** The age half of {@link updatedLabel} ("3 days ago"), for the list's narrow column. */
-export function shortUpdated(updatedAt: number, now: number = Date.now()): string {
+export function shortUpdated(updatedAt: number, now: number = Date.now(), language = 'en'): string {
   if (!updatedAt) return ''
+  const relative = new Intl.RelativeTimeFormat(language, { numeric: 'auto', style: 'short' })
   const minutes = Math.max(0, Math.round((now - updatedAt) / 60_000))
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes} min ago`
+  if (minutes < 1) return relative.format(0, 'minute')
+  if (minutes < 60) return relative.format(-minutes, 'minute')
   const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours} h ago`
+  if (hours < 24) return relative.format(-hours, 'hour')
   const days = Math.round(hours / 24)
-  if (days === 1) return 'yesterday'
-  if (days < 30) return `${days} days ago`
-  return new Date(updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  if (days < 30) return relative.format(-days, 'day')
+  return new Date(updatedAt).toLocaleDateString(language, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 // ---------------------------------------------------------------------------

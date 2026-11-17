@@ -5,6 +5,7 @@ import { pageStyles } from '@/components/ui/PageShell'
 import type { ScenarioCreateResponse } from '@/components/scenario/types'
 import { Color, ColorSymbols } from '@/types'
 import styles from './OtariaPlaytestPage.module.css'
+import { useTranslation } from 'react-i18next'
 
 type StartingColor = Color | 'OTHER'
 
@@ -46,12 +47,12 @@ export interface OtariaPlaytestOptions {
 }
 
 const COLOR_NAMES: Record<StartingColor, string> = {
-  [Color.WHITE]: 'White',
-  [Color.BLUE]: 'Blue',
-  [Color.BLACK]: 'Black',
-  [Color.RED]: 'Red',
-  [Color.GREEN]: 'Green',
-  OTHER: 'Other (colorless / multicolor)',
+  [Color.WHITE]: 'white',
+  [Color.BLUE]: 'blue',
+  [Color.BLACK]: 'black',
+  [Color.RED]: 'red',
+  [Color.GREEN]: 'green',
+  OTHER: 'otherColor',
 }
 
 const API = '/api/dev/otaria'
@@ -82,6 +83,7 @@ export async function readOtariaResponse(response: Response): Promise<unknown> {
 }
 
 export function OtariaPlaytestPage() {
+  const { t } = useTranslation()
   const [options, setOptions] = useState<OtariaPlaytestOptions | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -300,15 +302,15 @@ export function OtariaPlaytestPage() {
 
   return (
     <DevPage
-      section="Otaria playtest"
-      title="Explorer of: Otaria"
-      subtitle="Play against AI explorers, invite human explorers, or watch a fast, fully autonomous table. A local work-in-progress, not a finished campaign."
+      section={t('otaria.playtest')}
+      title={t('otaria.pageTitle')}
+      subtitle={t('otaria.pageSubtitle')}
       dev
     >
-      {loading && <p role="status">Loading starting decks and playtest status...</p>}
+      {loading && <p role="status">{t('otaria.loading')}</p>}
       {error && <div role="alert" className={styles.error}>
         <p>{error}</p>
-        {!options && <button type="button" className={pageStyles.button} onClick={() => setAttempt((value) => value + 1)}>Retry</button>}
+        {!options && <button type="button" className={pageStyles.button} onClick={() => setAttempt((value) => value + 1)}>{t('otaria.retry')}</button>}
       </div>}
       {options && <OtariaPlaytestContents
         options={options}
@@ -376,38 +378,40 @@ export function OtariaPlaytestContents({
   onReady: (ready: boolean) => void
   onStartLobby: () => void
 }) {
+  const { t } = useTranslation()
+  const colorLabel = (value: StartingColor) => value === 'OTHER' ? t('otaria.otherColor') : t(`otaria.colorList.${COLOR_NAMES[value] as 'white' | 'blue' | 'black' | 'red' | 'green'}`)
   const availableDecks = options.decks.filter((candidate) => color === null || candidate.color === color)
   const deck = availableDecks.find((candidate) => candidate.id === boosterId)
   const validSelection = availableDecks.length > 0 && (!boosterId || !!deck)
   return (
     <div className={styles.layout}>
       <section className={`${pageStyles.panel} ${styles.setup}`} aria-labelledby="otaria-setup">
-        <p className={styles.eyebrow}>Local playtest</p>
-        <h2 id="otaria-setup">Set out for Otaria</h2>
-        <p className={pageStyles.muted}>Start with one published 20-card Jumpstart booster from Jumpstart 2022 or Foundations Jumpstart. No deck import or API key needed.</p>
+        <p className={styles.eyebrow}>{t('otaria.localPlaytest')}</p>
+        <h2 id="otaria-setup">{t('otaria.setOut')}</h2>
+        <p className={pageStyles.muted}>{t('otaria.boosterIntro')}</p>
         {!lobby && <fieldset className={styles.fieldset} disabled={starting}>
-          <legend>Play mode</legend>
+          <legend>{t('otaria.playMode')}</legend>
           <div className={styles.colors}>
-            <button type="button" className={styles.choice} aria-pressed={!fullAi && !online} onClick={() => { onFullAi(false); onOnline(false) }}>Play vs AI</button>
-            <button type="button" className={styles.choice} aria-pressed={online} onClick={() => onOnline(true)}>Online lobby</button>
-            <button type="button" className={styles.choice} aria-pressed={fullAi} onClick={() => onFullAi(true)}>Full AI (fast)</button>
+            <button type="button" className={styles.choice} aria-pressed={!fullAi && !online} onClick={() => { onFullAi(false); onOnline(false) }}>{t('otaria.playVsAi')}</button>
+            <button type="button" className={styles.choice} aria-pressed={online} onClick={() => onOnline(true)}>{t('otaria.onlineLobby')}</button>
+            <button type="button" className={styles.choice} aria-pressed={fullAi} onClick={() => onFullAi(true)}>{t('otaria.fullAiFast')}</button>
           </div>
         </fieldset>}
         {!lobby && !invitePreview && online && <label className={styles.field}>
-          Your seat
+          {t('otaria.yourSeat')}
           <select className={pageStyles.input} value={hostSeat} onChange={(event) => onHostSeat(Number(event.target.value))} disabled={starting}>
-            {Array.from({ length: opponents + 1 }, (_, seat) => <option key={seat} value={seat}>Seat {seat + 1}</option>)}
+            {Array.from({ length: opponents + 1 }, (_, seat) => <option key={seat} value={seat}>{t('otaria.seat', { number: seat + 1 })}</option>)}
           </select>
         </label>}
         {fullAi && <>
-          <p className={pageStyles.muted}>Every explorer is AI-controlled. Watch as a spectator; no input is needed. Experimental encounters and unsupported events can still stop a run.</p>
+          <p className={pageStyles.muted}>{t('otaria.allAiDescription')}</p>
           <label className={styles.field} htmlFor="otaria-ai-action-delay">
-            <span>Delay between AI actions: <output>{aiThinkingDelayMs} ms</output></span>
+            <span>{t('otaria.aiDelay', { milliseconds: aiThinkingDelayMs })}<output>{aiThinkingDelayMs} ms</output></span>
             <input
               id="otaria-ai-action-delay"
               className={pageStyles.input}
               type="range"
-              aria-label="Delay between AI actions"
+              aria-label={t('otaria.aiDelayLabel')}
               aria-describedby="otaria-ai-action-delay-description"
               min={0}
               max={5000}
@@ -416,124 +420,125 @@ export function OtariaPlaytestContents({
               onChange={(event) => onAiThinkingDelayMs(Number(event.target.value))}
               disabled={starting}
             />
-            <span id="otaria-ai-action-delay-description" className={pageStyles.muted}>Choose 0–5000 ms. The default is 100 ms.</span>
+            <span id="otaria-ai-action-delay-description" className={pageStyles.muted}>{t('otaria.aiDelayDescription')}</span>
           </label>
         </>}
         {!lobby && <label className={styles.field}>
-          {fullAi ? 'First AI explorer name' : 'Your name'}
+          {fullAi ? t('otaria.firstAiExplorer') : t('otaria.yourName')}
           <input className={pageStyles.input} value={name} onChange={(event) => onName(event.target.value)} maxLength={40} disabled={starting} />
         </label>}
         {!lobby && <fieldset className={styles.fieldset} disabled={starting}>
-          <legend>{fullAi ? 'AI table size' : online ? 'Total table size' : 'AI opponents'}</legend>
+          <legend>{fullAi ? t('otaria.aiTableSize') : online ? t('otaria.tableSize') : t('otaria.aiOpponents')}</legend>
           <div className={styles.choices}>
             {[2, 3, 4].map((count) => <button
               type="button" key={count} aria-pressed={opponents === count}
               className={styles.choice} onClick={() => onOpponents(count)}
-            >{fullAi ? count + 1 : online ? count + 1 : count} {online ? 'seats' : 'AI'} <small>{count + 1} players total</small></button>)}
+            >{fullAi ? count + 1 : online ? count + 1 : count} {online ? t('otaria.seats') : 'AI'} <small>{t('otaria.playersTotal', { count: count + 1 })}</small></button>)}
           </div>
         </fieldset>}
-        {!lobby && (fullAi ? <p className={pageStyles.muted}>Every AI independently rolls a random color category, including Other, then a random Jumpstart booster in that category. Colors and themes can repeat.</p> : <fieldset className={styles.fieldset} disabled={starting}>
-          <legend>Your starting booster</legend>
+        {!lobby && (fullAi ? <p className={pageStyles.muted}>{t('otaria.randomColors')}</p> : <fieldset className={styles.fieldset} disabled={starting}>
+          <legend>{t('otaria.startingBooster')}</legend>
           <div className={styles.colors}>
-            <button type="button" className={styles.choice} aria-pressed={color === null} onClick={() => onColor(null)}>Any color (random)</button>
+            <button type="button" className={styles.choice} aria-pressed={color === null} onClick={() => onColor(null)}>{t('otaria.anyColorRandom')}</button>
             {Object.values(Color).map((candidate) => <button
               type="button" key={candidate} className={styles.choice}
               aria-pressed={color === candidate} onClick={() => onColor(candidate)}
-            ><i aria-hidden className={`ms ms-${ColorSymbols[candidate].toLowerCase()} ms-cost`} /> {COLOR_NAMES[candidate]}</button>)}
-            <button type="button" className={styles.choice} aria-pressed={color === 'OTHER'} onClick={() => onColor('OTHER')}>Other</button>
+            ><i aria-hidden className={`ms ms-${ColorSymbols[candidate].toLowerCase()} ms-cost`} /> {colorLabel(candidate)}</button>)}
+            <button type="button" className={styles.choice} aria-pressed={color === 'OTHER'} onClick={() => onColor('OTHER')}>{t('otaria.other')}</button>
           </div>
           <label className={styles.field}>
-            Theme and booster variant
+            {t('otaria.themeBooster')}
             <select className={pageStyles.input} value={boosterId} onChange={(event) => onBoosterId(event.target.value)}>
-              <option value="">Random booster{color ? ` - ${COLOR_NAMES[color]}` : ' - any color'}</option>
+              <option value="">{t('otaria.randomBooster')}{color ? ` - ${colorLabel(color)}` : ` - ${t('otaria.anyColor')}`}</option>
               {[...new Set(availableDecks.map((candidate) => candidate.setCode))].map((setCode) =>
-                <optgroup key={setCode} label={setCode === 'J22' ? 'Jumpstart 2022' : 'Foundations Jumpstart'}>
+                <optgroup key={setCode} label={setCode === 'J22' ? t('otaria.jumpstart2022') : t('otaria.foundationsJumpstart')}>
                   {availableDecks.filter((candidate) => candidate.setCode === setCode).map((candidate) =>
-                    <option key={candidate.id} value={candidate.id}>{candidate.id.split(':')[1]} - {COLOR_NAMES[candidate.color]}</option>)}
+                    <option key={candidate.id} value={candidate.id}>{candidate.id.split(':')[1]} - {colorLabel(candidate.color)}</option>)}
                 </optgroup>)}
             </select>
           </label>
-          <p className={pageStyles.muted}>{availableDecks.length} published boosters available. Other includes Urza&apos;s (colorless) and Chaos (multicolor).</p>
+          <p className={pageStyles.muted}>{t('otaria.boostersAvailable', { count: availableDecks.length })}</p>
         </fieldset>)}
         {!lobby && <div className={styles.startingFacts}>
-          <span><strong>15</strong> life</span><span><strong>5</strong> cards in hand</span>
-          <span><strong>2</strong> lands in play</span><span>No mulligan</span>
+          <span><strong>15</strong> {t('otaria.life')}</span><span><strong>5</strong> {t('otaria.cardsInHand')}</span>
+          <span><strong>2</strong> {t('otaria.landsInPlay')}</span><span>{t('otaria.noMulligan')}</span>
         </div>}
         {!options.aiEnabled && <p role="alert" className={styles.error}>
           {online
-            ? 'AI opponents are disabled. An online lobby can still start when every seat is filled by a ready human.'
-            : 'AI opponents are disabled. Start the server with game.ai.enabled=true.'}
+            ? t('otaria.aiDisabledOnline')
+            : t('otaria.aiDisabledLocal')}
         </p>}
         {!lobby && !invitePreview && <button type="button" className={`${pageStyles.buttonPrimary} ${styles.launch}`}
           disabled={starting || (!online && !options.aiEnabled) || !name.trim() || (!fullAi && !validSelection)}
           onClick={onStart}
-        >{starting ? 'Preparing the table...' : fullAi ? `Watch ${opponents + 1} AI explorers` : online ? 'Create invite lobby' : `Start playtest vs ${opponents} AI`}</button>}
+        >{starting ? t('otaria.preparing') : fullAi ? t('otaria.watchExplorers', { count: opponents + 1 }) : online ? t('otaria.createLobby') : t('otaria.startPlaytest', { count: opponents })}</button>}
         {lobby && <div className={styles.lobby}>
-          <h3>Lobby {lobby.lobbyId.slice(0, 8)}</h3>
-          <p>Share this invite link. The game starts with {lobby.tableSize} seats; {lobby.aiSeatsOnStart} open seat(s) {options.aiEnabled ? 'will be filled by AI' : 'must be filled by humans because AI is disabled'}.</p>
+          <h3>{t('otaria.lobby', { id: lobby.lobbyId.slice(0, 8) })}</h3>
+          <p>{t('otaria.shareInvite', { seats: lobby.tableSize, openSeats: lobby.aiSeatsOnStart, fillExplanation: options.aiEnabled ? t('otaria.filledByAi') : t('otaria.filledByHumans') })}</p>
           <label className={styles.field}>
-            Invite link
+            {t('otaria.inviteLink')}
             <input className={pageStyles.input} readOnly value={inviteUrl || ''} onFocus={(event) => event.currentTarget.select()} />
           </label>
           <ul className={styles.players}>
             {Array.from({ length: lobby.tableSize }, (_, seatIndex) => {
               const player = lobby.players.find((candidate) => candidate.seatIndex === seatIndex)
               return <li key={seatIndex}>
-                <strong>Seat {seatIndex + 1}</strong>
-                <span>{player ? `${player.name}${player.you ? ' (you)' : ''}${player.host ? ' · host' : ''}` : 'Open — AI fills at start'}</span>
-                {player && <span>{player.ready ? 'Ready' : 'Not ready'}</span>}
+                <strong>{t('otaria.seat', { number: seatIndex + 1 })}</strong>
+                <span>{player ? `${player.name}${player.you ? ` (${t('otaria.you')})` : ''}${player.host ? ` · ${t('otaria.host')}` : ''}` : t('otaria.openAiSeat')}</span>
+                {player && <span>{player.ready ? t('otaria.ready') : t('otaria.notReady')}</span>}
               </li>
             })}
           </ul>
           {!lobby.started && <div className={styles.colors}>
             <button type="button" className={styles.choice} disabled={starting}
               onClick={() => onReady(!lobby.players.find((player) => player.you)?.ready)}>
-              {lobby.players.find((player) => player.you)?.ready ? 'Cancel ready' : 'Ready to start'}
+              {lobby.players.find((player) => player.you)?.ready ? t('otaria.cancelReady') : t('otaria.readyToStart')}
             </button>
             {lobby.players.find((player) => player.you)?.host &&
               <button type="button" className={styles.choice} disabled={starting || lobby.players.some((player) => !player.ready)}
-                onClick={onStartLobby}>Start game</button>}
+                onClick={onStartLobby}>{t('otaria.startGame')}</button>}
           </div>}
-          <p className={pageStyles.muted}>This private local playtest lobby expires after six hours. Starting locations and the first player are random.</p>
+          <p className={pageStyles.muted}>{t('otaria.lobbyExpires')}</p>
         </div>}
         {invitePreview && <div className={styles.lobby}>
-          <h3>Join Otaria lobby</h3>
-          <p>{invitePreview.players.length} of {invitePreview.tableSize} seats occupied. {invitePreview.aiSeatsOnStart} open seat(s) will be filled by AI.</p>
+          <h3>{t('otaria.joinLobbyTitle')}</h3>
+          <p>{t('otaria.seatsOccupied', { occupied: invitePreview.players.length, total: invitePreview.tableSize, openSeats: invitePreview.aiSeatsOnStart })}</p>
           <label className={styles.field}>
-            Choose a seat
+            {t('otaria.chooseSeat')}
             <select className={pageStyles.input} value={inviteSeat ?? ''} onChange={(event) => onInviteSeat(event.target.value ? Number(event.target.value) : null)}>
-              {invitePreview.openSeats.map((seat) => <option key={seat} value={seat}>Seat {seat + 1}</option>)}
+              {invitePreview.openSeats.map((seat) => <option key={seat} value={seat}>{t('otaria.seat', { number: seat + 1 })}</option>)}
             </select>
           </label>
           <ul className={styles.players}>
-            {invitePreview.players.map((player) => <li key={player.seatIndex}><strong>Seat {player.seatIndex + 1}</strong><span>{player.name}{player.host ? ' · host' : ''}</span><span>{player.ready ? 'Ready' : 'Not ready'}</span></li>)}
+            {invitePreview.players.map((player) => <li key={player.seatIndex}><strong>{t('otaria.seat', { number: player.seatIndex + 1 })}</strong><span>{player.name}{player.host ? ` · ${t('otaria.host')}` : ''}</span><span>{player.ready ? t('otaria.ready') : t('otaria.notReady')}</span></li>)}
           </ul>
           <button type="button" className={`${pageStyles.buttonPrimary} ${styles.launch}`}
             disabled={starting || inviteSeat === null || !name.trim() || !validSelection}
-            onClick={onJoinLobby}>{starting ? 'Joining lobby...' : 'Join lobby'}</button>
+            onClick={onJoinLobby}>{starting ? t('otaria.joiningLobby') : t('otaria.joinLobby')}</button>
         </div>}
-        {!lobby && !invitePreview && <p className={pageStyles.muted}>Private, unranked test. Starting locations and the first player are random.</p>}
+        {!lobby && !invitePreview && <p className={pageStyles.muted}>{t('otaria.privateTest')}</p>}
       </section>
       <div className={styles.details}>
         <section className={`${pageStyles.panel} ${styles.notice}`} aria-labelledby="otaria-limits">
-          <h2 id="otaria-limits">Before you play</h2>
-          <ul>{options.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul>
-          <p>At the table, open <strong>Otaria map</strong> beside the phase bar. At the start of your turn, choose Move, Explore, Prepare or Combat.</p>
-          <Link to="/help/playing#otaria-map">Read the Otaria interface guide</Link>
+          <h2 id="otaria-limits">{t('otaria.beforeYouPlay')}</h2>
+          <ul>{options.limitations.map((limitation) => <li key={limitation}>{t(`otaria.limitations.${limitation}`, { defaultValue: limitation })}</li>)}</ul>
+          <p>{t('otaria.inGameInstructions')}</p>
+          <Link to="/help/playing#otaria-map">{t('otaria.interfaceGuide')}</Link>
           {options.missingCards.length > 0 && <details>
-            <summary>{options.missingCards.length} supply cards still missing</summary>
+            <summary>{t('otaria.missingSupply', { count: options.missingCards.length })}</summary>
             <p>{options.missingCards.join(' ; ')}</p>
           </details>}
         </section>
         {!fullAi && <section className={pageStyles.panel} aria-labelledby="otaria-deck">
-          <h2 id="otaria-deck">{deck ? `${deck.theme} - ${deck.setCode}` : 'A surprise Jumpstart booster'}</h2>
+          <h2 id="otaria-deck">{deck ? `${deck.theme} - ${deck.setCode}` : t('otaria.surpriseBooster')}</h2>
           {deck ? <>
-          <p className={pageStyles.muted}>Exactly 20 cards from {deck.id.split(':')[1]}. Starting lands: {deck.startingLands.join(' + ')}.
+          <p className={pageStyles.muted}>{t('otaria.exactCards', { theme: deck.id.split(':')[1], lands: deck.startingLands.join(' + ') })}{' '}
             {deck.startingLandSource === 'SEPARATE_STOCK'
-              ? ' These two extra Wastes start in play; all 20 booster cards remain available to draw.'
-              : ' These two basics move from the booster into play before you draw five cards.'}</p>
+              ? t('otaria.wastesExtra')
+              : t('otaria.basicsMoved')}</p>
+          <br/>
           <ul className={styles.deck}>{Object.entries(deck.cards).map(([card, count]) => <li key={card}><span>{count}</span>{card}</li>)}</ul>
-          </> : <p className={pageStyles.muted}>The server rolls {color ? `a ${COLOR_NAMES[color]} booster` : 'a color category, then a booster'} when you start. Select a theme above to preview its exact decklist instead. AI opponents always choose randomly and independently, including Other.</p>}
+          </> : <p className={pageStyles.muted}>{t('otaria.serverRandomBooster', { selection: color ? t('otaria.colorBooster', { color: t(`otaria.colorList.${color}`, { defaultValue: COLOR_NAMES[color] }) }) : t('otaria.colorCategory') })}</p>}
         </section>}
       </div>
     </div>

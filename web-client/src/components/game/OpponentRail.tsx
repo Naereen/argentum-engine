@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type React from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore'
 import { isFollowingAction } from '@/store/slices/ui/boardViewSlice'
 import {
@@ -383,6 +384,7 @@ function TeamRailSection({
   life?: number | null
   children: React.ReactNode
 }) {
+  const { t } = useTranslation()
   const lifeDanger = life != null && life <= 5
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5, pointerEvents: 'none' }}>
@@ -417,7 +419,7 @@ function TeamRailSection({
         </span>
         {life != null && (
           <span
-            title="Shared team life"
+            title={t('gameCore.sharedTeamLife')}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -452,6 +454,7 @@ function TeamRailSection({
  * `data-life-id`.
  */
 function BottomSeatRailChip({ seat, isViewerSeat }: { seat: ClientPlayer; isViewerSeat: boolean }) {
+  const { t } = useTranslation()
   const responsive = useResponsiveContext()
   const gameState = useGameStore(selectGameState)
   const opponentDecisionStatus = useGameStore((state) => state.opponentDecisionStatus)
@@ -646,7 +649,7 @@ function BottomSeatRailChip({ seat, isViewerSeat }: { seat: ClientPlayer; isView
         )}
 
         {!tomb && (seat.radCounters ?? 0) > 0 && (
-          <span title="Radiation: at this player's precombat main phase, they mill this many cards. Each nonland costs 1 life and removes a rad counter."
+          <span title={t('gameCore.radiationHint')}
             style={{ fontSize: 11, fontWeight: 800, color: '#a3e635' }}>☢{seat.radCounters}</span>
         )}
         {/* Energy (CR 107.14) */}
@@ -673,7 +676,7 @@ function BottomSeatRailChip({ seat, isViewerSeat }: { seat: ClientPlayer; isView
         {isDeciding ? (
           <span
             aria-hidden
-            title="Deciding"
+            title={t('gameCore.deciding')}
             style={{
               width: 10,
               height: 10,
@@ -801,6 +804,7 @@ function RailChip({
   /** The 1-9 key that focuses this board (null for a tombstone). Shown as a badge on desktop. */
   keyIndex?: number | null
 }) {
+  const { t } = useTranslation()
   const responsive = useResponsiveContext()
   const gameState = useGameStore(selectGameState)
   const viewOpponent = useGameStore((state) => state.viewOpponent)
@@ -1102,7 +1106,7 @@ function RailChip({
         {isActiveTurn && !tomb && (
           <span
             aria-hidden
-            title="Active turn"
+            title={t('gameCore.activeTurn')}
             style={{
               color: seat.bright,
               fontSize: sz.marker,
@@ -1164,7 +1168,7 @@ function RailChip({
               {opponent.name}
             </span>
             {isViewed && viewPinned && !spectatorMode && (
-              <span aria-hidden title="Pinned — follow-the-action paused" style={{ flexShrink: 0 }}>📌</span>
+              <span aria-hidden title={t('gameCore.pinnedActionPaused')} style={{ flexShrink: 0 }}>📌</span>
             )}
           </span>
         )}
@@ -1235,7 +1239,7 @@ function RailChip({
         )}
 
         {!tomb && (opponent.radCounters ?? 0) > 0 && (
-          <span title="Radiation: at this player's precombat main phase, they mill this many cards. Each nonland costs 1 life and removes a rad counter."
+          <span title={t('gameCore.radiationHint')}
             style={{ fontSize: 11, fontWeight: 800, color: '#a3e635' }}>☢{opponent.radCounters}</span>
         )}
         {/* Energy (CR 107.14) */}
@@ -1308,7 +1312,7 @@ function RailChip({
         ) : hasPriority && !isActiveTurn ? (
           <span
             aria-hidden
-            title="Holding priority"
+            title={t('gameCore.holdingPriority')}
             style={{
               width: 6,
               height: 6,

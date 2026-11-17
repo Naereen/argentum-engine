@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore'
 
 const NOTICE_MS = 6500
@@ -29,16 +30,23 @@ export function InitiativeResultNoticeContent({
   topOffset?: number
   onDismiss?: () => void
 }) {
+  const { t } = useTranslation()
   if (!notice) return null
 
   const explorerWon = notice.outcome === 'explorerWon'
   const accent = explorerWon ? '#74d99f' : '#f0a15a'
   const headline = explorerWon
-    ? `${notice.explorerIsYou ? 'You' : notice.explorerName} won initiative`
-    : 'Encounter won initiative'
+    ? notice.explorerIsYou
+      ? t('gameCore.initiativeYouWon')
+      : t('gameCore.initiativePlayerWon', { playerName: notice.explorerName })
+    : t('gameCore.initiativeEncounterWon')
   const detail = explorerWon
-    ? `${notice.explorerIsYou ? 'You may' : `${notice.explorerName} may`} fight or flee freely.`
-    : `${notice.explorerIsYou ? 'Your' : `${notice.explorerName}’s`} turn ends.`
+    ? notice.explorerIsYou
+      ? t('gameCore.initiativeYouMay')
+      : t('gameCore.initiativePlayerMay', { playerName: notice.explorerName })
+    : notice.explorerIsYou
+      ? t('gameCore.initiativeYourTurnEnds')
+      : t('gameCore.initiativePlayerTurnEnds', { playerName: notice.explorerName })
 
   return (
     <div
@@ -66,13 +74,13 @@ export function InitiativeResultNoticeContent({
         cursor: 'pointer',
         animation: 'initiativeResultNoticeIn 240ms ease-out',
       }}
-      title="Dismiss initiative result"
+      title={t('gameCore.dismissInitiativeResult')}
     >
       <span aria-hidden style={{ fontSize: 10, lineHeight: 1, color: accent, fontWeight: 900, letterSpacing: '0.04em' }}>INIT</span>
       <span style={{ display: 'grid', gap: 3, minWidth: 0 }}>
         <span style={{ color: accent, fontSize: 15, fontWeight: 800, letterSpacing: '0.01em' }}>{headline}</span>
         <span style={{ fontSize: 12, opacity: 0.9 }}>{detail}</span>
-        {notice.rolls && <span style={{ fontSize: 11, opacity: 0.72 }}>Rolls: {notice.rolls}</span>}
+        {notice.rolls && <span style={{ fontSize: 11, opacity: 0.72 }}>{t('gameCore.initiativeRolls', { rolls: notice.rolls })}</span>}
       </span>
       <style>{`
         @keyframes initiativeResultNoticeIn {

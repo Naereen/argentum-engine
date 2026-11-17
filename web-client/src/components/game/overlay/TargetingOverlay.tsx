@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import { selectIsMultiplayerGame } from '@/store/selectors.ts'
 import type { ClientCard, EntityId } from '@/types'
@@ -525,6 +526,7 @@ function ZoneCardTargetingOverlay({
  * Handles graveyard targeting, sacrifice selection, and normal targeting.
  */
 export function TargetingOverlay() {
+  const { t } = useTranslation()
   const targetingState = useGameStore((state) => state.targetingState)
   const interactionEpoch = useGameStore((state) => state.interactionEpoch)
   const cancelTargeting = useGameStore((state) => state.cancelTargeting)
@@ -729,7 +731,7 @@ export function TargetingOverlay() {
       }}
     >
       <div
-        aria-label="Drag to move"
+        aria-label={t('decisions.dragToMove')}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -794,7 +796,7 @@ export function TargetingOverlay() {
             fontSize: responsive.fontSize.small,
           }}
         >
-          <span style={{ color: '#aaa' }}>You pay</span>
+          <span style={{ color: '#aaa' }}>{t('gameCore.youPay')}</span>
           <span style={{ display: 'inline-flex', gap: 2, opacity: costAfterSacrifice ? 0.45 : 1 }}>
             {parseManaCost(costBeforeSacrifice!).map((symbol, i) => (
               <ManaSymbol key={i} symbol={symbol} size={16} />

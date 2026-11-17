@@ -9,7 +9,7 @@ describe('Otaria table overview layout', () => {
     expect(otariaOverviewMapPosition(true, 2, 2)).toBe('center')
     expect(otariaOverviewMapPosition(true, 3, 2)).toBe('right')
     expect(otariaOverviewMapPosition(false, 2, 2)).toBeNull()
-    expect(otariaOverviewMapPosition(true, 1, 1)).toBeNull()
+    expect(otariaOverviewMapPosition(true, 0, 1)).toBeNull()
     expect(otariaOverviewMapPosition(true, 3, 3)).toBeNull()
   })
 

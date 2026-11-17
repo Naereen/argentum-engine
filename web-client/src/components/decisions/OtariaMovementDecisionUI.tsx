@@ -5,6 +5,7 @@ import { OtariaMap } from '../game/overlay/OtariaBoard'
 import type { OtariaMapChoice } from '../game/overlay/OtariaBoard'
 import styles from './DecisionUI.module.css'
 import movementStyles from './OtariaMovementDecisionUI.module.css'
+import { useTranslation } from 'react-i18next'
 
 /** Only the server-provided options become selectable hexes. */
 export function otariaMovementChoices(
@@ -42,6 +43,7 @@ export function OtariaMovementDecisionUI({
   board: ClientOtariaState
   choices: OtariaMapChoice[]
 }) {
+  const { t } = useTranslation()
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [zoomed, setZoomed] = useState(false)
   const submitOptionDecision = useGameStore((state) => state.submitOptionDecision)
@@ -80,10 +82,10 @@ export function OtariaMovementDecisionUI({
         }}
       >
         <h2 id="otaria-movement-title">{decision.prompt}</h2>
-        <p>Choose a highlighted destination on the map, then confirm.</p>
-        <div className={movementStyles.viewControls} role="group" aria-label="Map view">
-          <button type="button" aria-pressed={zoomed} onClick={() => setZoomed(true)}>Zoom!</button>
-          <button type="button" aria-pressed={!zoomed} onClick={() => setZoomed(false)}>Full map</button>
+        <p>{t('otaria.movementPrompt')}</p>
+        <div className={movementStyles.viewControls} role="group" aria-label={t('otaria.mapView')}>
+          <button type="button" aria-pressed={zoomed} onClick={() => setZoomed(true)}>{t('otaria.zoom')}</button>
+          <button type="button" aria-pressed={!zoomed} onClick={() => setZoomed(false)}>{t('otaria.fullMap')}</button>
         </div>
         <div className={movementStyles.map}>
           <OtariaMap
@@ -95,7 +97,7 @@ export function OtariaMovementDecisionUI({
             onChoose={setSelectedIndex}
           />
         </div>
-        <p aria-live="polite">{selected?.label ?? 'No destination selected'}</p>
+        <p aria-live="polite">{selected?.label ?? t('otaria.noDestination')}</p>
         <button
           type="button"
           className={styles.confirmButton}
@@ -104,7 +106,7 @@ export function OtariaMovementDecisionUI({
             if (selectedIndex != null) submitOptionDecision(decision.id, selectedIndex)
           }}
         >
-          Confirm move
+          {t('otaria.confirmMove')}
         </button>
       </div>
     </div>

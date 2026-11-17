@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore'
 import { usePreferences } from '@/store/preferencesStore'
 import styles from './TriggerOrderNotice.module.css'
@@ -18,6 +19,7 @@ const CONFIRM_MS = 3200
  * The abilities are already on the stack, so "Always let me order" applies from the next ones on.
  */
 export function TriggerOrderNotice({ topOffset = 0 }: { topOffset?: number }) {
+  const { t } = useTranslation()
   const notice = useGameStore((s) => s.triggerOrderNotice)
   const dismiss = useGameStore((s) => s.dismissTriggerOrderNotice)
   // The forced-answer notice owns the slot right under the top bar; sit below it while it's up.
@@ -48,8 +50,8 @@ export function TriggerOrderNotice({ topOffset = 0 }: { topOffset?: number }) {
       <div role="status" aria-live="polite" className={`${styles.notice} ${styles.done}`} style={{ top }} onClick={dismiss}>
         <span className={styles.icon} aria-hidden>✓</span>
         <span className={styles.text}>
-          <span className={styles.headline}>You’ll choose the order from now on</span>
-          <span className={styles.detail}>Switch back under Order my triggers automatically in Preferences → Gameplay.</span>
+          <span className={styles.headline}>{t('gameCore.triggerOrderConfirmed')}</span>
+          <span className={styles.detail}>{t('gameCore.triggerOrderPreferencesHint')}</span>
         </span>
       </div>
     )
@@ -74,18 +76,18 @@ export function TriggerOrderNotice({ topOffset = 0 }: { topOffset?: number }) {
       <span className={styles.icon} aria-hidden>⇅</span>
       <span className={styles.text}>
         <span className={styles.headline}>
-          Your {notice.count} triggers went on the stack in the order they triggered
+          {t('gameCore.triggerOrderHeadline', { count: notice.count })}
         </span>
         <span className={styles.detail}>
-          Switch to Full Control whenever you want to choose the order yourself.
+          {t('gameCore.triggerOrderHint')}
         </span>
       </span>
       <span className={styles.actions}>
         <button type="button" className={styles.secondary} onClick={dismiss}>
-          Got it
+          {t('gameCore.gotIt')}
         </button>
         <button type="button" className={styles.primary} onClick={chooseOrder}>
-          Always let me order
+          {t('gameCore.alwaysLetMeOrder')}
         </button>
       </span>
     </div>

@@ -14,9 +14,10 @@
  * against the card registry, re-checks capacity, and remains the authority on both.
  */
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { SharedCube } from '@/api/account'
 import { CubeEditor } from '@/components/cube/CubeEditor'
-import { boosterStyleInfo, cubeLobbyUpdate, isBoosterStyle } from '@/components/cube/cubeModel'
+import { cubeLobbyUpdate, isBoosterStyle } from '@/components/cube/cubeModel'
 import { type UnifiedCube, useUnifiedCubes } from '@/store/useUnifiedCubes'
 import type { LobbySettings } from '@/types/messages'
 import styles from './CubePanel.module.css'
@@ -40,6 +41,7 @@ function usesSharedPool(format: string): boolean {
 }
 
 export function CubePanel({ settings, playerCount, updateLobbySettings }: CubePanelProps) {
+  const { t } = useTranslation()
   const { cubes, loading, removeCube } = useUnifiedCubes()
   const [showLibrary, setShowLibrary] = useState(false)
   const [editing, setEditing] = useState<{ cube: UnifiedCube | null } | null>(null)
@@ -78,10 +80,10 @@ export function CubePanel({ settings, playerCount, updateLobbySettings }: CubePa
     if (!activeCubeName) return null
     if (settings.format === 'PREMADE_DECKS') return null
     if (settings.cubePoolPlay && settings.format === 'SEALED') {
-      return { ok: true, text: `${cubeCards} cards — every player builds from all of them` }
+      return { ok: true, text: t('lobby.cubeCapacitySealed', { count: cubeCards }) }
     }
     if (printsBoosters) {
-      return { ok: true, text: `Packs are printed by rarity like a real set, so the cube never runs out` }
+      return { ok: true, text: t('lobby.cubeCapacityBoosters') }
     }
     const shared = usesSharedPool(settings.format)
     const seats = Math.max(2, playerCount)
@@ -91,19 +93,48 @@ export function CubePanel({ settings, playerCount, updateLobbySettings }: CubePa
       return {
         ok: false,
         text: shared
-          ? `${settings.boosterCount} packs × ${packSize} = ${cardsNeeded} cards needed, cube has ${cubeCards}`
-          : `${seats} players × ${settings.boosterCount} packs × ${packSize} = ${cardsNeeded} cards needed, cube has ${cubeCards}`,
+          ? t('lobby.cubeCapacityShortShared', {
+              packs: settings.boosterCount,
+              packSize,
+              needed: cardsNeeded,
+              available: cubeCards,
+            })
+          : t('lobby.cubeCapacityShortPlayers', {
+              players: seats,
+              packs: settings.boosterCount,
+              packSize,
+              needed: cardsNeeded,
+              available: cubeCards,
+            }),
       }
     }
     if (shared) {
-      return { ok: true, text: `${cubeCards} cards — enough for ${settings.boosterCount}×${packSize} at this table` }
+      return {
+        ok: true,
+        text: t('lobby.cubeCapacityEnoughShared', {
+          count: cubeCards,
+          packs: settings.boosterCount,
+          packSize,
+        }),
+      }
     }
     const maxSeats = Math.floor(cubeCards / (settings.boosterCount * packSize))
     return {
       ok: true,
-      text: `${cubeCards} cards — seats ${maxSeats} player${maxSeats === 1 ? '' : 's'} at ${settings.boosterCount}×${packSize}`,
+      text: t('lobby.cubeCapacityEnoughPlayers', {
+        count: cubeCards,
+        players: maxSeats,
+        packs: settings.boosterCount,
+        packSize,
+      }),
     }
-  }, [activeCubeName, cubeCards, packSize, printsBoosters, playerCount, settings.boosterCount, settings.format, settings.cubePoolPlay])
+  }, [activeCubeName, cubeCards, packSize, printsBoosters, playerCount, settings.boosterCount, settings.format, settings.cubePoolPlay, t])
+
+  const boosterLabel = boosterStyle === 'PLAY_BOOSTER'
+    ? t('lobby.playBoosters')
+    : boosterStyle === 'DRAFT_BOOSTER'
+      ? t('lobby.draftBoosters')
+      : t('lobby.shuffledCube')
 
   return (
     <div className={styles.panel}>
@@ -113,11 +144,11 @@ export function CubePanel({ settings, playerCount, updateLobbySettings }: CubePa
             <span className={styles.cubeName}>{activeCubeName}</span>
             <span className={styles.meta}>
               {cubeCards} cards ·{' '}
-              {printsBoosters ? boosterStyleInfo(boosterStyle).label : `${packSize}-card packs`}
+              {printsBoosters ? boosterLabel : t('lobby.cardsPerPack', { count: packSize })}
             </span>
           </>
         ) : (
-          <span className={styles.meta}>Choose a saved cube or create a new one.</span>
+          <span className={styles.meta}>{t('lobby.chooseOrCreateCube')}</span>
         )}
       </div>
 
@@ -127,14 +158,14 @@ export function CubePanel({ settings, playerCount, updateLobbySettings }: CubePa
 
       <div className={styles.actions}>
         <button type="button" className={styles.button} onClick={() => setShowLibrary((v) => !v)}>
-          {showLibrary ? 'Hide cubes' : activeCubeName ? 'Change cube' : 'Choose cube'}
+          {showLibrary ? t('lobby.hideCubes') : activeCubeName ? t('lobby.changeCube') : t('lobby.chooseCube')}
         </button>
         <button type="button" className={styles.button} onClick={() => setEditing({ cube: null })}>
-          New cube
+          {t('lobby.newCube')}
         </button>
         {activeCube && (
           <button type="button" className={styles.button} onClick={() => setEditing({ cube: activeCube })}>
-            Edit {activeCube.name}
+            {t('lobby.editCube', { name: activeCube.name })}
           </button>
         )}
       </div>
@@ -142,10 +173,10 @@ export function CubePanel({ settings, playerCount, updateLobbySettings }: CubePa
       {showLibrary && (
         <>
           {loading && cubes.length === 0 ? (
-            <p className={styles.empty}>Loading cubes…</p>
+            <p className={styles.empty}>{t('lobby.loadingCubes')}</p>
           ) : cubes.length === 0 ? (
             <p className={styles.empty}>
-              No saved cubes yet — “New cube” lets you paste a list or search for cards.
+              {t('lobby.noSavedCubes')}
             </p>
           ) : (
             <ul className={styles.library}>
@@ -158,16 +189,16 @@ export function CubePanel({ settings, playerCount, updateLobbySettings }: CubePa
                   >
                     <span className={styles.libraryName}>{cube.name}</span>
                     <span className={styles.libraryMeta}>
-                      {cube.online && <span className={styles.onlineBadge}>online</span>}
-                      {cube.cards.reduce((sum, e) => sum + e.count, 0)} cards
-                      {isBoosterStyle(cube.boosterStyle) && ` · ${boosterStyleInfo(cube.boosterStyle).label}`}
+                      {cube.online && <span className={styles.onlineBadge}>{t('lobby.online')}</span>}
+                      {t('lobby.cubeCardCount', { count: cube.cards.reduce((sum, e) => sum + e.count, 0) })}
+                      {isBoosterStyle(cube.boosterStyle) && ` · ${cube.boosterStyle === 'PLAY_BOOSTER' ? t('lobby.playBoosters') : t('lobby.draftBoosters')}`}
                     </span>
                   </button>
                   <button
                     type="button"
                     className={styles.iconButton}
-                    aria-label={`Edit ${cube.name}`}
-                    title={`Edit ${cube.name}`}
+                    aria-label={t('lobby.editCube', { name: cube.name })}
+                    title={t('lobby.editCube', { name: cube.name })}
                     onClick={() => setEditing({ cube })}
                   >
                     ✎
@@ -175,8 +206,8 @@ export function CubePanel({ settings, playerCount, updateLobbySettings }: CubePa
                   <button
                     type="button"
                     className={styles.iconButton}
-                    aria-label={`Delete ${cube.name}`}
-                    title={`Delete ${cube.name}`}
+                    aria-label={t('lobby.deleteCube', { name: cube.name })}
+                    title={t('lobby.deleteCube', { name: cube.name })}
                     onClick={() => void removeCube(cube)}
                   >
                     ×

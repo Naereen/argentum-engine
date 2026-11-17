@@ -3,6 +3,8 @@ import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { Color } from '@/types'
 import { OtariaPlaytestContents, readOtariaResponse, type OtariaPlaytestOptions } from './OtariaPlaytestPage'
+import { I18nextProvider } from 'react-i18next'
+import i18n from '@/i18n'
 
 vi.mock('@/components/admin/DevPage', () => ({ DevPage: () => null }))
 vi.mock('@/components/ui/PageShell', () => ({ pageStyles: {} }))
@@ -22,7 +24,7 @@ const options: OtariaPlaytestOptions = {
 }
 
 function render(overrides: Partial<Parameters<typeof OtariaPlaytestContents>[0]> = {}) {
-  return renderToStaticMarkup(<MemoryRouter><OtariaPlaytestContents
+  return renderToStaticMarkup(<I18nextProvider i18n={i18n}><MemoryRouter><OtariaPlaytestContents
     options={options} name="Explorer" onName={() => {}} opponents={2} onOpponents={() => {}}
     hostSeat={overrides.hostSeat ?? 0} onHostSeat={overrides.onHostSeat ?? (() => {})}
     color={Color.GREEN} onColor={() => {}} starting={false} onStart={() => {}} {...overrides}
@@ -35,7 +37,7 @@ function render(overrides: Partial<Parameters<typeof OtariaPlaytestContents>[0]>
     inviteUrl={overrides.inviteUrl ?? null} inviteSeat={overrides.inviteSeat ?? null}
     onInviteSeat={overrides.onInviteSeat ?? (() => {})} onJoinLobby={overrides.onJoinLobby ?? (() => {})}
     onReady={overrides.onReady ?? (() => {})} onStartLobby={overrides.onStartLobby ?? (() => {})}
-  /></MemoryRouter>)
+  /></MemoryRouter></I18nextProvider>)
 }
 
 describe('Otaria playtest launch panel', () => {

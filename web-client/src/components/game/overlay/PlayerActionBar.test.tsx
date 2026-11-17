@@ -14,6 +14,10 @@ vi.mock('@/store/gameStore.ts', () => ({
   }),
 }))
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}))
+
 const { PlayerActionBar } = await import('./PlayerActionBar')
 const offered: LegalActionInfo = {
   actionType: 'TakePlayerAction',

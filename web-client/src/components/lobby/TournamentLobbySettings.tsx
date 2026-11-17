@@ -18,12 +18,13 @@ import { BanListEditor } from '../ui/BanListEditor'
 import { CubePanel } from './CubePanel'
 import { SetSelector, nextRandomSetCode } from '../ui/SetSelector'
 import { SettingsLabel } from '../ui/SettingsLabel'
-import { COMMANDER_PRESETS, effectiveCommanderPreset } from './axes'
+import { effectiveCommanderPreset } from './axes'
 import type { UnifiedLobbyView } from './lobbyViewModel'
 import type { GroupId } from './settingsGroups'
-import { PICK_TIME_OPTIONS, pickTimeLabel } from './pickTime'
+import { PICK_TIME_OPTIONS } from './pickTime'
 import { JUMPSTART_SETS } from './jumpstartSets'
 import styles from '../ui/GameUI.module.css'
+import { useTranslation } from 'react-i18next'
 
 /**
  * The tournament-only rows belonging to one settings group.
@@ -54,6 +55,7 @@ export function TournamentLobbySettings({
   view: UnifiedLobbyView
   lobbyState: LobbyState
 }) {
+  const { t } = useTranslation()
   const updateLobbySettings = useGameStore((s) => s.updateLobbySettings)
 
   const s = lobbyState.settings
@@ -127,30 +129,30 @@ export function TournamentLobbySettings({
       {/* Team setup (2HG — CR 810; Team vs. Team — CR 808). */}
       {group === 'TABLE' && view.teams.mode !== 'NONE' && (
         <div className={styles.settingsRow}>
-          <SettingsLabel topicId="table-two-headed-giant">Teams</SettingsLabel>
+          <SettingsLabel topicId="table-two-headed-giant">{t('lobbySettings.teams')}</SettingsLabel>
           <div className={styles.variantGroup}>
             <div className={styles.settingsButtons}>
               <button
                 onClick={() => updateLobbySettings({ randomTeams: true })}
                 className={`${styles.settingsButton} ${view.teams.mode === 'RANDOM' ? styles.settingsButtonActive : ''}`}
-                title="Shuffle the players into two even teams when the game starts (re-rolled each game)"
+                title={t('lobbySettings.randomTeamsHint')}
               >
-                Random
+                {t('lobbySettings.random')}
               </button>
               <button
                 onClick={() => updateLobbySettings({ randomTeams: false })}
                 className={`${styles.settingsButton} ${view.teams.mode === 'MANUAL' ? styles.settingsButtonActive : ''}`}
-                title="Set the teams by hand — click each player's team chip below"
+                title={t('lobbySettings.manualTeamsHint')}
               >
-                Choose teams
+                {t('lobbySettings.chooseTeams')}
               </button>
             </div>
             <div className={styles.variantCaption}>
               {view.teams.mode === 'RANDOM'
-                ? 'Teams are randomised at game start, fresh every game.'
+                ? t('lobbySettings.randomTeamsDescription')
                 : view.teams.balanced
-                  ? 'Click a player’s team chip below to move them between teams.'
-                  : `Click each player’s team chip below — each team needs exactly ${view.teams.size} player${view.teams.size === 1 ? '' : 's'}.`}
+                  ? t('lobbySettings.movePlayerTeamHint')
+                  : t('lobbySettings.teamBalanceHint', { count: view.teams.size })}
             </div>
           </div>
         </div>
@@ -159,26 +161,26 @@ export function TournamentLobbySettings({
       {/* Free-for-All attack rule (CR 802/803) — only relevant once 3+ players share one table. */}
       {group === 'TABLE' && isFfa && (
         <div className={styles.settingsRow}>
-          <SettingsLabel topicId="table-free-for-all">Attack</SettingsLabel>
+          <SettingsLabel topicId="table-free-for-all">{t('lobbySettings.attack')}</SettingsLabel>
           <div className={styles.variantGroup}>
             <div className={styles.settingsButtons}>
               {([
-                ['LEFT', 'Left only', 'Each creature may attack only the player to your left (CR 803) — the default outside Commander'],
-                ['RIGHT', 'Right only', 'Each creature may attack only the player to your right (CR 803)'],
-                ['MULTIPLE', 'Any opponent', 'Each creature may attack any opponent (CR 802) — the Commander default'],
+                ['LEFT', 'lobbySettings.leftOnly', 'lobbySettings.attackLeftHint'],
+                ['RIGHT', 'lobbySettings.rightOnly', 'lobbySettings.attackRightHint'],
+                ['MULTIPLE', 'lobbySettings.anyOpponent', 'lobbySettings.attackAnyHint'],
               ] as const).map(([mode, label, title]) => (
                 <button
                   key={mode}
                   onClick={() => updateLobbySettings({ attackMode: mode })}
                   className={`${styles.settingsButton} ${(s.attackMode ?? 'LEFT') === mode ? styles.settingsButtonActive : ''}`}
-                  title={title}
+                  title={t(title)}
                 >
-                  {label}
+                  {t(label)}
                 </button>
               ))}
             </div>
             <div className={styles.variantCaption}>
-              Who each creature may attack. "Left"/"right" follow the seating order.
+              {t('lobbySettings.attackDescription')}
             </div>
           </div>
         </div>
@@ -189,7 +191,7 @@ export function TournamentLobbySettings({
       {group === 'CARDS' && !isPremade && (
         <div className={styles.settingsRow} style={{ alignItems: 'flex-start' }}>
           <span style={{ paddingTop: 7 }}>
-            <SettingsLabel topicId="cards-cube">Card source</SettingsLabel>
+            <SettingsLabel topicId="cards-cube">{t('lobbySettings.cardSource')}</SettingsLabel>
           </span>
           <div className={styles.cardSourceControl}>
             <div className={styles.settingsButtons}>
@@ -199,7 +201,7 @@ export function TournamentLobbySettings({
                 onClick={() => chooseCardSource('SETS')}
                 className={`${styles.settingsButton} ${cardSource === 'SETS' ? styles.settingsButtonActive : ''}`}
               >
-                Sets
+                {t('lobbySettings.sets')}
               </button>
               <button
                 type="button"
@@ -207,7 +209,7 @@ export function TournamentLobbySettings({
                 onClick={() => chooseCardSource('CUBE')}
                 className={`${styles.settingsButton} ${cardSource === 'CUBE' ? styles.settingsButtonActive : ''}`}
               >
-                Cube
+                {t('lobbySettings.cube')}
               </button>
             </div>
 
@@ -234,24 +236,24 @@ export function TournamentLobbySettings({
 
       {group === 'CARDS' && s.jumpstartEligible && (
         <div className={styles.settingsRow}>
-          <span className={styles.settingsLabel}>Jump In</span>
+          <span className={styles.settingsLabel}>{t('lobbySettings.jumpIn')}</span>
           <div className={styles.variantGroup}>
             <div className={styles.settingsButtons}>
               <button aria-pressed={s.useJumpstart !== false}
                 onClick={() => updateLobbySettings({ useJumpstart: true })}
                 className={`${styles.settingsButton} ${s.useJumpstart !== false ? styles.settingsButtonActive : ''}`}>
-                Choose themed packs
+                {t('lobbySettings.chooseThemedPacks')}
               </button>
               <button aria-pressed={s.useJumpstart === false}
                 onClick={() => updateLobbySettings({ useJumpstart: false })}
                 className={`${styles.settingsButton} ${s.useJumpstart === false ? styles.settingsButtonActive : ''}`}>
-                Traditional {isDraft ? 'draft' : 'sealed'}
+                {t(isDraft ? 'lobbySettings.traditionalDraft' : 'lobbySettings.traditionalSealed')}
               </button>
             </div>
             <p className={styles.variantCaption}>
               {s.useJumpstart !== false
-                ? 'Choose two themed 20-card packs, lands included. Your 40-card deck is ready to play. Only fully implemented published packs are offered.'
-                : 'Open regular boosters and build your deck using the selected draft or sealed format.'}
+                ? t('lobbySettings.jumpInDescription')
+                : t('lobbySettings.traditionalDescription')}
             </p>
           </div>
         </div>
@@ -261,7 +263,7 @@ export function TournamentLobbySettings({
           rather than hunting for them in the full set list above. */}
       {group === 'CARDS' && s.jumpstartActive && (
         <div className={styles.settingsRow}>
-          <SettingsLabel topicId="cards-jump-in">Packs from</SettingsLabel>
+          <SettingsLabel topicId="cards-jump-in">{t('lobbySettings.packsFrom')}</SettingsLabel>
           <div className={styles.settingsButtons}>
             {JUMPSTART_SETS.filter((j) => allSets.some((set) => set.code === j.code)).map((j) => (
               <button
@@ -282,28 +284,28 @@ export function TournamentLobbySettings({
       {/* Pool Play (cube Sealed only): no draft at all — everyone builds from the whole cube. */}
       {group === 'CARDS' && isCube && isSealed && (
         <div className={styles.settingsRow}>
-          <SettingsLabel topicId="cube-pool-play">Card pool</SettingsLabel>
+          <SettingsLabel topicId="cube-pool-play">{t('lobbySettings.cardPool')}</SettingsLabel>
           <div className={styles.variantGroup}>
             <div className={styles.settingsButtons}>
               <button
                 onClick={() => updateLobbySettings({ cubePoolPlay: false })}
                 className={`${styles.settingsButton} ${!s.cubePoolPlay ? styles.settingsButtonActive : ''}`}
-                title="Deal each player their own sealed pool from the cube"
+                title={t('lobbySettings.sealedPacksHint')}
               >
-                Sealed packs
+                {t('lobbySettings.sealedPacks')}
               </button>
               <button
                 onClick={() => updateLobbySettings({ cubePoolPlay: true })}
                 className={`${styles.settingsButton} ${s.cubePoolPlay ? styles.settingsButtonActive : ''}`}
-                title="Pool Play: every player builds from the entire cube, up to 4 copies of any card"
+                title={t('lobbySettings.poolPlayHint')}
               >
-                Pool Play
+                {t('lobbySettings.poolPlay')}
               </button>
             </div>
             <div className={styles.variantCaption}>
               {s.cubePoolPlay
-                ? 'Every player builds from the whole cube at once, up to 4 copies of any card. Nothing is dealt, so the cube can be any size and no two players compete for a card.'
-                : 'Each player opens their own packs dealt from the cube. No card appears twice across the table.'}
+                ? t('lobbySettings.poolPlayDescription')
+                : t('lobbySettings.sealedCubeDescription')}
             </div>
           </div>
         </div>
@@ -314,26 +316,26 @@ export function TournamentLobbySettings({
           {/* Chaos boosters — only meaningful with >1 set and a booster-based format. */}
           {!isGridDraft && s.setCodes.length > 1 && (
             <div className={styles.settingsRow}>
-              <span className={styles.settingsLabel}>Booster mix</span>
+              <span className={styles.settingsLabel}>{t('lobbySettings.boosterMix')}</span>
               <div className={styles.variantGroup}>
                 <div className={styles.settingsButtons}>
                   <button
                     onClick={() => updateLobbySettings({ chaosBoosters: false })}
                     className={`${styles.settingsButton} ${!s.chaosBoosters ? styles.settingsButtonActive : ''}`}
                   >
-                    Per set
+                    {t('lobbySettings.perSet')}
                   </button>
                   <button
                     onClick={() => updateLobbySettings({ chaosBoosters: true })}
                     className={`${styles.settingsButton} ${s.chaosBoosters ? styles.settingsButtonActive : ''}`}
                   >
-                    Chaos
+                    {t('lobbySettings.chaos')}
                   </button>
                 </div>
                 <div className={styles.variantCaption}>
                   {s.chaosBoosters
-                    ? 'Each booster mixes cards from all selected sets.'
-                    : 'Each booster contains cards from a single set.'}
+                    ? t('lobbySettings.chaosBoosterDescription')
+                    : t('lobbySettings.perSetBoosterDescription')}
                 </div>
               </div>
             </div>
@@ -352,7 +354,7 @@ export function TournamentLobbySettings({
       {group === 'CARDS' && !s.jumpstartActive && !isPremade && !isGridDraft && !isPoolPlay && (
         perSetCounts ? (
           <div className={styles.settingsRow} style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
-            <span className={styles.settingsLabel}>{boosterCountLabel(isWinston, countsPacks)}</span>
+            <span className={styles.settingsLabel}>{t(isWinston ? 'lobbySettings.boostersTotal' : countsPacks ? 'lobbySettings.packsPerPlayer' : 'lobbySettings.boostersPerPlayer')}</span>
             <div className={styles.boosterDistribution}>
               {s.setCodes.map((code) => {
                 const setName = s.setNames[s.setCodes.indexOf(code)] ?? code
@@ -385,17 +387,19 @@ export function TournamentLobbySettings({
                 )
               })}
               <div className={styles.boosterDistributionTotal}>
-                <span style={{ flex: 1 }}>Total</span>
+                <span style={{ flex: 1 }}>{t('lobbySettings.total')}</span>
                 <span className={styles.boosterDistributionTotalCount}>
                   {Object.values(s.boosterDistribution).reduce((a, b) => a + b, 0)}
-                  {countsPacks ? ' packs' : ' boosters'}
+                  {countsPacks ? ` ${t('lobbySettings.packs')}` : ` ${t('lobbySettings.boosters')}`}
                 </span>
               </div>
             </div>
           </div>
         ) : (
           <div className={styles.settingsRow}>
-            <span className={styles.settingsLabel}>{boosterCountLabel(isWinston, countsPacks)}</span>
+            <span className={styles.settingsLabel}>
+              {t(isWinston ? 'lobbySettings.boostersTotal' : countsPacks ? 'lobbySettings.packsPerPlayer' : 'lobbySettings.boostersPerPlayer')}
+            </span>
             <select
               value={s.boosterCount}
               onChange={(e) => updateLobbySettings({ boosterCount: Number(e.target.value) })}
@@ -412,19 +416,19 @@ export function TournamentLobbySettings({
       {/* Draft timing and pick size. */}
       {group === 'CARDS' && !s.jumpstartActive && isAnyDraft && (
         <div className={styles.settingsRow}>
-          <span className={styles.settingsLabel}>{isWinston ? 'Turn timer' : 'Pick timer'}</span>
+          <span className={styles.settingsLabel}>{t(isWinston ? 'lobbySettings.turnTimer' : 'lobbySettings.pickTimer')}</span>
           <select
             value={s.pickTimeSeconds}
             onChange={(e) => updateLobbySettings({ pickTimeSeconds: Number(e.target.value) })}
             className={styles.settingsSelect}
           >
-            {PICK_TIME_OPTIONS.map((n) => <option key={n} value={n}>{pickTimeLabel(n)}</option>)}
+            {PICK_TIME_OPTIONS.map((n) => <option key={n} value={n}>{n === 0 ? t('lobbySettings.noLimit') : t('lobbySettings.seconds', { count: n })}</option>)}
           </select>
         </div>
       )}
       {group === 'CARDS' && (isDraft || isCommanderDraft) && (
         <div className={styles.settingsRow}>
-          <span className={styles.settingsLabel}>Cards per pick</span>
+          <span className={styles.settingsLabel}>{t('lobbySettings.cardsPerPick')}</span>
           <div className={styles.settingsButtons}>
             {[1, 2].map((n) => (
               <button
@@ -443,7 +447,7 @@ export function TournamentLobbySettings({
       {group === 'RULES' && isPoolBuiltCommander && (
         <>
           <div className={styles.settingsRow}>
-            <span className={styles.settingsLabel}>Preset</span>
+            <span className={styles.settingsLabel}>{t('lobbySettings.preset')}</span>
             <div className={styles.variantGroup}>
               <div className={styles.settingsButtons}>
                 {(['BRAWL', 'COMMANDER'] as const).map((preset) => (
@@ -452,9 +456,9 @@ export function TournamentLobbySettings({
                     onClick={() => updateLobbySettings({ commanderPreset: preset })}
                     disabled={podPreset}
                     className={`${styles.settingsButton} ${effectivePreset === preset ? styles.settingsButtonActive : ''}`}
-                    title={COMMANDER_PRESETS[preset].hint}
+                    title={t(preset === 'BRAWL' ? 'lobbySettings.brawlPresetHint' : 'lobbySettings.commanderPresetHint')}
                   >
-                    {COMMANDER_PRESETS[preset].label}
+                    {t(preset === 'BRAWL' ? 'lobbySettings.brawlPreset' : 'lobbySettings.commanderPreset')}
                   </button>
                 ))}
                 {/* The pod preset is the table's, not the host's — shown as the live selection, not a choice. */}
@@ -462,22 +466,21 @@ export function TournamentLobbySettings({
                   <button
                     disabled
                     className={`${styles.settingsButton} ${styles.settingsButtonActive}`}
-                    title={COMMANDER_PRESETS.POD.hint}
+                    title={t('lobbySettings.podPresetHint')}
                   >
-                    {COMMANDER_PRESETS.POD.label}
+                    {t('lobbySettings.podPreset')}
                   </button>
                 )}
               </div>
               {podPreset && (
                 <div className={styles.variantCaption}>
-                  A pod plays paper multiplayer Commander: 40 life each. The 25/30 presets only pace a
-                  1v1 bracket, so this table ignores them.
+                  {t('lobbySettings.podPresetDescription')}
                 </div>
               )}
             </div>
           </div>
           <div className={styles.settingsRow}>
-            <span className={styles.settingsLabel}>Min deck size</span>
+            <span className={styles.settingsLabel}>{t('lobbySettings.minDeckSize')}</span>
             <select
               value={s.deckSizeMin}
               onChange={(e) => updateLobbySettings({ deckSizeMin: Number(e.target.value) })}
@@ -487,21 +490,21 @@ export function TournamentLobbySettings({
             </select>
           </div>
           <div className={styles.settingsRow}>
-            <span className={styles.settingsLabel}>Singleton</span>
+            <span className={styles.settingsLabel}>{t('lobbySettings.singleton')}</span>
             <div className={styles.settingsButtons}>
               <button
                 onClick={() => updateLobbySettings({ allowDuplicates: true })}
                 className={`${styles.settingsButton} ${s.allowDuplicates ? styles.settingsButtonActive : ''}`}
-                title="Allow multiple copies of the same card (drafted Commander default)"
+                title={t('lobbySettings.duplicatesHint')}
               >
-                Duplicates OK
+                {t('lobbySettings.duplicatesOk')}
               </button>
               <button
                 onClick={() => updateLobbySettings({ allowDuplicates: false })}
                 className={`${styles.settingsButton} ${!s.allowDuplicates ? styles.settingsButtonActive : ''}`}
-                title="Paper-Commander singleton — max 1 of any non-basic card"
+                title={t('lobbySettings.singletonHint')}
               >
-                Singleton
+                {t('lobbySettings.singleton')}
               </button>
             </div>
           </div>
@@ -513,28 +516,28 @@ export function TournamentLobbySettings({
       {group === 'RULES' && !isPremade && !s.jumpstartActive && !isPoolPlay &&
         !(isPoolBuiltCommander && !s.allowDuplicates) && (
         <div className={styles.settingsRow}>
-          <SettingsLabel topicId="limited-deckbuilding">Copy limit</SettingsLabel>
+          <SettingsLabel topicId="limited-deckbuilding">{t('lobbySettings.copyLimit')}</SettingsLabel>
           <div className={styles.variantGroup}>
             <div className={styles.settingsButtons}>
               <button
                 onClick={() => updateLobbySettings({ limitedCopyLimit: false })}
                 className={`${styles.settingsButton} ${!s.limitedCopyLimit ? styles.settingsButtonActive : ''}`}
-                title="Play every copy you opened or drafted"
+                title={t('lobbySettings.noCopyLimitHint')}
               >
-                None
+                {t('lobbySettings.none')}
               </button>
               <button
                 onClick={() => updateLobbySettings({ limitedCopyLimit: true })}
                 className={`${styles.settingsButton} ${s.limitedCopyLimit ? styles.settingsButtonActive : ''}`}
-                title="At most 4 copies of any card other than basic lands"
+                title={t('lobbySettings.maxFourCopiesHint')}
               >
-                Max 4
+                {t('lobbySettings.maxFour')}
               </button>
             </div>
             <div className={styles.variantCaption}>
               {s.limitedCopyLimit
-                ? 'At most 4 copies of any card other than basic lands, like constructed.'
-                : 'Play as many copies of a card as you opened or drafted.'}
+                ? t('lobbySettings.maxFourDescription')
+                : t('lobbySettings.noCopyLimitDescription')}
             </div>
           </div>
         </div>
@@ -550,42 +553,42 @@ export function TournamentLobbySettings({
       {group === 'EVENT' && view.axes.event === 'ROUND_ROBIN' && (
         <>
           <div className={styles.settingsRow}>
-            <SettingsLabel topicId="best-of-three">Match</SettingsLabel>
+            <SettingsLabel topicId="best-of-three">{t('lobbySettings.match')}</SettingsLabel>
             <div className={styles.variantGroup}>
               <div className={styles.settingsButtons}>
                 <button
                   onClick={() => updateLobbySettings({ bestOf: 1 })}
                   className={`${styles.settingsButton} ${(s.bestOf ?? 1) < 3 ? styles.settingsButtonActive : ''}`}
-                  title="Each match is a single game"
+                  title={t('lobbySettings.bestOfOneHint')}
                 >
-                  Best of 1
+                  {t('lobbySettings.bestOfOne')}
                 </button>
                 <button
                   onClick={() => updateLobbySettings({ bestOf: 3 })}
                   className={`${styles.settingsButton} ${(s.bestOf ?? 1) >= 3 ? styles.settingsButtonActive : ''}`}
-                  title="First to two game wins takes the match"
+                  title={t('lobbySettings.bestOfThreeHint')}
                   data-testid="lobby-best-of-3"
                 >
-                  Best of 3
+                  {t('lobbySettings.bestOfThree')}
                 </button>
               </div>
               <div className={styles.variantCaption}>
                 {(s.bestOf ?? 1) >= 3
                   ? s.allowsSideboarding === false
-                    ? 'First to two game wins. Decks stay as registered between games.'
-                    : 'First to two game wins. Players can sideboard between games.'
-                  : 'Each match is one game.'}
+                    ? t('lobbySettings.bestOfThreeNoSideboard')
+                    : t('lobbySettings.bestOfThreeSideboard')
+                  : t('lobbySettings.singleGameMatch')}
               </div>
             </div>
           </div>
           <div className={styles.settingsRow}>
-            <span className={styles.settingsLabel} title="How many separate matches each pair of players plays">Each pair meets</span>
+            <span className={styles.settingsLabel} title={t('lobbySettings.eachPairMeetsHint')}>{t('lobbySettings.eachPairMeets')}</span>
             <select
               value={s.gamesPerMatch ?? 1}
               onChange={(e) => updateLobbySettings({ gamesPerMatch: Number(e.target.value) })}
               className={styles.settingsSelect}
             >
-              {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n === 1 ? 'Once' : n === 2 ? 'Twice' : `${n} times`}</option>)}
+              {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{t(n === 1 ? 'lobbySettings.once' : n === 2 ? 'lobbySettings.twice' : 'lobbySettings.times', { count: n })}</option>)}
             </select>
           </div>
         </>
@@ -593,21 +596,21 @@ export function TournamentLobbySettings({
 
       {group === 'LOBBY' && (
       <div className={styles.settingsRow}>
-        <span className={styles.settingsLabel} title="Lets players use Suggest Pick and Auto-build during this event">
-          AI assistance
+        <span className={styles.settingsLabel} title={t('lobbySettings.aiAssistanceHint')}>
+          {t('lobbySettings.aiAssistance')}
         </span>
         <div className={styles.settingsButtons}>
           <button
             onClick={() => updateLobbySettings({ aiAssistEnabled: false })}
             className={`${styles.settingsButton} ${!s.aiAssistEnabled ? styles.settingsButtonActive : ''}`}
           >
-            Off
+            {t('lobby.off')}
           </button>
           <button
             onClick={() => updateLobbySettings({ aiAssistEnabled: true })}
             className={`${styles.settingsButton} ${s.aiAssistEnabled ? styles.settingsButtonActive : ''}`}
           >
-            On
+            {t('lobbySettings.on')}
           </button>
         </div>
       </div>
@@ -615,11 +618,6 @@ export function TournamentLobbySettings({
 
     </>
   )
-}
-
-function boosterCountLabel(isWinston: boolean, countsPacks: boolean): string {
-  if (isWinston) return 'Boosters (total)'
-  return countsPacks ? 'Packs per player' : 'Boosters per player'
 }
 
 /** Team chip for the player list — colour-coded, and clickable for the host in manual mode. */
@@ -645,9 +643,10 @@ export function TeamChip({
     borderRadius: 4,
     padding: '1px 6px',
   }
-  const label = team === null ? 'Random' : `Team ${team + 1}`
+  const { t } = useTranslation()
+  const label = team === null ? t('lobbySettings.random') : t('lobbySettings.teamNumber', { count: team + 1 })
   return editable && team !== null ? (
-    <button onClick={onClick} style={{ ...style, cursor: 'pointer' }} title="Click to move this player to the other team">
+    <button onClick={onClick} style={{ ...style, cursor: 'pointer' }} title={t('lobbySettings.movePlayerToOtherTeam')}>
       {label}
     </button>
   ) : (

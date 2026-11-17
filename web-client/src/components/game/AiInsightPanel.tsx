@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import {
   AI_INSIGHT_ERROR,
@@ -27,6 +28,7 @@ import {
  * threshold an option had to clear to be taken at all.
  */
 export function AiInsightPanel() {
+  const { t } = useTranslation()
   const playerId = useGameStore((state) => state.playerId)
   const [available, setAvailable] = useState<boolean | null>(null)
   const [expanded, setExpanded] = useState(false)
@@ -106,9 +108,9 @@ export function AiInsightPanel() {
       <button
         onClick={() => setExpanded(true)}
         style={{ ...styles.toggleButton, ...(pending ? styles.toggleButtonHeld : null) }}
-        title={pending ? 'The AI is waiting for you' : 'Browse what the AI considered'}
+        title={pending ? t('gameCore.aiWaitingTitle') : t('gameCore.aiBrowseTitle')}
       >
-        {pending ? '⏸ AI waiting' : `AI Insight (${decisions.length})`}
+        {pending ? t('gameCore.aiWaiting') : t('gameCore.aiInsightCount', { count: decisions.length })}
       </button>
     )
   }
@@ -116,7 +118,7 @@ export function AiInsightPanel() {
   return (
     <div style={styles.panel}>
       <div style={styles.header}>
-        <span style={styles.headerTitle}>AI Insight</span>
+        <span style={styles.headerTitle}>{t('gameCore.aiInsightTitle')}</span>
         <div style={styles.headerActions}>
           <button
             style={{ ...styles.actionButton, ...(stepMode ? styles.actionButtonOn : null) }}
@@ -124,19 +126,19 @@ export function AiInsightPanel() {
             onClick={() => void run(() => setAiStepMode(playerId, !stepMode))}
             title={
               stepMode
-                ? 'The AI stops before each move it weighed. Click to let it play freely.'
-                : 'Stop the AI before each move it weighed, so you can inspect or replace it.'
+                ? t('gameCore.aiStepModeTitle')
+                : t('gameCore.aiStepModeOffTitle')
             }
           >
-            {stepMode ? '⏸ Stepping' : '▶ Playing'}
+            {stepMode ? t('gameCore.aiStepping') : t('gameCore.aiPlayingStatus')}
           </button>
           <button
             style={styles.actionButton}
             disabled={busy || !selected}
             onClick={() => void run(() => downloadAiInsightExport(playerId, selected?.id))}
-            title="Download this position and every rating the AI gave it"
+            title={t('gameCore.aiExportTitle')}
           >
-            Export
+            {t('gameCore.aiExport')}
           </button>
           <button
             style={styles.actionButton}
@@ -147,11 +149,11 @@ export function AiInsightPanel() {
                 setSelectedId(null)
               })
             }
-            title="Drop the recorded history for this game"
+            title={t('gameCore.aiClearTitle')}
           >
-            Clear
+            {t('gameCore.aiClear')}
           </button>
-          <button onClick={() => setExpanded(false)} style={styles.closeButton} title="Close">
+          <button onClick={() => setExpanded(false)} style={styles.closeButton} title={t('common.close')}>
             &times;
           </button>
         </div>
@@ -309,6 +311,7 @@ function OptionRow({
   busy: boolean
   onPlay: () => void
 }) {
+  const { t } = useTranslation()
   const unscored = option.score === null
   const advantage = option.advantage ?? 0
   const barWidth = unscored ? 0 : Math.min(100, (Math.abs(advantage) / maxMagnitude) * 100)
@@ -330,7 +333,7 @@ function OptionRow({
         <span style={styles.optionLabel} title={option.label}>
           {option.label}
         </span>
-        {option.chosen && <span style={styles.aiPickTag}>AI pick</span>}
+        {option.chosen && <span style={styles.aiPickTag}>{t('gameCore.aiPick')}</span>}
         {playedByHuman && <span style={styles.playedTag}>played</span>}
         <span
           style={{
@@ -346,9 +349,9 @@ function OptionRow({
             style={styles.playButton}
             disabled={busy}
             onClick={onPlay}
-            title="Submit this move instead of the AI's"
+            title={t('gameCore.aiPlayInstead')}
           >
-            Play
+            {t('gameCore.aiPlayInstead')}
           </button>
         )}
       </div>

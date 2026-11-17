@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import type { DecisionSelectionState } from '@/store/slices'
 import type { EntityId, SelectCardsDecision } from '@/types'
@@ -16,6 +17,7 @@ export function BattlefieldSelectionUI({
 }: {
   decision: SelectCardsDecision
 }) {
+  const { t } = useTranslation()
   const startDecisionSelection = useGameStore((s) => s.startDecisionSelection)
   const decisionSelectionState = useGameStore((s) => s.decisionSelectionState)
   const cancelDecisionSelection = useGameStore((s) => s.cancelDecisionSelection)
@@ -114,7 +116,7 @@ export function BattlefieldSelectionUI({
       ))}
 
       {(showSelectAll || showRecommended) && (
-        <div className={styles.quickSelectRow} role="group" aria-label="Quick select">
+        <div className={styles.quickSelectRow} role="group" aria-label={t('decisions.quickSelect')}>
           {showRecommended && (
             <button
               type="button"
@@ -138,7 +140,7 @@ export function BattlefieldSelectionUI({
               aria-pressed={isExactly(decision.options)}
               className={isExactly(decision.options) ? styles.quickSelectChipActive : styles.quickSelectChip}
             >
-              All
+              {t('decisions.selectAll')}
               <span className={styles.quickSelectCount}>{decision.options.length}</span>
             </button>
           )}
@@ -147,12 +149,12 @@ export function BattlefieldSelectionUI({
 
       {decision.selectionLimits != null && (
         <details style={{ marginTop: 8 }}>
-          <summary style={{ cursor: 'pointer', fontSize: 12 }}>Adjust allocations</summary>
+          <summary style={{ cursor: 'pointer', fontSize: 12 }}>{t('decisions.adjustAllocations')}</summary>
           <div style={{ maxHeight: '35vh', overflowY: 'auto', display: 'flex',
             flexDirection: 'column', gap: 6, marginTop: 6 }}>
             {decision.options.map((id) => (
               <CounterAllocationControls key={id} cardId={id} presentation="inline"
-                cardName={cards?.[id]?.name ?? decision.cardInfo?.[id]?.name ?? 'Permanent'} />
+                cardName={cards?.[id]?.name ?? decision.cardInfo?.[id]?.name ?? t('decisions.permanent')} />
             ))}
           </div>
         </details>

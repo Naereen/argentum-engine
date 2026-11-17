@@ -1,6 +1,7 @@
 import type { ClientCard, ClientGameState, DecisionContext, EntityId } from '@/types'
 import { getCardImageUrl } from '@/utils/cardImages.ts'
 import styles from './DecisionUI.module.css'
+import { useTranslation } from 'react-i18next'
 
 /**
  * The cards a decision prompt can illustrate itself with, resolved against the (already masked)
@@ -89,6 +90,7 @@ export function DecisionContextCards({ cards, showSourceBackFace = false }: {
    */
   showSourceBackFace?: boolean
 }) {
+  const { t } = useTranslation()
   if (!hasDecisionContextCards(cards)) return null
 
   const source = cards.source
@@ -110,14 +112,14 @@ export function DecisionContextCards({ cards, showSourceBackFace = false }: {
     <div className={styles.contextCards}>
       {cards.source && (
         <div className={styles.contextCard}>
-          {labelled && <p className={styles.contextCardLabel}>Source</p>}
+          {labelled && <p className={styles.contextCardLabel}>{t('decisions.source')}</p>}
           <ContextCardImage entry={cards.source} className={styles.contextCardImage} />
         </div>
       )}
 
       {backFace && (
         <div className={styles.contextCard}>
-          <p className={styles.contextCardLabelSubject}>Casts as</p>
+          <p className={styles.contextCardLabelSubject}>{t('decisions.castsAs')}</p>
           <ContextCardImage entry={backFace} className={styles.contextCardImageSubject} />
           <p className={styles.contextCardName}>{backFace.card.name}</p>
         </div>
@@ -125,14 +127,14 @@ export function DecisionContextCards({ cards, showSourceBackFace = false }: {
 
       {cards.triggering && (
         <div className={styles.contextCard}>
-          <p className={styles.contextCardLabel}>Triggered by</p>
+          <p className={styles.contextCardLabel}>{t('decisions.triggeredBy')}</p>
           <ContextCardImage entry={cards.triggering} className={styles.contextCardImageSecondary} />
         </div>
       )}
 
       {cards.targets?.map((target, index) => (
         <div className={styles.contextCard} key={`${target.id}-${index}`}>
-          <p className={styles.contextCardLabel}>Target</p>
+          <p className={styles.contextCardLabel}>{t('decisions.target')}</p>
           {target.entry && <ContextCardImage entry={target.entry} className={styles.contextCardImageSecondary} />}
           <p className={styles.contextCardName}>{target.name}</p>
         </div>
@@ -140,7 +142,7 @@ export function DecisionContextCards({ cards, showSourceBackFace = false }: {
 
       {cards.subject && (
         <div className={styles.contextCard}>
-          <p className={styles.contextCardLabelSubject}>Deciding for</p>
+          <p className={styles.contextCardLabelSubject}>{t('decisions.decidingFor')}</p>
           <ContextCardImage entry={cards.subject} className={styles.contextCardImageSubject} />
           <p className={styles.contextCardName}>{cards.subject.card.name}</p>
         </div>

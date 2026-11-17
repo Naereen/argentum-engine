@@ -50,7 +50,6 @@ import {
   offersAiAssist,
 } from '../lobby/playModes'
 import type { LobbyRecipe } from '../lobby/lobbyRecipe'
-import { AI_DISABLED_ON_SERVER } from '../lobby/modeMatrix'
 import { defaultSetCode } from '../lobby/useApplyRecipe'
 import { JUMPSTART_SETS } from '../lobby/jumpstartSets'
 import { SetPickerModal } from './SetPickerModal'
@@ -61,9 +60,66 @@ import { LaunchDeckChoice } from './LaunchDeckChoice'
 import { useStarterDecks, type StarterDeck } from '@/store/useStarterDecks'
 import type { UnifiedDeck } from '@/store/useUnifiedDecks'
 import styles from './PlayHub.module.css'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 
 const PLAY_PREFIX = '/play'
 const OPTIONS_STORAGE_KEY = 'argentum-play-options'
+
+function modeText(t: TFunction, mode: ModeId, field: 'label' | 'players' | 'caption' | 'description'): string {
+  switch (mode) {
+    case 'CONSTRUCTED':
+      return t(field === 'label' ? 'play.modes.constructed.label' : field === 'players' ? 'play.modes.constructed.players' : field === 'caption' ? 'play.modes.constructed.caption' : 'play.modes.constructed.description')
+    case 'JUMP_IN':
+      return t(field === 'label' ? 'play.modes.jumpIn.label' : field === 'players' ? 'play.modes.jumpIn.players' : field === 'caption' ? 'play.modes.jumpIn.caption' : 'play.modes.jumpIn.description')
+    case 'RANDOM':
+      return t(field === 'label' ? 'play.modes.random.label' : field === 'players' ? 'play.modes.random.players' : field === 'caption' ? 'play.modes.random.caption' : 'play.modes.random.description')
+    case 'MOMIR':
+      return t(field === 'label' ? 'play.modes.momir.label' : field === 'players' ? 'play.modes.momir.players' : field === 'caption' ? 'play.modes.momir.caption' : 'play.modes.momir.description')
+    case 'DRAFT':
+      return t(field === 'label' ? 'play.modes.draft.label' : field === 'players' ? 'play.modes.draft.players' : field === 'caption' ? 'play.modes.draft.caption' : 'play.modes.draft.description')
+    case 'SEALED':
+      return t(field === 'label' ? 'play.modes.sealed.label' : field === 'players' ? 'play.modes.sealed.players' : field === 'caption' ? 'play.modes.sealed.caption' : 'play.modes.sealed.description')
+    case 'FREE_FOR_ALL':
+      return t(field === 'label' ? 'play.modes.freeForAll.label' : field === 'players' ? 'play.modes.freeForAll.players' : field === 'caption' ? 'play.modes.freeForAll.caption' : 'play.modes.freeForAll.description')
+    case 'TWO_HEADED_GIANT':
+      return t(field === 'label' ? 'play.modes.twoHeadedGiant.label' : field === 'players' ? 'play.modes.twoHeadedGiant.players' : field === 'caption' ? 'play.modes.twoHeadedGiant.caption' : 'play.modes.twoHeadedGiant.description')
+    case 'TEAM_VS_TEAM':
+      return t(field === 'label' ? 'play.modes.teamVsTeam.label' : field === 'players' ? 'play.modes.teamVsTeam.players' : field === 'caption' ? 'play.modes.teamVsTeam.caption' : 'play.modes.teamVsTeam.description')
+    case 'COMMANDER':
+      return t(field === 'label' ? 'play.modes.commander.label' : field === 'players' ? 'play.modes.commander.players' : field === 'caption' ? 'play.modes.commander.caption' : 'play.modes.commander.description')
+  }
+}
+
+function stageText(t: TFunction, stage: string): string {
+  switch (stage) {
+    case 'Players join': return t('play.stages.playersJoin')
+    case 'Choose a deck': return t('play.stages.chooseDeck')
+    case 'Get a deck': return t('play.stages.getDeck')
+    case 'Pick 2 packs': return t('play.stages.pickTwoPacks')
+    case 'Open boosters': return t('play.stages.openBoosters')
+    case 'Build 40': return t('play.stages.buildForty')
+    case 'Winston draft': return t('play.stages.winstonDraft')
+    case 'Grid draft': return t('play.stages.gridDraft')
+    case 'Draft': return t('play.stages.draft')
+    case 'Play': return t('play.stages.play')
+    case 'Play the match': return t('play.stages.playMatch')
+    case 'Everyone plays everyone': return t('play.stages.everyonePlaysEveryone')
+    case 'Standings': return t('play.stages.standings')
+    case 'One shared game': return t('play.stages.oneSharedGame')
+    default: return stage
+  }
+}
+
+function launchText(t: TFunction, label: string): string {
+  switch (label) {
+    case 'Create lobby': return t('play.launch.createLobby')
+    case 'Open public lobby': return t('play.launch.openPublicLobby')
+    case 'Start draft': return t('play.launch.startDraft')
+    case 'Open boosters': return t('play.launch.openBoosters')
+    default: return t('play.launch.play')
+  }
+}
 
 export function PlayHub({
   aiEnabled,
@@ -78,6 +134,7 @@ export function PlayHub({
   /** Beside the catalogue heading — the invite-code field, which is not a mode but is a way in. */
   headerAction?: ReactNode
 }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const selected = pathname.startsWith(`${PLAY_PREFIX}/`)
@@ -104,15 +161,19 @@ export function PlayHub({
     <div className={styles.hub}>
       <section className={styles.catalog} aria-labelledby="play-heading">
         <div className={styles.catalogHeader}>
-          <h2 id="play-heading" className={styles.catalogHeading}>Pick a game</h2>
+          <h2 id="play-heading" className={styles.catalogHeading}>{t('play.pickGame')}</h2>
           {headerAction}
         </div>
         {MODE_GROUPS.map((group) => (
           <div key={group.id} className={styles.group}>
             <div className={styles.groupHeading}>
               <span className={styles.groupSwatch} data-group={group.id} aria-hidden />
-              <h3 className={styles.groupLabel}>{group.label}</h3>
-              <span className={styles.groupCaption}>{group.caption}</span>
+              <h3 className={styles.groupLabel}>
+                {t(group.id === 'NOW' ? 'play.group.now' : group.id === 'PACKS' ? 'play.group.packs' : 'play.group.table')}
+              </h3>
+              <span className={styles.groupCaption}>
+                {t(group.id === 'NOW' ? 'play.group.nowCaption' : group.id === 'PACKS' ? 'play.group.packsCaption' : 'play.group.tableCaption')}
+              </span>
             </div>
             <div className={styles.tiles}>
               {MODES.filter((m) => m.group === group.id).map((mode) => (
@@ -128,10 +189,10 @@ export function PlayHub({
                   <ModeIcon mode={mode.id} group={mode.group} />
                   <span className={styles.tileText}>
                     <span className={styles.tileTop}>
-                      <span className={styles.tileLabel}>{mode.label}</span>
-                      <span className={styles.tilePlayers}>{mode.players}</span>
+                      <span className={styles.tileLabel}>{modeText(t, mode.id, 'label')}</span>
+                      <span className={styles.tilePlayers}>{modeText(t, mode.id, 'players')}</span>
                     </span>
-                    <span className={styles.tileCaption}>{mode.caption}</span>
+                    <span className={styles.tileCaption}>{modeText(t, mode.id, 'caption')}</span>
                   </span>
                 </button>
               ))}
@@ -143,7 +204,7 @@ export function PlayHub({
       <div className={styles.side} data-panel-open={selected !== null}>
         {selected !== null && (
           <>
-            <button type="button" className={styles.sheetBackdrop} aria-label="Close" onClick={close} />
+            <button type="button" className={styles.sheetBackdrop} aria-label={t('common.close')} onClick={close} />
             <LaunchPanel
               key={selected}
               mode={selected}
@@ -172,6 +233,7 @@ function LaunchPanel({
   onClose: () => void
   onLaunch: (recipe: LobbyRecipe) => void
 }) {
+  const { t } = useTranslation()
   const info = modeInfo(mode)
   const availableSets = useGameStore((s) => s.availableSets)
   const { decks } = useUnifiedDecks()
@@ -226,7 +288,7 @@ function LaunchPanel({
   const set = availableSets.find((s) => s.code === setCode)
   const setIsRandom = setCode !== null && isRandomSetCode(setCode)
   const setTagline = setIsRandom
-    ? 'A set is rolled when the event starts, and revealed then.'
+    ? t('play.options.randomSetTiming')
     : setCode ? setProfile(setCode)?.tagline : undefined
   const randomSet = availableSets.find((s) => s.code === randomSetCode)
   const isAi = effective.playWith === 'AI'
@@ -241,10 +303,10 @@ function LaunchPanel({
       <header className={styles.panelHeader}>
         <ModeIcon mode={mode} group={info.group} />
         <div className={styles.panelTitleBlock}>
-          <h2 id="launch-heading" className={styles.panelTitle}>{info.label}</h2>
-          <p className={styles.panelDescription}>{info.description}</p>
+          <h2 id="launch-heading" className={styles.panelTitle}>{modeText(t, mode, 'label')}</h2>
+          <p className={styles.panelDescription}>{modeText(t, mode, 'description')}</p>
         </div>
-        <button type="button" className={styles.closeButton} aria-label="Close" onClick={onClose}>
+        <button type="button" className={styles.closeButton} aria-label={t('common.close')} onClick={onClose}>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
@@ -252,21 +314,21 @@ function LaunchPanel({
       </header>
 
       <div className={styles.panelBody}>
-        <Field label="Play with">
+        <Field label={t('play.fields.playWith')}>
           <Segmented<PlayWith>
             name="play-with"
             value={effective.playWith}
             onChange={(playWith) => setOptions({ playWith })}
             options={[
-              { value: 'AI', label: 'AI', sub: 'Starts right away', disabledReason: aiEnabled ? undefined : AI_DISABLED_ON_SERVER },
-              { value: 'FRIENDS', label: 'Friends', sub: 'Invite link' },
-              { value: 'PUBLIC', label: 'Anyone', sub: 'Public lobby' },
+              { value: 'AI', label: t('play.options.ai'), sub: t('play.options.startsRightAway'), disabledReason: aiEnabled ? undefined : t('play.options.aiDisabled') },
+              { value: 'FRIENDS', label: t('play.options.friends'), sub: t('play.options.inviteLink') },
+              { value: 'PUBLIC', label: t('play.options.anyone'), sub: t('play.options.publicLobby') },
             ]}
           />
         </Field>
 
         {isAi && range && (
-          <Field label="AI opponents" inline>
+          <Field label={t('play.fields.aiOpponents')} inline>
             <Stepper
               value={opponents}
               min={range.min}
@@ -278,64 +340,64 @@ function LaunchPanel({
         )}
 
         {!isAi && hasHumanTableChoice(mode) && (
-          <Field label="Table">
+          <Field label={t('play.fields.table')}>
             <Segmented<HumanTable>
               name="human-table"
               value={effective.humanTable}
               onChange={(humanTable) => setOptions({ humanTable })}
               options={[
-                { value: 'ONE_V_ONE', label: 'One opponent' },
-                { value: 'BRACKET', label: 'Group bracket', sub: 'Up to 8' },
+                { value: 'ONE_V_ONE', label: t('play.options.oneOpponent') },
+                { value: 'BRACKET', label: t('play.options.groupBracket'), sub: t('play.options.upToEight') },
               ]}
             />
           </Field>
         )}
 
         {mode === 'DRAFT' && (
-          <Field label="Draft style">
+          <Field label={t('play.fields.draftStyle')}>
             <Chips<DraftStyle>
               value={effective.draftStyle}
               onChange={(draftStyle) => setOptions({ draftStyle })}
               options={[
-                { value: 'BOOSTER', label: 'Booster' },
-                { value: 'WINSTON', label: 'Winston', title: 'Two players pass three piles' },
-                { value: 'GRID', label: 'Grid', title: 'Up to four players pick rows and columns' },
-                { value: 'COMMANDER', label: 'Commander' },
+                { value: 'BOOSTER', label: t('play.options.booster') },
+                { value: 'WINSTON', label: t('play.options.winston'), title: t('play.options.winstonHint') },
+                { value: 'GRID', label: t('play.options.grid'), title: t('play.options.gridHint') },
+                { value: 'COMMANDER', label: t('play.modes.commander.label') },
               ]}
             />
           </Field>
         )}
 
         {mode === 'SEALED' && (
-          <Field label="Boosters">
+          <Field label={t('play.fields.boosters')}>
             <Chips<SealedStyle>
               value={effective.sealedStyle}
               onChange={(sealedStyle) => setOptions({ sealedStyle })}
               options={[
-                { value: 'STANDARD', label: 'Standard' },
-                { value: 'COMMANDER', label: 'Commander' },
+                { value: 'STANDARD', label: t('play.options.standard') },
+                { value: 'COMMANDER', label: t('play.modes.commander.label') },
               ]}
             />
           </Field>
         )}
 
         {info.group === 'TABLE' && mode !== 'COMMANDER' && (
-          <Field label="Decks from">
+          <Field label={t('play.fields.decksFrom')}>
             <Chips<TableCards>
               value={effective.tableCards}
               onChange={(tableCards) => setOptions({ tableCards })}
               options={[
-                { value: 'DECKS', label: 'Your decks' },
-                { value: 'JUMP_IN', label: 'Jump In' },
-                { value: 'SEALED', label: 'Sealed' },
-                { value: 'DRAFT', label: 'Draft' },
+                { value: 'DECKS', label: t('play.options.yourDecks') },
+                { value: 'JUMP_IN', label: t('play.options.jumpIn') },
+                { value: 'SEALED', label: t('play.options.sealed') },
+                { value: 'DRAFT', label: t('play.options.draft') },
               ]}
             />
           </Field>
         )}
 
         {isJumpIn(effective) && jumpstartChoices.length > 1 && (
-          <Field label="Packs from">
+          <Field label={t('play.fields.packsFrom')}>
             <Segmented<string>
               name="jumpstart-set"
               value={jumpstartSetCode}
@@ -343,7 +405,7 @@ function LaunchPanel({
               options={jumpstartChoices.map((j) => {
                 // Jump In only deals packs whose every card is implemented, so a partial set has fewer.
                 const partial = availableSets.find((s) => s.code === j.code)?.partial
-                return { value: j.code, label: j.label, sub: partial ? `${j.year} · some packs` : j.year }
+                return { value: j.code, label: j.label, sub: partial ? `${j.year} · ${t('play.options.somePacks')}` : j.year }
               })}
             />
             <p className={styles.setTagline}>
@@ -353,7 +415,7 @@ function LaunchPanel({
         )}
 
         {needsSet(effective) && (
-          <Field label="Set">
+          <Field label={t('play.fields.set')}>
             <button
               type="button"
               className={styles.setButton}
@@ -363,31 +425,31 @@ function LaunchPanel({
               {setIsRandom
                 ? <span className={styles.setIcon} aria-hidden>🎲</span>
                 : setCode && <SetIcon code={setCode} className={styles.setIcon} />}
-              <span className={styles.setName}>{setIsRandom ? 'Random Set' : set?.name ?? 'Choose a set'}</span>
-              <span className={styles.setChange}>Change</span>
+              <span className={styles.setName}>{setIsRandom ? t('play.options.randomSet') : set?.name ?? t('play.options.chooseSet')}</span>
+              <span className={styles.setChange}>{t('play.options.change')}</span>
             </button>
             {setTagline && <p className={styles.setTagline}>{setTagline}</p>}
             {/* A new tab, so the choices made here survive the detour. */}
             <a href="/sets" target="_blank" rel="noopener" className={styles.setGuideLink}>
-              Not sure which set? Compare them in the Set guide ↗
+              {t('play.options.notSureSet')}
             </a>
           </Field>
         )}
 
         {offersAiAssist(effective) && (
-          <Field label="AI assistance">
+          <Field label={t('play.fields.aiAssistance')}>
             <Segmented<'OFF' | 'ON'>
               name="ai-assist"
               value={effective.aiAssist ? 'ON' : 'OFF'}
               onChange={(v) => setOptions({ aiAssist: v === 'ON' })}
               options={[
-                { value: 'OFF', label: 'Off', sub: 'Your own picks' },
+                { value: 'OFF', label: t('play.options.off'), sub: t('play.options.yourOwnPicks') },
                 {
                   value: 'ON',
-                  label: 'On',
+                  label: t('play.options.on'),
                   sub: mode === 'DRAFT' || (info.group === 'TABLE' && effective.tableCards === 'DRAFT')
-                    ? 'Suggest Pick, Auto-build, card scores'
-                    : 'Auto-build, card scores',
+                    ? t('play.options.suggestPickAutoBuildScores')
+                    : t('play.options.autoBuildScores'),
                 },
               ]}
             />
@@ -395,7 +457,7 @@ function LaunchPanel({
         )}
 
         {needsDeck(effective) && (
-          <Field label={isAi ? 'Your deck' : 'Your deck · others bring their own'}>
+          <Field label={isAi ? t('play.fields.yourDeck') : t('play.fields.yourDeckOthers')}>
             <LaunchDeckChoice
               value={deck}
               saved={deckChoices}
@@ -407,7 +469,7 @@ function LaunchPanel({
         )}
 
         {rollsDeck(effective) && (
-          <Field label="Random deck from">
+          <Field label={t('play.fields.randomDeckFrom')}>
             <button
               type="button"
               className={styles.setButton}
@@ -415,17 +477,17 @@ function LaunchPanel({
               onClick={() => setRandomSetPickerOpen(true)}
             >
               {randomSetCode && <SetIcon code={randomSetCode} className={styles.setIcon} />}
-              <span className={styles.setName}>{randomSet?.name ?? 'Any set'}</span>
-              <span className={styles.setChange}>{randomSetCode ? 'Change' : 'Choose'}</span>
+              <span className={styles.setName}>{randomSet?.name ?? t('play.options.anySet')}</span>
+              <span className={styles.setChange}>{randomSetCode ? t('play.options.change') : t('play.options.choose')}</span>
             </button>
           </Field>
         )}
       </div>
 
       <footer className={styles.panelFooter}>
-        <ol className={styles.stages} aria-label="What happens next">
+        <ol className={styles.stages} aria-label={t('play.options.whatNext')}>
           {stages.map((stage) => (
-            <li key={stage} className={styles.stage}>{stage}</li>
+            <li key={stage} className={styles.stage}>{stageText(t, stage)}</li>
           ))}
         </ol>
         <button
@@ -438,13 +500,13 @@ function LaunchPanel({
             onClose()
           }}
         >
-          {launchLabel(effective)}
-          {isAi && range && <span className={styles.playButtonMeta}>vs {opponents} AI</span>}
+          {launchText(t, launchLabel(effective))}
+          {isAi && range && <span className={styles.playButtonMeta}>{t('play.launch.versusAi', { count: opponents })}</span>}
         </button>
         <p className={styles.footerHint}>
           {isAi ? (
             <>
-              Timer, pack count and other settings keep their defaults.{' '}
+              {t('play.options.timerDefaults')}{' '}
               {/* Advanced: the same lobby, held open so every setting can be changed before Start. */}
               <button
                 type="button"
@@ -455,10 +517,10 @@ function LaunchPanel({
                   onClose()
                 }}
               >
-                Open a lobby to change them
+                {t('play.options.openLobbyToChange')}
               </button>
             </>
-          ) : 'Settings stay editable in the lobby until you start.'}
+          ) : t('play.options.settingsEditable')}
         </p>
       </footer>
 
@@ -468,7 +530,7 @@ function LaunchPanel({
           // Single mode ticks its Random Set row when nothing is selected.
           selectedCodes={setCode && !setIsRandom ? [setCode] : []}
           mode="single"
-          title="Choose a set"
+          title={t('play.options.chooseSet')}
           onToggleSet={(code) => setOptions({ setCode: code })}
           onSelectRandom={() => setOptions({ setCode: RANDOM_SET_CODE })}
           onClose={() => setSetPickerOpen(false)}
@@ -480,7 +542,7 @@ function LaunchPanel({
           sets={availableSets}
           selectedCodes={randomSetCode ? [randomSetCode] : []}
           mode="single"
-          title="Random deck from"
+          title={t('play.fields.randomDeckFrom')}
           onToggleSet={(code) => setOptions({ randomSetCode: code })}
           onSelectRandom={() => setOptions({ randomSetCode: null })}
           onClose={() => setRandomSetPickerOpen(false)}
@@ -544,8 +606,13 @@ function Segmented<V extends string>({
   options: ReadonlyArray<{ value: V; label: string; sub?: string; disabledReason?: string | undefined }>
   onChange: (value: V) => void
 }) {
+  const { t } = useTranslation()
   return (
-    <div className={styles.segmented} role="radiogroup" aria-label={name}>
+    <div
+      className={styles.segmented}
+      role="radiogroup"
+      aria-label={t(name === 'play-with' ? 'play.fields.playWith' : name === 'human-table' ? 'play.fields.table' : name === 'ai-assist' ? 'play.fields.aiAssistance' : 'play.fields.packsFrom')}
+    >
       {options.map((o) => (
         <button
           key={o.value}
@@ -606,12 +673,13 @@ function Stepper({
   step: number
   onChange: (value: number) => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className={styles.stepper}>
       <button
         type="button"
         className={styles.stepButton}
-        aria-label="Fewer opponents"
+        aria-label={t('play.options.fewerOpponents')}
         disabled={value <= min}
         onClick={() => onChange(Math.max(min, value - step))}
       >
@@ -621,7 +689,7 @@ function Stepper({
       <button
         type="button"
         className={styles.stepButton}
-        aria-label="More opponents"
+        aria-label={t('play.options.moreOpponents')}
         disabled={value >= max}
         onClick={() => onChange(Math.min(max, value + step))}
       >

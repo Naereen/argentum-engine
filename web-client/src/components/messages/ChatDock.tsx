@@ -16,6 +16,7 @@
  * Key presses inside the panel stop at its edge, so typing a message never reaches the game's hotkeys.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { ThreadSummary } from '@/api/messages'
@@ -80,6 +81,7 @@ export default function ChatDock() {
 }
 
 function Dock({ myId }: { myId: string }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const open = useChatDock((s) => s.open)
   const view = useChatDock((s) => s.view)
@@ -199,7 +201,7 @@ function Dock({ myId }: { myId: string }) {
     navigate(path)
   }
   const toList = () => setView({ kind: 'list' })
-  const closeButton = <IconButton label="Close messages" onClick={close}><CloseIcon /></IconButton>
+  const closeButton = <IconButton label={t('library.messagesUI.closeMessages')} onClick={close}><CloseIcon /></IconButton>
   const placeStyle = (p: Placement | null): React.CSSProperties | undefined =>
     p ? { top: p.top, ...(p.left !== undefined ? { left: p.left } : { right: p.right }) } : undefined
 
@@ -226,7 +228,7 @@ function Dock({ myId }: { myId: string }) {
           className={d.panel}
           style={{ ...placeStyle(place), '--panel-top': `${place.top}px` } as React.CSSProperties}
           role="dialog"
-          aria-label="Messages"
+          aria-label={t('library.messagesUI.pageTitle')}
           tabIndex={-1}
           onKeyDown={onPanelKeyDown}
         >
@@ -241,8 +243,8 @@ function Dock({ myId }: { myId: string }) {
               onLeave={toList}
               onAway={close}
               menuItems={[
-                { label: 'View profile', onSelect: () => openFullPage(`/u/${view.accountId}`) },
-                { label: 'Open in Messages', onSelect: () => openFullPage(`/messages/${view.accountId}`) },
+                { label: t('library.messagesUI.viewProfile'), onSelect: () => openFullPage(`/u/${view.accountId}`) },
+                { label: t('library.messagesUI.openInMessages'), onSelect: () => openFullPage(`/messages/${view.accountId}`) },
               ]}
               headerEnd={closeButton}
             />
@@ -250,7 +252,7 @@ function Dock({ myId }: { myId: string }) {
             <div className={d.fill}>
               <header className={d.head}>
                 <BackButton always onClick={toList} />
-                <h2 className={d.title}>New message</h2>
+                <h2 className={d.title}>{t('library.messagesUI.newMessage')}</h2>
                 {closeButton}
               </header>
               <NewMessagePicker autoFocus onAway={close} onPick={(accountId) => setView({ kind: 'chat', accountId })} />
@@ -258,16 +260,16 @@ function Dock({ myId }: { myId: string }) {
           ) : (
             <div className={d.fill}>
               <header className={d.head}>
-                <h2 className={d.title} data-lead>Messages</h2>
-                <IconButton label="New message" onClick={() => setView({ kind: 'new' })}><ComposeIcon /></IconButton>
+                <h2 className={d.title} data-lead>{t('library.messagesUI.pageTitle')}</h2>
+                <IconButton label={t('library.messagesUI.newMessage')} onClick={() => setView({ kind: 'new' })}><ComposeIcon /></IconButton>
                 <IconButton
-                  label={alertsAway ? 'Alerts away from home: on' : 'Alerts away from home: off'}
+                  label={t(alertsAway ? 'library.messagesUI.alertsAwayOn' : 'library.messagesUI.alertsAwayOff')}
                   pressed={alertsAway}
                   onClick={() => updatePrefs('messages', { alertsAway: !alertsAway })}
                 >
                   <BellIcon off={!alertsAway} />
                 </IconButton>
-                <IconButton label="Open Messages page" onClick={() => openFullPage('/messages')}><ExpandIcon /></IconButton>
+                <IconButton label={t('library.messagesUI.openMessagesPage')} onClick={() => openFullPage('/messages')}><ExpandIcon /></IconButton>
                 {closeButton}
               </header>
               <ThreadPicker myId={myId} onOpen={(accountId) => setView({ kind: 'chat', accountId })} onCompose={() => setView({ kind: 'new' })} />
@@ -292,6 +294,7 @@ function newestIncoming(threads: readonly ThreadSummary[], previous: ReadonlyMap
 
 /** Every conversation in one list — requests are marked in their row rather than on a tab. */
 function ThreadPicker({ myId, onOpen, onCompose }: { myId: string; onOpen: (accountId: string) => void; onCompose: () => void }) {
+  const { t } = useTranslation()
   const threads = useMessagesStore((s) => s.threads)
   const loaded = useMessagesStore((s) => s.threadsLoaded)
 
@@ -301,8 +304,8 @@ function ThreadPicker({ myId, onOpen, onCompose }: { myId: string; onOpen: (acco
   if (threads.length === 0) {
     return (
       <div className={m.listEmpty}>
-        <p className={m.emptyTitle}>No conversations yet</p>
-        <button type="button" className={d.textButton} onClick={onCompose}>Message a friend</button>
+        <p className={m.emptyTitle}>{t('library.messagesUI.noConversations')}</p>
+        <button type="button" className={d.textButton} onClick={onCompose}>{t('library.messagesUI.messageFriend')}</button>
       </div>
     )
   }
@@ -321,6 +324,7 @@ function ThreadPicker({ myId, onOpen, onCompose }: { myId: string; onOpen: (acco
 
 /** The new message, dropped down under the button for a few seconds. Hovering holds it. */
 function Preview({ notice, style, onOpen, onDismiss }: { notice: Notice; style: React.CSSProperties | undefined; onOpen: () => void; onDismiss: () => void }) {
+  const { t } = useTranslation()
   const [held, setHeld] = useState(false)
 
   useEffect(() => {
@@ -346,12 +350,12 @@ function Preview({ notice, style, onOpen, onDismiss }: { notice: Notice; style: 
         <span className={d.previewText}>
           <span className={d.previewName}>
             {notice.name}
-            {notice.request && <span className={d.previewTag}>Request</span>}
+            {notice.request && <span className={d.previewTag}>{t('library.messagesUI.request')}</span>}
           </span>
           <span className={d.previewMessage}>{notice.body}</span>
         </span>
       </button>
-      <button type="button" className={d.previewClose} onClick={onDismiss} aria-label="Dismiss">
+      <button type="button" className={d.previewClose} onClick={onDismiss} aria-label={t('library.messagesUI.dismiss')}>
         <CloseIcon size={14} />
       </button>
     </div>

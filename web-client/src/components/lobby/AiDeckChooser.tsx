@@ -28,6 +28,8 @@ import { DeckPicker } from '../ui/DeckPicker'
 import { DeckPickerModal } from '../ui/DeckPickerModal'
 import { SetSelector, rollRandomSet } from '../ui/SetSelector'
 import styles from '../ui/GameUI.module.css'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 
 export type AiDeckSource = 'auto' | 'sets' | 'deck'
 
@@ -48,17 +50,20 @@ export function initialAiSource(aiDeck: AiDeckSpecView | null | undefined): AiDe
 }
 
 /** The roster-row summary: what this seat is bringing, short enough to sit beside a name. */
-export function aiDeckSummary(aiDeck: AiDeckSpecView | null | undefined): string {
-  if (!aiDeck) return 'Auto'
+export function aiDeckSummary(
+  aiDeck: AiDeckSpecView | null | undefined,
+  t: TFunction,
+): string {
+  if (!aiDeck) return t('lobbyAi.auto')
   switch (aiDeck.kind) {
     case 'sets':
-      return aiDeck.setCodes?.length ? aiDeck.setCodes.join(', ') : 'Auto'
+      return aiDeck.setCodes?.length ? aiDeck.setCodes.join(', ') : t('lobbyAi.auto')
     case 'deck':
       return aiDeck.cardCount
-        ? `${aiDeck.label ?? 'Chosen deck'} (${aiDeck.cardCount})`
-        : (aiDeck.label ?? 'Chosen deck')
+        ? t('lobbyAi.deckWithCount', { deckLabel: aiDeck.label ?? t('lobbyAi.chosenDeck'), count: aiDeck.cardCount })
+        : (aiDeck.label ?? t('lobbyAi.chosenDeck'))
     default:
-      return 'Auto'
+      return t('lobbyAi.auto')
   }
 }
 
@@ -95,6 +100,7 @@ export function AiDeckChooser({
   source: controlledSource,
   onSourceChange,
 }: AiDeckChooserProps) {
+  const { t } = useTranslation()
   const availableSets = useGameStore((s) => s.availableSets)
 
   const [uncontrolledSource, setUncontrolledSource] = useState<AiDeckSource>(() => initialAiSource(aiDeck))
@@ -147,30 +153,29 @@ export function AiDeckChooser({
   return (
     <div data-testid="ai-deck-chooser">
       <div className={styles.settingsRow}>
-        <span className={styles.settingsLabel}>AI deck</span>
+        <span className={styles.settingsLabel}>{t('lobbyAi.aiDeck')}</span>
         <div className={styles.variantGroup}>
           <div className={styles.settingsButtons}>
             <SourceButton active={source === 'auto'} disabled={disabled} onClick={() => pick('auto')}>
-              Auto
+              {t('lobbyAi.auto')}
             </SourceButton>
             <SourceButton active={source === 'sets'} disabled={disabled} onClick={() => pick('sets')}>
-              From sets
+              {t('lobbyAi.fromSets')}
             </SourceButton>
             <SourceButton active={source === 'deck'} disabled={disabled} onClick={() => pick('deck')}>
-              Pick a deck
+              {t('lobbyAi.pickDeck')}
             </SourceButton>
           </div>
 
           {source === 'auto' && (
             <div className={styles.variantCaption}>
               {isCommanderShape
-                ? `The server picks the AI a commander and builds it a ${commanderSize}-card singleton deck in that commander's colours.`
+                ? t('lobbyAi.autoCommanderDeck', { count: commanderSize })
                 : format
-                  ? `The server builds the AI a ${constructedSize}-card ${formatLabel}-legal deck.`
-                  : 'The server opens eight boosters from your set and auto-builds the AI a 40-card deck.'}
+                  ? t('lobbyAi.autoFormatDeck', { count: constructedSize, format: formatLabel })
+                  : t('lobbyAi.autoBoosterDeck')}
               {' '}
-              Bring your own deck and the AI plays from the same set(s): another starter deck from them
-              when there is one, otherwise a deck built from them to match yours.
+              {t('lobbyAi.matchYourDeck')}
             </div>
           )}
 
@@ -181,8 +186,8 @@ export function AiDeckChooser({
                 selectedCodes={setCodes}
                 onToggleSet={toggleSet}
                 disabled={disabled}
-                title="Sets for the AI's deck"
-                emptyLabel="No sets chosen — the AI falls back to Auto"
+                title={t('lobbyAi.setsForAiDeck')}
+                emptyLabel={t('lobbyAi.noSetsChosen')}
                 onSelectRandom={() => {
                   const chosen = rollRandomSet(availableSets, setCodes)
                   if (chosen) toggleSet(chosen.code)
@@ -190,12 +195,12 @@ export function AiDeckChooser({
               />
               <div className={styles.variantCaption}>
                 {setCodes.length === 0
-                  ? 'Pick one or more sets — until you do, the AI falls back to Auto.'
+                  ? t('lobbyAi.chooseSetsForAi')
                   : isCommanderShape
-                    ? `The AI's commander and its ${commanderSize}-card deck are drawn from these sets.`
+                    ? t('lobbyAi.commanderFromSets', { count: commanderSize })
                     : format
-                      ? `Only ${formatLabel}-legal cards from these sets are used.`
-                      : 'Eight boosters are opened across these sets and auto-built into a deck.'}
+                      ? t('lobbyAi.formatCardsFromSets', { format: formatLabel })
+                      : t('lobbyAi.boostersFromSets')}
               </div>
             </>
           )}
@@ -205,9 +210,9 @@ export function AiDeckChooser({
       {source === 'deck' && (
         <div className={styles.aiDeckSection} data-testid="ai-deck-section">
           <div className={styles.aiDeckSectionHeader}>
-            <span className={styles.aiDeckSectionTitle}>The AI opponent’s deck</span>
+            <span className={styles.aiDeckSectionTitle}>{t('lobbyAi.aiOpponentDeck')}</span>
             <span className={styles.aiDeckSectionHint}>
-              Checked against the lobby format when you pick it.
+              {t('lobbyAi.deckCheckedAgainstFormat')}
             </span>
           </div>
           <DeckPicker
@@ -271,11 +276,12 @@ export function QuickAiDeckModal({
   onSourceChange: (source: AiDeckSource) => void
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const setQuickGameAiDeck = useGameStore((s) => s.setQuickGameAiDeck)
   return (
     <DeckPickerModal
-      title={`${playerName}’s deck`}
-      subtitle="Choose what this seat brings to the game."
+      title={t('lobbyAi.playerDeck', { playerName })}
+      subtitle={t('lobbyAi.quickAiDeckSubtitle')}
       onClose={onClose}
     >
       <AiDeckChooser
@@ -311,6 +317,7 @@ export function LobbyAiDeckModal({
   format: string | null
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const setLobbyAiDeck = useGameStore((s) => s.setLobbyAiDeck)
   const onSpecChange = useCallback(
     (spec: AiDeckSpec) => setLobbyAiDeck(playerId, spec),
@@ -318,8 +325,8 @@ export function LobbyAiDeckModal({
   )
   return (
     <DeckPickerModal
-      title={`${playerName}’s deck`}
-      subtitle="Each AI seat is chosen separately, so they need not all play the same thing."
+      title={t('lobbyAi.playerDeck', { playerName })}
+      subtitle={t('lobbyAi.multipleAiDecksSubtitle')}
       onClose={onClose}
     >
       <AiDeckChooser

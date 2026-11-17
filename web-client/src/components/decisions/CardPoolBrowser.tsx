@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { EntityId } from '@/types'
 import { DecisionCard } from './DecisionComponents'
 import styles from './DecisionUI.module.css'
@@ -64,6 +65,7 @@ export function CardPoolBrowser({
   isMobile: boolean
   onHover: (id: EntityId | null) => void
 }) {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
 
@@ -122,19 +124,19 @@ export function CardPoolBrowser({
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={`Search ${cards.length} cards…`}
-          aria-label="Search cards"
+          placeholder={t('decisions.searchCardsWithCount', { count: cards.length })}
+          aria-label={t('decisions.searchCards')}
           className={styles.poolSearch}
           autoFocus={!isMobile}
         />
         {typeCounts.length > 1 && (
-          <div className={styles.poolChips} role="group" aria-label="Filter by card type">
+          <div className={styles.poolChips} role="group" aria-label={t('decisions.filterByCardType')}>
             <button
               type="button"
               className={typeFilter == null ? styles.poolChipActive : styles.poolChip}
               onClick={() => setTypeFilter(null)}
             >
-              All <span className={styles.poolChipCount}>{cards.length}</span>
+              {t('decisions.all')} <span className={styles.poolChipCount}>{cards.length}</span>
             </button>
             {typeCounts.map(({ type, count }) => (
               <button
@@ -181,7 +183,7 @@ export function CardPoolBrowser({
                 <button
                   type="button"
                   className={styles.poolRemoveOne}
-                  aria-label={`Remove one ${group.name}`}
+                  aria-label={t('decisions.removeOneCard', { cardName: group.name })}
                   onClick={() => onRemove(group.ids.filter((id) => selectedCards.includes(id)).pop()!)}
                 >
                   −
@@ -190,12 +192,12 @@ export function CardPoolBrowser({
             </div>
           )
         })}
-        {visibleGroups.length === 0 && <p className={styles.poolEmpty}>No cards match.</p>}
+        {visibleGroups.length === 0 && <p className={styles.poolEmpty}>{t('decisions.noCardsMatch')}</p>}
       </div>
 
       {selectedCards.length > 0 && (
         <div className={styles.poolTray}>
-          <span className={styles.poolTrayLabel}>Selected</span>
+          <span className={styles.poolTrayLabel}>{t('decisions.selected')}</span>
           {selectedCards.map((id) => (
             <button
               key={id}
@@ -204,7 +206,7 @@ export function CardPoolBrowser({
               onClick={() => onRemove(id)}
               onMouseEnter={() => onHover(id)}
               onMouseLeave={() => onHover(null)}
-              aria-label={`Deselect ${nameOf(id)}`}
+              aria-label={t('decisions.deselectCard', { cardName: nameOf(id) })}
             >
               {nameOf(id)} <span aria-hidden>×</span>
             </button>

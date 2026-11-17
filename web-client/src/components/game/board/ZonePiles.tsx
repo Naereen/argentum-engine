@@ -1,5 +1,6 @@
 import React, { lazy, Suspense, useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import { useZoneCards, useStackCards, useZone, useCard, selectGameState, librarySlots, useOutsidePlayableKey, splitOutsidePlayable } from '@/store/selectors.ts'
 import { graveyard, exile, library, sideboard, CounterType, CounterTypeDisplayNames } from '@/types'
@@ -59,6 +60,7 @@ export function ZonePile({
   isOpponent = false,
   reserveConcedeRoom = isOpponent,
 }: { player: ClientPlayer; isOpponent?: boolean; reserveConcedeRoom?: boolean }) {
+  const { t } = useTranslation()
   const graveyardCards = useZoneCards(graveyard(player.playerId))
   const topGraveyardCard = graveyardCards[graveyardCards.length - 1]
   const exileCards = useZoneCards(exile(player.playerId))
@@ -120,7 +122,9 @@ export function ZonePile({
 
   // Browser titles carry the owner's name — "Opponent's Graveyard" is ambiguous at a
   // multiplayer table.
-  const ownerLabel = (zone: string) => (isOpponent ? `${player.name}'s ${zone}` : `Your ${zone}`)
+  const ownerLabel = (zone: string) => isOpponent
+    ? t('gameCore.opponentZone', { playerName: player.name, zone })
+    : t('gameCore.yourZone', { zone })
 
   // Shrink piles to fit the column's actual height. The viewport-derived
   // pileWidth doesn't know about (a) the opponent's Concede button, which
@@ -274,10 +278,10 @@ export function ZonePile({
           {/* Badge the face-up top card so it doesn't read as "the whole deck is public" — the
               rest of the library is still a card back's worth of unknown. */}
           {showsTopLibraryCard && <div style={styles.deckTopRevealedBadge}>👁</div>}
-          {outsidePlayableCount > 0 && <div style={styles.deckOutsidePlayableBadge}>Play</div>}
+          {outsidePlayableCount > 0 && <div style={styles.deckOutsidePlayableBadge}>{t('gameCore.play')}</div>}
           <div style={{ ...styles.pileCount, fontSize: responsive.fontSize.small }}>{player.librarySize}</div>
         </div>
-        {showLabels && <span style={zoneLabelStyle}>Deck</span>}
+        {showLabels && <span style={zoneLabelStyle}>{t('gameCore.deck')}</span>}
       </div>
 
       {/* Graveyard */}
@@ -309,7 +313,7 @@ export function ZonePile({
             <div style={{ ...styles.pileCount, fontSize: responsive.fontSize.small }}>{player.graveyardSize}</div>
           )}
         </div>
-        {showLabels && <span style={zoneLabelStyle}>Graveyard</span>}
+        {showLabels && <span style={zoneLabelStyle}>{t('gameCore.graveyard')}</span>}
         {graveyardTargets.length > 0 && (
           <GraveyardTargetCallout
             targets={graveyardTargets}
@@ -342,7 +346,7 @@ export function ZonePile({
             <div style={{ ...styles.pileCount, fontSize: responsive.fontSize.small }}>{player.exileSize}</div>
           )}
         </div>
-        {showLabels && <span style={zoneLabelStyle}>Exile</span>}
+        {showLabels && <span style={zoneLabelStyle}>{t('gameCore.exile')}</span>}
       </div>
 
       {/* Plotted (CR 718) — only present when this player has plotted spells waiting. A
@@ -371,7 +375,7 @@ export function ZonePile({
           </div>
           {showLabels && (
             <span style={{ ...zoneLabelStyle, ...styles.plottedZoneLabel }}>
-              ⚐ Plotted
+              ⚐ {t('gameCore.plotted')}
             </span>
           )}
         </div>
@@ -403,7 +407,7 @@ export function ZonePile({
           </div>
           {showLabels && (
             <span style={{ ...zoneLabelStyle, ...styles.paradigmZoneLabel }}>
-              ◈ Paradigm
+              ◈ {t('gameCore.paradigm')}
             </span>
           )}
         </div>
@@ -459,7 +463,7 @@ export function ZonePile({
           </div>
           {showLabels && (
             <span style={{ ...zoneLabelStyle, ...styles.suspendedZoneLabel }}>
-              ⏳ Suspended
+              ⏳ {t('gameCore.suspended')}
             </span>
           )}
         </div>
@@ -474,7 +478,7 @@ export function ZonePile({
         <GraveyardBrowser
           cards={graveyardCards}
           targets={graveyardTargets}
-          ownerLabel={ownerLabel('Graveyard')}
+          ownerLabel={ownerLabel(t('gameCore.graveyard'))}
           onClose={() => setBrowsingGraveyard(false)}
         />,
         document.body,
@@ -482,7 +486,7 @@ export function ZonePile({
       {browsingExile && createPortal(
         <ExileBrowser
           cards={exileCards}
-          ownerLabel={ownerLabel('Exile')}
+          ownerLabel={ownerLabel(t('gameCore.exile'))}
           onClose={() => setBrowsingExile(false)}
         />,
         document.body,
@@ -490,7 +494,7 @@ export function ZonePile({
       {browsingPlotted && createPortal(
         <PlottedBrowser
           cards={plottedCards}
-          ownerLabel={ownerLabel('Plotted Spells')}
+          ownerLabel={ownerLabel(t('gameCore.plottedSpells'))}
           onClose={() => setBrowsingPlotted(false)}
         />,
         document.body,
@@ -498,7 +502,7 @@ export function ZonePile({
       {browsingParadigm && createPortal(
         <ParadigmBrowser
           cards={paradigmCards}
-          ownerLabel={ownerLabel('Paradigm Cards')}
+          ownerLabel={ownerLabel(t('gameCore.paradigmCards'))}
           onClose={() => setBrowsingParadigm(false)}
         />,
         document.body,
@@ -506,7 +510,7 @@ export function ZonePile({
       {browsingSuspended && createPortal(
         <SuspendedBrowser
           cards={suspendedCards}
-          ownerLabel={ownerLabel('Suspended Cards')}
+          ownerLabel={ownerLabel(t('gameCore.suspendedCards'))}
           onClose={() => setBrowsingSuspended(false)}
         />,
         document.body,

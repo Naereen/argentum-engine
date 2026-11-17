@@ -3,6 +3,7 @@
  * syntax help popover. Shared between the deckbuilder page and the scenario builder.
  */
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { ParseError } from '../cardFilter'
 import { applyFix, SEARCH_KEYS } from '../query'
 import { SEARCH_EXAMPLE_GROUPS } from './searchExamples'
@@ -33,6 +34,7 @@ export function SearchBar({
   /** A filter toggle shown beside the result count — the deckbuilder's commander-identity chip. */
   filterChip?: React.ReactNode
 }) {
+  const { t } = useTranslation()
   const [helpOpen, setHelpOpen] = useState(false)
   const hasErrors = errors.length > 0
   // Local mirror of the URL-backed `query` so the input never has its DOM value reassigned by
@@ -55,7 +57,7 @@ export function SearchBar({
         <input
           className={hasErrors ? styles.searchInputError : styles.searchInput}
           // Short enough not to be cut mid-query in a narrow pane; the ? button holds the full syntax.
-          placeholder='Search by name, or try t:goblin c:r'
+          placeholder={t('library.browser.searchPlaceholder')}
           value={localQuery}
           onChange={(e) => setBoth(e.target.value)}
           aria-invalid={hasErrors}
@@ -72,9 +74,9 @@ export function SearchBar({
                     type="button"
                     className={styles.searchFix}
                     onClick={() => setBoth(applyFix(query, e.fix!))}
-                    title="Apply this fix"
+                    title={t('library.browser.applyFix')}
                   >
-                    Use <code>{e.fix.text}</code>
+                    {t('library.browser.useFix')} <code>{e.fix.text}</code>
                   </button>
                 ) : e.suggestion ? (
                   <span>{e.suggestion}</span>
@@ -87,8 +89,8 @@ export function SearchBar({
       <button
         className={helpOpen ? styles.helpIconActive : styles.helpIcon}
         onClick={() => setHelpOpen((v) => !v)}
-        title="Search tips"
-        aria-label="Show search tips"
+        title={t('library.browser.searchTips')}
+        aria-label={t('library.browser.showSearchTips')}
         type="button"
       >
         ?
@@ -98,17 +100,17 @@ export function SearchBar({
         value={sortMode}
         onChange={(e) => onSortChange(e.target.value as SortMode)}
       >
-        <option value="name">Name</option>
-        <option value="cmc">Mana value</option>
-        <option value="color">Colour</option>
-        <option value="rarity">Rarity</option>
+        <option value="name">{t('library.browser.sortName')}</option>
+        <option value="cmc">{t('library.browser.sortManaValue')}</option>
+        <option value="color">{t('library.browser.sortColor')}</option>
+        <option value="rarity">{t('library.browser.sortRarity')}</option>
       </select>
       {filterChip}
       <span className={styles.resultCount}>{resultLabel}</span>
       <span className={styles.cardActionHint}>
         {actionHint ?? (
           <>
-            <kbd>Click</kbd> add · <kbd>Right-click</kbd> remove
+            <kbd>{t('library.browser.click')}</kbd> {t('library.browser.add')} · <kbd>{t('library.browser.rightClick')}</kbd> {t('library.browser.remove')}
           </>
         )}
       </span>
@@ -118,7 +120,7 @@ export function SearchBar({
         <p className={styles.searchExplanation} aria-live="polite">
           {explanation ? (
             <>
-              <span className={styles.searchExplanationLead}>Cards where</span> {explanation}
+              <span className={styles.searchExplanationLead}>{t('library.browser.cardsWhere')}</span> {explanation}
             </>
           ) : null}
         </p>
@@ -139,6 +141,7 @@ export function SearchHelp({
   /** Rendered above the cheat sheet — e.g. how this search box's modes differ. */
   intro?: React.ReactNode
 }) {
+  const { t } = useTranslation()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -149,22 +152,21 @@ export function SearchHelp({
   return (
     <>
       <div className={styles.helpBackdrop} onClick={onClose} />
-      <div className={styles.helpPopover} role="dialog" aria-label="Search tips">
+      <div className={styles.helpPopover} role="dialog" aria-label={t('library.browser.searchTips')}>
         <div className={styles.helpHeader}>
-          <strong>Search tips</strong>
-          <button className={styles.helpClose} onClick={onClose} type="button" aria-label="Close search tips">
+          <strong>{t('library.browser.searchTips')}</strong>
+          <button className={styles.helpClose} onClick={onClose} type="button" aria-label={t('library.browser.closeSearchTips')}>
             ×
           </button>
         </div>
         {intro}
         <p className={styles.helpLead}>
-          Type part of a card’s name, or use filters like <code>t:goblin</code>. Click any example to
-          add it to your search — the line under the search box always says how it was read.
+          {t('library.browser.searchHelpIntro')} <code>t:goblin</code>. {t('library.browser.searchHelpClick')}
         </p>
         <div className={styles.helpGroups}>
           {SEARCH_EXAMPLE_GROUPS.map((group) => (
-            <section key={group.title} className={styles.helpGroup}>
-              <h4>{group.title}</h4>
+            <section key={group.titleKey} className={styles.helpGroup}>
+              <h4>{t(`library.browser.examples.titles.${group.titleKey}`)}</h4>
               <ul>
                 {group.examples.map((ex) => (
                   <li key={ex.query}>
@@ -175,11 +177,11 @@ export function SearchHelp({
                         onClose()
                       }}
                       type="button"
-                      title={`Add ${ex.query} to your search`}
+                      title={t('library.browser.addExample', { query: ex.query })}
                     >
                       <code>{ex.query}</code>
                     </button>
-                    <span className={styles.helpDesc}>{ex.finds}</span>
+                    <span className={styles.helpDesc}>{t(`library.browser.examples.descriptions.${ex.descriptionKey}`)}</span>
                   </li>
                 ))}
               </ul>
@@ -187,7 +189,7 @@ export function SearchHelp({
           ))}
         </div>
         <details className={styles.helpAllKeys}>
-          <summary>All filters</summary>
+          <summary>{t('library.browser.allFilters')}</summary>
           <ul>
             {SEARCH_KEYS.map((k) => (
               <li key={k.aliases[0]}>
@@ -195,14 +197,14 @@ export function SearchHelp({
                 <span>
                   {k.description}
                   {k.aliases.length > 1 && (
-                    <span className={styles.helpAliases}> · also {k.aliases.slice(1).join(', ')}</span>
+                    <span className={styles.helpAliases}> · {t('library.browser.also')} {k.aliases.slice(1).join(', ')}</span>
                   )}
                 </span>
               </li>
             ))}
           </ul>
           <p className={styles.helpHint}>
-            Numbers, colours and rarity also compare with <code>=</code> <code>&lt;</code> <code>&gt;</code>{' '}
+            {t('library.browser.comparisonHelp')} <code>=</code> <code>&lt;</code> <code>&gt;</code>{' '}
             <code>&lt;=</code> <code>&gt;=</code>.
           </p>
         </details>

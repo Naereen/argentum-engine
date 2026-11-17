@@ -6,6 +6,7 @@ import { getCardImageUrl } from '@/utils/cardImages.ts'
 import { DecisionCard, DecisionCardPreview } from './DecisionComponents'
 import { CardPoolBrowser, LARGE_POOL_THRESHOLD, type PoolCard } from './CardPoolBrowser'
 import styles from './DecisionUI.module.css'
+import { useTranslation } from 'react-i18next'
 
 /** Known MTG card types used for OnePerCardType restriction enforcement. */
 const CARD_TYPES = new Set([
@@ -96,6 +97,7 @@ export function CardSelectionDecision({
   decision: SelectCardsDecision
   responsive: ResponsiveSizes
 }) {
+  const { t } = useTranslation()
   const [selectedCards, setSelectedCards] = useState<EntityId[]>([])
   const [hoveredCardId, setHoveredCardId] = useState<EntityId | null>(null)
   const [minimized, setMinimized] = useState(false)
@@ -403,7 +405,7 @@ export function CardSelectionDecision({
             opacity: 0.85,
           }}
         >
-          <span>At most one card per colour:</span>
+          <span>{t('decisions.atMostOnePerColor')}</span>
           {((decision.availableColors && decision.availableColors.length > 0)
             ? decision.availableColors
             : ['WHITE', 'BLUE', 'BLACK', 'RED', 'GREEN']
@@ -461,8 +463,8 @@ export function CardSelectionDecision({
               totalManaValueSelected >= decision.minTotalManaValue ? '#7ddba3' : '#ffd668',
           }}
         >
-          Total mana value: {totalManaValueSelected} / {decision.minTotalManaValue}
-          {totalManaValueSelected < decision.minTotalManaValue && ' (need more)'}
+          {t('decisions.totalManaValue')}: {totalManaValueSelected} / {decision.minTotalManaValue}
+          {totalManaValueSelected < decision.minTotalManaValue && ` (${t('decisions.needMore')})`}
         </div>
       )}
 
@@ -474,17 +476,17 @@ export function CardSelectionDecision({
             opacity: 0.85,
           }}
         >
-          Total power: {totalPowerSelected} / {decision.maxTotalPower}
+          {t('decisions.totalPower')}: {totalPowerSelected} / {decision.maxTotalPower}
         </div>
       )}
 
       {(decision.selectedLabel || decision.remainderLabel) && (
         <div className={styles.destinationLabels}>
           {decision.selectedLabel && (
-            <span className={styles.selectedLabel}>Selected &rarr; {decision.selectedLabel}</span>
+            <span className={styles.selectedLabel}>{t('decisions.selected')} &rarr; {decision.selectedLabel}</span>
           )}
           {decision.remainderLabel && (
-            <span className={styles.remainderLabel}>Not selected &rarr; {decision.remainderLabel}</span>
+            <span className={styles.remainderLabel}>{t('decisions.notSelected')} &rarr; {decision.remainderLabel}</span>
           )}
         </div>
       )}
