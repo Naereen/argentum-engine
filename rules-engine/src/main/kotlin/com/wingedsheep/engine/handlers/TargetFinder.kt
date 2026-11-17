@@ -187,13 +187,23 @@ class TargetFinder(
         triggeringEntityId: EntityId? = null,
         triggeringPlayerId: EntityId? = null
     ): List<EntityId> {
-        return state.turnOrder.filter { playerId ->
+        val players = state.turnOrder.filter { playerId ->
             state.hasEntity(playerId) &&
                 (ignoreTargetingRestrictions ||
                     (!playerHasShroud(state, playerId) && !playerHasHexproofAgainst(state, playerId, controllerId))) &&
                 PlayerTargetRestriction.isSatisfied(state, requirement.restriction, playerId, controllerId, sourceId,
                     triggeringEntityId, triggeringPlayerId, predicateEvaluator = predicateEvaluator)
         }
+        val encounterCreatures = state.getBattlefield().filter { entityId ->
+            val candidate = OtariaTargeting.candidatePlayerId(state, controllerId, entityId) ?: return@filter false
+            (ignoreTargetingRestrictions ||
+                (!playerHasShroud(state, candidate) && !playerHasHexproofAgainst(state, candidate, controllerId))) &&
+                PlayerTargetRestriction.isSatisfied(
+                    state, requirement.restriction, candidate, controllerId, sourceId,
+                    triggeringEntityId, triggeringPlayerId, predicateEvaluator = predicateEvaluator
+                )
+        }
+        return players + encounterCreatures
     }
 
     private fun findOpponentTargets(
@@ -205,10 +215,20 @@ class TargetFinder(
         triggeringEntityId: EntityId? = null,
         triggeringPlayerId: EntityId? = null
     ): List<EntityId> {
-        return state.turnOrder.filter { it != controllerId && state.hasEntity(it) &&
+        val players = state.turnOrder.filter { it != controllerId && state.hasEntity(it) &&
             (ignoreTargetingRestrictions || (!playerHasShroud(state, it) && !playerHasHexproofAgainst(state, it, controllerId))) &&
             PlayerTargetRestriction.isSatisfied(state, requirement.restriction, it, controllerId, sourceId,
                 triggeringEntityId, triggeringPlayerId, predicateEvaluator = predicateEvaluator) }
+        val encounterCreatures = state.getBattlefield().filter { entityId ->
+            val candidate = OtariaTargeting.candidatePlayerId(state, controllerId, entityId) ?: return@filter false
+            (ignoreTargetingRestrictions ||
+                (!playerHasShroud(state, candidate) && !playerHasHexproofAgainst(state, candidate, controllerId))) &&
+                PlayerTargetRestriction.isSatisfied(
+                    state, requirement.restriction, candidate, controllerId, sourceId,
+                    triggeringEntityId, triggeringPlayerId, predicateEvaluator = predicateEvaluator
+                )
+        }
+        return players + encounterCreatures
     }
 
     /**
@@ -464,6 +484,10 @@ class TargetFinder(
 
         // Add all creatures
         targets.addAll(findPermanentTargets(state, TargetObject(filter = TargetFilter.Creature), controllerId, sourceId, targetingSourceType = targetingSourceType, pipelineContext = pipelineContext))
+        targets.addAll(state.getBattlefield().filter { entityId ->
+            OtariaTargeting.isLegendaryEncounterCreature(state, controllerId, entityId) &&
+                entityId !in targets
+        })
 
         return targets
     }
@@ -487,6 +511,10 @@ class TargetFinder(
         targets.addAll(state.turnOrder.filter { state.hasEntity(it) && !playerHasShroud(state, it) &&
             !playerHasHexproofAgainst(state, it, controllerId) &&
             (!requirement.opponentsOnly || state.isOpponentOf(it, controllerId)) })
+        targets.addAll(state.getBattlefield().filter { entityId ->
+            OtariaTargeting.isLegendaryEncounterCreature(state, controllerId, entityId) &&
+                !targets.contains(entityId)
+        })
 
         // Add all permanents matching the filter
         targets.addAll(

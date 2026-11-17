@@ -42,6 +42,7 @@ import com.wingedsheep.sdk.core.AbilityFlag
 import com.wingedsheep.sdk.core.ManaCost
 import com.wingedsheep.sdk.core.Step
 import com.wingedsheep.sdk.core.Subtype
+import com.wingedsheep.sdk.core.Supertype
 import com.wingedsheep.sdk.core.Zone
 import com.wingedsheep.sdk.dsl.Targets
 import com.wingedsheep.sdk.model.CardDefinition
@@ -55,6 +56,8 @@ import com.wingedsheep.sdk.scripting.filters.unified.TargetFilter
 import com.wingedsheep.sdk.scripting.targets.TargetObject
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
+import io.kotest.matchers.collections.shouldContain
+import io.kotest.assertions.withClue
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 
@@ -149,6 +152,60 @@ class OtariaRangeTest : FunSpec({
             casterId = active,
             targetingSourceType = TargetingSourceType.SPELL,
         ) shouldBe "Target is outside Otaria range"
+    }
+
+    test("legendary encounter creatures substitute for player and opponent targets") {
+        val initial = game()
+        val actor = EntityId("legendary-encounter")
+        val creatureId = EntityId("legendary-creature")
+        val legendary = CardDefinition.creature(
+            "Legendary Encounter",
+            ManaCost.ZERO,
+            setOf(Subtype.HUMAN),
+            3,
+            3,
+            supertypes = setOf(Supertype.LEGENDARY),
+        )
+        val withCreature = initial
+            .withEntity(actor, ComponentContainer.of(PlayerComponent("Encounter")))
+            .withEntity(creatureId, CardEntityFactory.create(legendary, actor))
+            .addToZone(ZoneKey(actor, Zone.BATTLEFIELD), creatureId)
+        val encounter = OtariaEncounter(
+            explorerId = active,
+            managerId = far,
+            position = positions[1],
+            source = OtariaExplorationSource.Terrain(Color.GREEN),
+            primaryId = creatureId,
+            members = setOf(requireNotNull(withCreature.objectRef(creatureId))),
+        )
+        val state = withCreature.copy(
+            otaria = requireNotNull(withCreature.otaria).copy(
+                encounters = mapOf(actor to encounter),
+            ),
+        )
+        val permanent = ChosenTarget.Permanent(creatureId)
+        OtariaTargeting.isLegendaryEncounterCreature(state, active, creatureId) shouldBe true
+        OtariaRange.contains(state, active, creatureId) shouldBe true
+
+        for (requirement in listOf(
+            Targets.Player,
+            Targets.Opponent,
+            Targets.CreatureOrPlayer,
+            Targets.PlayerOrPlaneswalker,
+            Targets.OpponentOrPlaneswalker,
+            Targets.OpponentOrTheirCreatureOrPlaneswalker,
+        )) {
+            withClue(requirement.description) {
+                services.targetFinder.findLegalTargets(state, requirement, active) shouldContain creatureId
+                services.targetValidator.validateTargets(
+                    state = state,
+                    targets = listOf(permanent),
+                    requirements = listOf(requirement),
+                    casterId = active,
+                    targetingSourceType = TargetingSourceType.SPELL,
+                ) shouldBe null
+            }
+        }
     }
 
     test("permanent range follows projected control and cards in zones follow their zone owner") {

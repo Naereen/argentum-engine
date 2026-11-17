@@ -856,21 +856,27 @@ class TargetValidator(
         casterId: EntityId,
         sourceId: EntityId?
     ): String? {
-        if (target !is ChosenTarget.Player) {
-            return "Target must be a player"
+        val candidatePlayerId = when (target) {
+            is ChosenTarget.Player -> target.playerId
+            is ChosenTarget.Permanent ->
+                OtariaTargeting.candidatePlayerId(state, casterId, target.entityId)
+            else -> null
         }
-        if (!state.hasEntity(target.playerId)) {
+        if (candidatePlayerId == null) {
+            return if (target is ChosenTarget.Permanent) "Target must be a player" else "Target must be a player"
+        }
+        if (!state.hasEntity(candidatePlayerId)) {
             return "Target player not found"
         }
-        if (playerHasShroud(state, target.playerId)) {
+        if (playerHasShroud(state, candidatePlayerId)) {
             return "Target player has shroud"
         }
-        if (playerHasHexproofAgainst(state, target.playerId, casterId)) {
+        if (playerHasHexproofAgainst(state, candidatePlayerId, casterId)) {
             return "Target player has hexproof"
         }
         // CR 608.2b: a target illegal at resolution is removed. Re-checking the restriction
         // here covers both cast-time validation and the resolution-time re-validation.
-        if (!PlayerTargetRestriction.isSatisfied(state, requirement.restriction, target.playerId, casterId, sourceId, predicateEvaluator = predicateEvaluator)) {
+        if (!PlayerTargetRestriction.isSatisfied(state, requirement.restriction, candidatePlayerId, casterId, sourceId, predicateEvaluator = predicateEvaluator)) {
             return "Target player does not match: ${requirement.description}"
         }
         return null
@@ -883,22 +889,22 @@ class TargetValidator(
         casterId: EntityId,
         sourceId: EntityId?
     ): String? {
-        if (target !is ChosenTarget.Player) {
-            return "Target must be a player"
+        val candidatePlayerId = when (target) {
+            is ChosenTarget.Player -> target.playerId
+            is ChosenTarget.Permanent ->
+                OtariaTargeting.candidatePlayerId(state, casterId, target.entityId)
+            else -> null
         }
-        if (!state.hasEntity(target.playerId)) {
-            return "Target player not found"
-        }
-        if (target.playerId == casterId) {
-            return "Target must be an opponent"
-        }
-        if (playerHasShroud(state, target.playerId)) {
+        if (candidatePlayerId == null) return "Target must be a player"
+        if (!state.hasEntity(candidatePlayerId)) return "Target player not found"
+        if (candidatePlayerId == casterId) return "Target must be an opponent"
+        if (playerHasShroud(state, candidatePlayerId)) {
             return "Target player has shroud"
         }
-        if (playerHasHexproofAgainst(state, target.playerId, casterId)) {
+        if (playerHasHexproofAgainst(state, candidatePlayerId, casterId)) {
             return "Target player has hexproof"
         }
-        if (!PlayerTargetRestriction.isSatisfied(state, requirement.restriction, target.playerId, casterId, sourceId, predicateEvaluator = predicateEvaluator)) {
+        if (!PlayerTargetRestriction.isSatisfied(state, requirement.restriction, candidatePlayerId, casterId, sourceId, predicateEvaluator = predicateEvaluator)) {
             return "Target player does not match: ${requirement.description}"
         }
         return null
@@ -936,9 +942,6 @@ class TargetValidator(
                     ?: return "Target not found"
                 val cardComponent = container.get<CardComponent>()
                     ?: return "Target is not a card"
-                if (OtariaTargeting.isLegendaryEncounterCreature(state, casterId, target.entityId)) {
-                    return "Target must be a creature or player"
-                }
                 // Face-down permanents are always creatures (Rule 708.2)
                 if (!state.projectedState.isCreature(target.entityId) && !container.has<FaceDownComponent>()) {
                     return "Target must be a creature or player"
@@ -975,10 +978,14 @@ class TargetValidator(
                 else if (playerHasHexproofAgainst(state, target.playerId, casterId)) "Target player has hexproof"
                 else null
             }
-            is ChosenTarget.Permanent ->
+            is ChosenTarget.Permanent -> {
+                if (OtariaTargeting.isLegendaryEncounterCreature(state, casterId, target.entityId)) {
+                    return null
+                }
                 validateObjectTarget(
                     state, target, requirement.permanentFilter, casterId, sourceId, xValue, chosenPlayerTarget
                 )
+            }
             else -> "Target must be a ${requirement.permanentFilter.description} or " +
                 if (requirement.opponentsOnly) "opponent" else "player"
         }

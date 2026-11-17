@@ -11,15 +11,28 @@ import com.wingedsheep.sdk.scripting.predicates.ControllerPredicate
 
 /** Otaria's legendary encounter target substitutions, from the explorer's point of view. */
 internal object OtariaTargeting {
-    fun isLegendaryEncounterCreature(state: GameState, chooserId: EntityId, targetId: EntityId): Boolean {
-        val encounter = state.otaria?.encounters?.values?.firstOrNull {
-            it.explorerId == chooserId && it.primaryId == targetId
-        } ?: return false
-        val reference = state.objectRef(targetId) ?: return false
-        if (reference !in encounter.members || targetId !in state.getBattlefield()) return false
+    fun encounterForLegendaryCreature(
+        state: GameState,
+        chooserId: EntityId,
+        targetId: EntityId,
+    ): OtariaEncounter? = state.otaria?.encounters?.values?.firstOrNull {
+        it.explorerId == chooserId && it.primaryId == targetId
+    }?.takeIf {
+        val reference = state.objectRef(targetId) ?: return@takeIf false
+        reference in it.members &&
+            targetId in state.getBattlefield() &&
+            state.projectedState.isCreature(targetId) &&
+            state.projectedState.isLegendary(targetId)
+    }
 
-        val projected = state.projectedState
-        return projected.isCreature(targetId) && projected.isLegendary(targetId)
+    fun candidatePlayerId(
+        state: GameState,
+        chooserId: EntityId,
+        targetId: EntityId,
+    ): EntityId? = encounterForLegendaryCreature(state, chooserId, targetId)?.managerId
+
+    fun isLegendaryEncounterCreature(state: GameState, chooserId: EntityId, targetId: EntityId): Boolean {
+        return encounterForLegendaryCreature(state, chooserId, targetId) != null
     }
 
     fun matchesTargetFilter(
