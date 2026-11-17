@@ -59,6 +59,7 @@ Continue the in-progress i18n task from this working tree. The user chose **core
 - Added French labels to lobby cube management/capacity, stats filters/dashboard, card-selection empty states, yield controls, initiative notices, speed gauge, stack badges, zone labels, card previews, and gameplay accessibility labels.
 - Localized the account/profile avatar editor and crop controls, game-deck save/view flows, tournament history/detail and status badges, ante spoils, and the signed-in deck-migration banner.
 - Localized the admin sign-in and dashboard hub, plus the replay player's back-button accessibility label.
+- Localized the admin activity, online-player, and global stats dashboards, including chart legends, localized bucket dates, table states, and database summaries.
 - Corrected the stale Otaria layout test assertion in `src/components/game/otariaOverviewLayout.test.ts`: `(true, 1, 1)` is right; use `(true, 0, 1)` for the no-map/null case.
 - Existing tests adapted to render translated Otaria components under an `I18nextProvider` and use the changed label copy.
 

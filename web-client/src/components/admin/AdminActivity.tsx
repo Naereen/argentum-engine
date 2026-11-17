@@ -10,6 +10,7 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import type React from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import {
   type AdminGamePlayer,
@@ -32,6 +33,7 @@ const GAMES_PAGE_SIZE = 20
 const TOURNAMENTS_LIMIT = 50
 
 export function AdminActivity({ auth, onBack }: { auth: AdminAuth; onBack: () => void }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
 
   const [games, setGames] = useState<AdminRecentGame[]>([])
@@ -53,10 +55,10 @@ export function AdminActivity({ auth, onBack }: { auth: AdminAuth; onBack: () =>
         setGamesTotal(total)
         setGamesError(null)
       } catch (e) {
-        setGamesError(e instanceof Error ? e.message : 'Failed to load games')
+        setGamesError(e instanceof Error ? e.message : t('adminActivity.loadGamesFailed'))
       }
     },
-    [auth],
+    [auth, t],
   )
 
   useEffect(() => {
@@ -67,11 +69,11 @@ export function AdminActivity({ auth, onBack }: { auth: AdminAuth; onBack: () =>
     let cancelled = false
     fetchTournaments(auth, TOURNAMENTS_LIMIT)
       .then((t) => !cancelled && setTournaments(t))
-      .catch((e) => !cancelled && setTournamentsError(e instanceof Error ? e.message : 'Failed to load tournaments'))
+      .catch((e) => !cancelled && setTournamentsError(e instanceof Error ? e.message : t('adminActivity.loadTournamentsFailed')))
     return () => {
       cancelled = true
     }
-  }, [auth])
+  }, [auth, t])
 
   const lastPage = Math.max(0, Math.ceil(gamesTotal / GAMES_PAGE_SIZE) - 1)
   const rangeStart = gamesTotal === 0 ? 0 : page * GAMES_PAGE_SIZE + 1
@@ -79,24 +81,24 @@ export function AdminActivity({ auth, onBack }: { auth: AdminAuth; onBack: () =>
 
   return (
     <AdminScreen
-      title="Activity"
-      subtitle="Recent games and tournaments across every player"
+      title={t('adminActivity.title')}
+      subtitle={t('adminActivity.subtitle')}
       onBack={onBack}
-      backLabel="← Dashboard"
+      backLabel={`← ${t('adminUi.dashboard')}`}
     >
       <Panel
-        title="Recent games"
+        title={t('adminActivity.recentGames')}
         action={
           gamesTotal > 0 ? (
             <span style={styles.pager}>
               <button type="button" style={pageBtn(page <= 0)} disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
-                ← Newer
+                {t('adminActivity.newer')}
               </button>
               <span style={styles.pageInfo}>
-                {rangeStart}–{rangeEnd} of {gamesTotal}
+                {t('adminActivity.pageRange', { start: rangeStart, end: rangeEnd, total: gamesTotal })}
               </span>
               <button type="button" style={pageBtn(page >= lastPage)} disabled={page >= lastPage} onClick={() => setPage((p) => Math.min(lastPage, p + 1))}>
-                Older →
+                {t('adminActivity.older')}
               </button>
             </span>
           ) : null
@@ -105,16 +107,16 @@ export function AdminActivity({ auth, onBack }: { auth: AdminAuth; onBack: () =>
         {gamesError ? (
           <p style={styles.error}>{gamesError}</p>
         ) : games.length === 0 ? (
-          <p style={cellStyle.muted}>No games recorded yet.</p>
+          <p style={cellStyle.muted}>{t('adminActivity.noGames')}</p>
         ) : (
-          <Table head={['Date', 'Mode', 'Players & decks', 'Winner', '']} leftColumns={4}>
+          <Table head={[t('adminActivity.date'), t('adminActivity.mode'), t('adminActivity.playersDecks'), t('adminActivity.winner'), '']} leftColumns={4}>
             {games.map((g) => {
               const mode = gameModeLabel(g.gameMode, g.format)
               return (
                 <tr
                   key={g.gameId}
                   style={g.hasDecks ? styles.clickableRow : undefined}
-                  title={g.hasDecks ? 'Open both decks' : undefined}
+                  title={g.hasDecks ? t('adminActivity.openBothDecks') : undefined}
                   onClick={g.hasDecks ? () => openGame(String(g.matchId)) : undefined}
                 >
                   <td style={cellStyle.td}>{formatDateTime(g.endedAt)}</td>
@@ -131,20 +133,20 @@ export function AdminActivity({ auth, onBack }: { auth: AdminAuth; onBack: () =>
                     <span style={styles.actions} onClick={(e) => e.stopPropagation()}>
                       {g.hasDecks ? (
                         <button type="button" style={styles.actionPrimary} onClick={() => openGame(String(g.matchId))}>
-                          Decks
+                          {t('adminActivity.decks')}
                         </button>
                       ) : (
-                        <span style={styles.actionNone} title="No decklist was recorded for this game">
-                          No decks
+                        <span style={styles.actionNone} title={t('adminActivity.noDecklist')}>
+                          {t('adminActivity.noDecks')}
                         </span>
                       )}
                       {g.hasReplay ? (
                         <button type="button" style={styles.actionSecondary} onClick={() => navigate(`/replay/${g.gameId}`)}>
-                          Replay
+                          {t('adminActivity.replay')}
                         </button>
                       ) : (
-                        <span style={styles.actionNone} title="No replay was stored for this game">
-                          No replay
+                        <span style={styles.actionNone} title={t('adminActivity.noReplayStored')}>
+                          {t('adminActivity.noReplay')}
                         </span>
                       )}
                     </span>
@@ -156,13 +158,13 @@ export function AdminActivity({ auth, onBack }: { auth: AdminAuth; onBack: () =>
         )}
       </Panel>
 
-      <Panel title="Recent tournaments">
+      <Panel title={t('adminActivity.recentTournaments')}>
         {tournamentsError ? (
           <p style={styles.error}>{tournamentsError}</p>
         ) : tournaments.length === 0 ? (
-          <p style={cellStyle.muted}>No tournaments recorded yet.</p>
+          <p style={cellStyle.muted}>{t('adminActivity.noTournaments')}</p>
         ) : (
-          <Table head={['Date', 'Name', 'Mode', 'Players', 'Winner']}>
+          <Table head={[t('adminActivity.date'), t('adminActivity.name'), t('adminActivity.mode'), t('adminActivity.players'), t('adminActivity.winner')]}>
             {tournaments.map((t) => {
               const mode = gameModeLabel(t.gameMode, t.format)
               return (
@@ -193,12 +195,13 @@ export function AdminActivity({ auth, onBack }: { auth: AdminAuth; onBack: () =>
 
 /** A game's seats, joined by "vs", with the winner bolded; named accounts link to their profile. */
 function Players({ players, onProfile }: { players: AdminGamePlayer[]; onProfile: (userId: string) => void }) {
+  const { t } = useTranslation()
   if (players.length === 0) return <span style={cellStyle.muted}>—</span>
   return (
     <span>
       {players.map((p, i) => (
         <span key={`${p.name}-${i}`}>
-          {i > 0 && <span style={styles.vs}> vs </span>}
+          {i > 0 && <span style={styles.vs}> {t('adminActivity.versus')} </span>}
           {/* Name and deck colours wrap as one unit, so the pips never land on a line of their own. */}
           <span style={styles.seat}>
             {p.userId ? (
@@ -215,12 +218,12 @@ function Players({ players, onProfile }: { players: AdminGamePlayer[]; onProfile
             ) : (
               <span style={p.won ? styles.winner : undefined}>
                 {p.name}
-                {p.isAi ? <span style={styles.aiTag}> AI</span> : null}
+                {p.isAi ? <span style={styles.aiTag}> {t('adminActivity.ai')}</span> : null}
               </span>
             )}
             {p.noAction && (
-              <span style={styles.noAction} title="Never took an action past the mulligan — this game isn't counted for this seat">
-                {' '}no action
+              <span style={styles.noAction} title={t('adminActivity.noActionTitle')}>
+                {' '}{t('adminActivity.noAction')}
               </span>
             )}
             {p.colors != null && (

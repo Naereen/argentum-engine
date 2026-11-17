@@ -9,6 +9,7 @@
  */
 import { useEffect, useState } from 'react'
 import type React from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Bar,
   BarChart,
@@ -55,37 +56,41 @@ import { NotCountedNote, StatsFilterBar, useStatsFilterParam } from '@/component
  * (dataviz validate_palette: lightness band, chroma, CVD and normal-vision separation all pass).
  */
 const WHO_PLAYED = [
-  { key: 'vsHumans', label: 'People only', color: '#4a8fd6' },
-  { key: 'vsAi', label: 'One person vs AI', color: '#b97a30' },
-  { key: 'mixed', label: 'Mixed table', color: '#9a7ad1' },
+  { key: 'vsHumans', labelKey: 'adminStats.peopleOnly', color: '#4a8fd6' },
+  { key: 'vsAi', labelKey: 'adminStats.onePersonVsAi', color: '#b97a30' },
+  { key: 'mixed', labelKey: 'adminStats.mixedTable', color: '#9a7ad1' },
 ] as const
 
 /** How many card rows to show before the "Show all" toggle — keeps the tables from running forever. */
 const CARD_PREVIEW = 12
 
-const BUCKET_NOUN: Record<AiBucket, string> = { DAY: 'day', WEEK: 'week', MONTH: 'month' }
+const BUCKET_NOUN: Record<AiBucket, 'adminStats.bucketDay' | 'adminStats.bucketWeek' | 'adminStats.bucketMonth'> = {
+  DAY: 'adminStats.bucketDay',
+  WEEK: 'adminStats.bucketWeek',
+  MONTH: 'adminStats.bucketMonth',
+}
 
 // Bucket starts are UTC calendar days; format them in UTC so a viewer west of Greenwich doesn't see
 // the day before.
 const utc = (d: string) => new Date(`${d}T00:00:00Z`)
-const dayFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
-const dayYearFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
-const monthFmt = new Intl.DateTimeFormat(undefined, { month: 'short', year: '2-digit', timeZone: 'UTC' })
-const monthLongFmt = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' })
-
 /** The x-axis tick for a bucket: "Nov 5" for days and weeks, "Nov 26" for months. */
-function bucketTick(day: string, bucket: AiBucket): string {
-  return (bucket === 'MONTH' ? monthFmt : dayFmt).format(utc(day))
+function bucketTick(day: string, bucket: AiBucket, locale: string): string {
+  const options: Intl.DateTimeFormatOptions = bucket === 'MONTH'
+    ? { month: 'short', year: '2-digit', timeZone: 'UTC' }
+    : { month: 'short', day: 'numeric', timeZone: 'UTC' }
+  return new Intl.DateTimeFormat(locale, options).format(utc(day))
 }
 
-/** The tooltip heading: the exact day, "Week of Nov 2, 2026", or "November 2026". */
-function bucketLabel(day: string, bucket: AiBucket): string {
-  if (bucket === 'MONTH') return monthLongFmt.format(utc(day))
-  const date = dayYearFmt.format(utc(day))
-  return bucket === 'WEEK' ? `Week of ${date}` : date
+/** The tooltip date: an exact date, or a full month label for monthly buckets. */
+function bucketDateLabel(day: string, bucket: AiBucket, locale: string): string {
+  const options: Intl.DateTimeFormatOptions = bucket === 'MONTH'
+    ? { month: 'long', year: 'numeric', timeZone: 'UTC' }
+    : { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }
+  return new Intl.DateTimeFormat(locale, options).format(utc(day))
 }
 
 export function AdminDashboard({ auth, onBack }: { auth: AdminAuth; onBack: () => void }) {
+  const { t, i18n } = useTranslation()
   const [overview, setOverview] = useState<GlobalOverview | null>(null)
   const [overTime, setOverTime] = useState<GamesOverTime | null>(null)
   const [modes, setModes] = useState<StatBucket[]>([])
@@ -99,7 +104,7 @@ export function AdminDashboard({ auth, onBack }: { auth: AdminAuth; onBack: () =
   const [showAllCards, setShowAllCards] = useState(false)
   const [showAllWinRates, setShowAllWinRates] = useState(false)
   const [openTournament, setOpenTournament, closeTournament] = useAdminTournamentParam()
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ kind: 'message'; message: string } | { kind: 'loadFailed' } | null>(null)
   const [filter, setFilter] = useStatsFilterParam()
 
   useEffect(() => {
@@ -126,7 +131,7 @@ export function AdminDashboard({ auth, onBack }: { auth: AdminAuth; onBack: () =
         setTournaments(tn)
         setTournamentSets(ts)
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load dashboard')
+        if (!cancelled) setError(e instanceof Error ? { kind: 'message', message: e.message } : { kind: 'loadFailed' })
       }
     }
     void load()
@@ -148,50 +153,55 @@ export function AdminDashboard({ auth, onBack }: { auth: AdminAuth; onBack: () =
 
   const sliceLabel = isAllGames(filter) ? null : describeFilter(filter)
   const bucket = overTime?.bucket ?? 'DAY'
+  const locale = i18n.resolvedLanguage ?? 'en'
   const overTimeStacked = (overTime?.points ?? []).map((d) => ({ ...d, mixed: Math.max(0, d.count - d.vsHumans - d.vsAi) }))
   const lastBucket = overTimeStacked.at(-1)?.day
 
   return (
-    <AdminScreen title="Stats" subtitle="Global activity across every recorded game" onBack={onBack} backLabel="← Dashboard">
-      {error && <p style={styles.error}>{error}</p>}
+    <AdminScreen title={t('adminStats.title')} subtitle={t('adminStats.subtitle')} onBack={onBack} backLabel={t('adminStats.back')}>
+      {error && <p style={styles.error}>{error.kind === 'message' ? error.message : t('adminStats.loadFailed')}</p>}
 
       <div style={styles.filterRow}>
         <StatsFilterBar filter={filter} onChange={setFilter} />
-        {sliceLabel && <span style={cellStyle.muted}>Game panels show games {sliceLabel}.</span>}
+        {sliceLabel && <span style={cellStyle.muted}>{t('adminStats.gamePanelsFilter', { filter: sliceLabel })}</span>}
         {overview && <NotCountedNote count={overview.notCountedGames} />}
       </div>
 
       <div style={styles.cardRow}>
-        <StatCard label="Games" value={overview?.totalGames} />
-        <StatCard label="People only" value={overview?.gamesVsHumans} />
-        <StatCard label="vs AI" value={overview?.gamesVsAi} />
-        <StatCard label="Players" value={overview?.totalPlayers} />
-        <StatCard label="Accounts" value={overview?.totalAccounts} />
-        <StatCard label="Tournaments" value={overview?.totalTournaments} />
-        <StatCard label="Games (24h)" value={overview?.gamesLast24h} accent />
-        <StatCard label="Games (7d)" value={overview?.gamesLast7d} accent />
+        <StatCard label={t('adminStats.games')} value={overview?.totalGames} />
+        <StatCard label={t('adminStats.peopleOnly')} value={overview?.gamesVsHumans} />
+        <StatCard label={t('adminStats.vsAi')} value={overview?.gamesVsAi} />
+        <StatCard label={t('adminStats.players')} value={overview?.totalPlayers} />
+        <StatCard label={t('adminStats.accounts')} value={overview?.totalAccounts} />
+        <StatCard label={t('adminStats.tournaments')} value={overview?.totalTournaments} />
+        <StatCard label={t('adminStats.games24h')} value={overview?.gamesLast24h} accent />
+        <StatCard label={t('adminStats.games7d')} value={overview?.gamesLast7d} accent />
       </div>
 
       <Panel
-        title={`Games per ${BUCKET_NOUN[bucket]} · ${describeFilter({ ...filter, vs: 'all' }) || 'all time'}`}
-        subtitle={filter.vs === 'all' ? 'Split by who was at the table' : `Counted games ${describeFilter({ ...filter, days: 0 })}`}
+        title={t('adminStats.gamesPer', { bucket: t(BUCKET_NOUN[bucket]), filter: describeFilter({ ...filter, vs: 'all' }) || t('adminStats.allTime') })}
+        subtitle={filter.vs === 'all' ? t('adminStats.splitByTable') : t('adminStats.countedGames', { filter: describeFilter({ ...filter, days: 0 }) })}
       >
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={overTimeStacked} margin={{ top: 8, right: 16, bottom: 0, left: -16 }} barCategoryGap={bucket === 'DAY' && overTimeStacked.length > 40 ? 1 : 2}>
             <CartesianGrid stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="day" stroke="#8f98ac" fontSize={11} tickFormatter={(d: string) => bucketTick(d, bucket)} minTickGap={12} />
+            <XAxis dataKey="day" stroke="#8f98ac" fontSize={11} tickFormatter={(d: string) => bucketTick(d, bucket, locale)} minTickGap={12} />
             <YAxis stroke="#8f98ac" fontSize={11} allowDecimals={false} />
             <Tooltip
               contentStyle={chartTooltipStyle}
               cursor={{ fill: 'rgba(255,255,255,0.06)' }}
-              labelFormatter={(d) => bucketLabel(String(d), bucket) + (d === lastBucket ? ' (so far)' : '')}
+              labelFormatter={(d) => {
+                const date = bucketDateLabel(String(d), bucket, locale)
+                const label = bucket === 'WEEK' ? t('adminStats.weekOf', { date }) : date
+                return label + (d === lastBucket ? t('adminStats.soFar') : '')
+              }}
             />
             {filter.vs === 'all' ? (
               WHO_PLAYED.map((w, i) => (
                 <Bar
                   key={w.key}
                   dataKey={w.key}
-                  name={w.label}
+                  name={t(w.labelKey)}
                   stackId="who"
                   fill={w.color}
                   stroke="#141824"
@@ -200,7 +210,7 @@ export function AdminDashboard({ auth, onBack }: { auth: AdminAuth; onBack: () =
                 />
               ))
             ) : (
-              <Bar dataKey="count" name="Games" fill={WHO_PLAYED[filter.vs === 'humans' ? 0 : 1].color} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="count" name={t('adminStats.gamesSeries')} fill={WHO_PLAYED[filter.vs === 'humans' ? 0 : 1].color} radius={[4, 4, 0, 0]} />
             )}
             {filter.vs === 'all' && <Legend wrapperStyle={{ fontSize: 12, color: '#c3c9d7' }} iconType="square" />}
           </BarChart>
@@ -208,21 +218,21 @@ export function AdminDashboard({ auth, onBack }: { auth: AdminAuth; onBack: () =
       </Panel>
 
       <div style={styles.twoCol}>
-        <Panel title="Game modes" subtitle="Broken down by format — e.g. Tournament › Draft vs Sealed">
+        <Panel title={t('adminStats.gameModes')} subtitle={t('adminStats.gameModesSubtitle')}>
           <BucketBars data={mergeModeBuckets(modes)} fill="#5b9ee1" />
         </Panel>
-        <Panel title="Colors played" subtitle="People's decks only">
+        <Panel title={t('adminStats.colorsPlayed')} subtitle={t('adminStats.peopleDecksOnly')}>
           <BucketBars data={colors.map((c) => ({ label: colorLabel(c.label), count: c.count }))} fill="#e1a35b" />
         </Panel>
       </div>
 
       <div style={styles.twoCol}>
         <Panel
-          title="Most-played cards"
-          subtitle="People's decks only"
+          title={t('adminStats.mostPlayedCards')}
+          subtitle={t('adminStats.peopleDecksOnly')}
           action={<ShowMoreToggle total={cards.length} expanded={showAllCards} onToggle={() => setShowAllCards((v) => !v)} />}
         >
-          <Table head={['Card', 'Copies', 'Decks']}>
+          <Table head={[t('adminStats.card'), t('adminStats.copies'), t('adminStats.decks')]}>
             {(showAllCards ? cards : cards.slice(0, CARD_PREVIEW)).map((c) => (
               <tr key={c.cardName}>
                 <td style={cellStyle.td}>{c.cardName}</td>
@@ -233,11 +243,11 @@ export function AdminDashboard({ auth, onBack }: { auth: AdminAuth; onBack: () =
           </Table>
         </Panel>
         <Panel
-          title="Highest win-rate cards (≥5 decks)"
-          subtitle={filter.vs === 'humans' ? 'People’s decks, in games between people' : 'People’s decks'}
+          title={t('adminStats.highestWinRateCards')}
+          subtitle={filter.vs === 'humans' ? t('adminStats.peopleDecksHeadToHead') : t('adminStats.peopleDecksOnly')}
           action={<ShowMoreToggle total={winRates.length} expanded={showAllWinRates} onToggle={() => setShowAllWinRates((v) => !v)} />}
         >
-          <Table head={['Card', 'Win %', 'Decks']}>
+          <Table head={[t('adminStats.card'), t('adminStats.winPercent'), t('adminStats.decks')]}>
             {(showAllWinRates ? winRates : winRates.slice(0, CARD_PREVIEW)).map((c) => (
               <tr key={c.cardName}>
                 <td style={cellStyle.td}>{c.cardName}</td>
@@ -249,15 +259,15 @@ export function AdminDashboard({ auth, onBack }: { auth: AdminAuth; onBack: () =
         </Panel>
       </div>
 
-      <Panel title="Sets played most in tournaments" subtitle="Counted once per tournament that used each set">
+      <Panel title={t('adminStats.setsPlayed')} subtitle={t('adminStats.setsPlayedSubtitle')}>
         <BucketBars data={tournamentSets} fill="#8f7ad9" />
       </Panel>
 
-      <Panel title="Tournaments">
+      <Panel title={t('adminStats.tournaments')}>
         {tournaments.length === 0 ? (
-          <p style={cellStyle.muted}>No tournaments recorded yet.</p>
+          <p style={cellStyle.muted}>{t('adminStats.noTournaments')}</p>
         ) : (
-          <Table head={['Date', 'Name', 'Mode', 'Status', 'Players', 'Winner']}>
+          <Table head={[t('adminStats.date'), t('adminStats.name'), t('adminStats.gameModes'), t('adminStats.status'), t('adminStats.players'), t('adminStats.winner')]}>
             {tournaments.map((t) => (
               <tr key={t.id} style={styles.clickableRow} onClick={() => setOpenTournament(t.id)}>
                 <td style={cellStyle.td}>{t.endedAt.slice(0, 10)}</td>
@@ -274,20 +284,20 @@ export function AdminDashboard({ auth, onBack }: { auth: AdminAuth; onBack: () =
         )}
       </Panel>
 
-      <Panel title="Where players connect from">
+      <Panel title={t('adminStats.wherePlayersConnect')}>
         {geo.length === 0 ? (
-          <p style={cellStyle.muted}>Resolving locations…</p>
+          <p style={cellStyle.muted}>{t('adminStats.resolvingLocations')}</p>
         ) : (
           <GeoMap buckets={geo} />
         )}
       </Panel>
 
       <Panel
-        title="Database"
+        title={t('adminStats.database')}
         subtitle={
           database
-            ? `${database.databaseName} — ${formatBytes(database.databaseSizeBytes)} total (including catalogs)`
-            : 'Row counts and on-disk size per table'
+            ? t('adminStats.databaseTotal', { name: database.databaseName, size: formatBytes(database.databaseSizeBytes) })
+            : t('adminStats.databaseSubtitle')
         }
       >
         <DatabaseTables stats={database} />
@@ -305,11 +315,12 @@ export function AdminDashboard({ auth, onBack }: { auth: AdminAuth; onBack: () =
  * themselves occupy; the whole-database figure in the panel subtitle is larger (it counts catalogs).
  */
 function DatabaseTables({ stats }: { stats: DatabaseStats | null }) {
-  if (!stats) return <p style={cellStyle.muted}>Measuring tables…</p>
-  if (stats.tables.length === 0) return <p style={cellStyle.muted}>No tables found.</p>
+  const { t } = useTranslation()
+  if (!stats) return <p style={cellStyle.muted}>{t('adminStats.measuringTables')}</p>
+  if (stats.tables.length === 0) return <p style={cellStyle.muted}>{t('adminStats.noTables')}</p>
   const sum = (pick: (t: DatabaseStats['tables'][number]) => number) => stats.tables.reduce((a, t) => a + pick(t), 0)
   return (
-    <Table head={['Table', 'Rows', 'Data', 'Indexes', 'Total']}>
+    <Table head={[t('adminStats.table'), t('adminStats.rows'), t('adminStats.data'), t('adminStats.indexes'), t('adminStats.total')]}>
       {stats.tables.map((t) => (
         <tr key={t.tableName}>
           <td style={cellStyle.td}>{t.tableName}</td>
@@ -320,7 +331,7 @@ function DatabaseTables({ stats }: { stats: DatabaseStats | null }) {
         </tr>
       ))}
       <tr>
-        <td style={styles.totalCell}>{stats.tables.length} tables</td>
+        <td style={styles.totalCell}>{t('adminStats.tableCount', { count: stats.tables.length })}</td>
         <td style={styles.totalCellNum}>{formatCount(sum((t) => t.rows))}</td>
         <td style={styles.totalCellNum}>{formatBytes(sum((t) => t.tableBytes))}</td>
         <td style={styles.totalCellNum}>{formatBytes(sum((t) => t.indexBytes))}</td>
@@ -332,10 +343,11 @@ function DatabaseTables({ stats }: { stats: DatabaseStats | null }) {
 
 /** "Show all (N) / Show top N" link rendered in a card panel's header when there's more to see. */
 function ShowMoreToggle({ total, expanded, onToggle }: { total: number; expanded: boolean; onToggle: () => void }) {
+  const { t } = useTranslation()
   if (total <= CARD_PREVIEW) return null
   return (
     <button type="button" style={styles.toggle} onClick={onToggle}>
-      {expanded ? `Show top ${CARD_PREVIEW}` : `Show all ${total}`}
+      {expanded ? t('adminStats.showTop', { count: CARD_PREVIEW }) : t('adminStats.showAll', { count: total })}
     </button>
   )
 }
@@ -347,7 +359,8 @@ function tournamentModeLabel(gameMode: string | null, format: string | null): st
 }
 
 function BucketBars({ data, fill }: { data: StatBucket[]; fill: string }) {
-  if (data.length === 0) return <p style={cellStyle.muted}>No data yet.</p>
+  const { t } = useTranslation()
+  if (data.length === 0) return <p style={cellStyle.muted}>{t('adminStats.noData')}</p>
   return (
     <ResponsiveContainer width="100%" height={Math.max(120, data.length * 28)}>
       <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 8 }}>

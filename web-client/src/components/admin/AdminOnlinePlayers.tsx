@@ -5,6 +5,7 @@
  * queues joined, decks submitted. All of it comes from the same `/api/admin/live-overview` poll.
  */
 import type React from 'react'
+import { useTranslation } from 'react-i18next'
 import type { ActivityFeedEntry, ActivityKind, OnlinePlayer } from '@/api/adminLiveOverview'
 import { formatAgo, formatClock } from './statFormat'
 import { Panel, Table, adminTheme, cellStyle } from './adminUi'
@@ -13,14 +14,14 @@ import { Panel, Table, adminTheme, cellStyle } from './adminUi'
 const AWAY_AFTER_MS = 10 * 60_000
 
 /** The dashboard's buckets: several server kinds fold into one where the difference is detail. */
-const GROUPS: readonly { key: string; label: string; color: string; kinds: readonly ActivityKind[] }[] = [
-  { key: 'playing', label: 'Playing', color: adminTheme.good, kinds: ['PLAYING'] },
-  { key: 'limited', label: 'Drafting / building', color: adminTheme.accentSolid, kinds: ['DRAFTING', 'BUILDING_LIMITED', 'TOURNAMENT'] },
-  { key: 'lobby', label: 'In a lobby', color: '#6fb3ff', kinds: ['LOBBY'] },
-  { key: 'search', label: 'Searching', color: '#4fd1c5', kinds: ['SEARCHING'] },
-  { key: 'decks', label: 'Deckbuilder', color: '#c58bff', kinds: ['DECKBUILDER'] },
-  { key: 'watching', label: 'Watching', color: '#f78fb3', kinds: ['SPECTATING'] },
-  { key: 'browsing', label: 'Browsing', color: adminTheme.textMuted, kinds: ['BROWSING', 'HOME'] },
+const GROUPS: readonly { key: string; labelKey: 'adminLive.playing' | 'adminLive.limited' | 'adminLive.lobby' | 'adminLive.search' | 'adminLive.decks' | 'adminLive.watching' | 'adminLive.browsing'; color: string; kinds: readonly ActivityKind[] }[] = [
+  { key: 'playing', labelKey: 'adminLive.playing', color: adminTheme.good, kinds: ['PLAYING'] },
+  { key: 'limited', labelKey: 'adminLive.limited', color: adminTheme.accentSolid, kinds: ['DRAFTING', 'BUILDING_LIMITED', 'TOURNAMENT'] },
+  { key: 'lobby', labelKey: 'adminLive.lobby', color: '#6fb3ff', kinds: ['LOBBY'] },
+  { key: 'search', labelKey: 'adminLive.search', color: '#4fd1c5', kinds: ['SEARCHING'] },
+  { key: 'decks', labelKey: 'adminLive.decks', color: '#c58bff', kinds: ['DECKBUILDER'] },
+  { key: 'watching', labelKey: 'adminLive.watching', color: '#f78fb3', kinds: ['SPECTATING'] },
+  { key: 'browsing', labelKey: 'adminLive.browsing', color: adminTheme.textMuted, kinds: ['BROWSING', 'HOME'] },
 ]
 
 function groupOf(kind: ActivityKind) {
@@ -28,19 +29,23 @@ function groupOf(kind: ActivityKind) {
 }
 
 export function OnlinePlayersPanel({ players, now }: { players: readonly OnlinePlayer[]; now: number }) {
+  const { t } = useTranslation()
   const counts = GROUPS.map((g) => ({ ...g, count: players.filter((p) => g.kinds.includes(p.activity)).length }))
   const away = players.filter((p) => isAway(p, now)).length
+  const subtitle = away > 0
+    ? t('adminLive.connectedAway', { count: players.length, away, minutes: AWAY_AFTER_MS / 60_000 })
+    : t('adminLive.connected', { count: players.length })
 
   return (
     <Panel
-      title="Online players"
-      subtitle={`${players.length} connected${away > 0 ? ` · ${away} with no input for ${AWAY_AFTER_MS / 60_000}+ min` : ''}`}
+      title={t('adminLive.onlinePlayers')}
+      subtitle={subtitle}
     >
       {players.length === 0 ? (
-        <p style={cellStyle.muted}>Nobody is online.</p>
+        <p style={cellStyle.muted}>{t('adminLive.nobodyOnline')}</p>
       ) : (
         <>
-          <div style={styles.bar} role="img" aria-label={counts.filter((c) => c.count > 0).map((c) => `${c.count} ${c.label}`).join(', ')}>
+          <div style={styles.bar} role="img" aria-label={counts.filter((c) => c.count > 0).map((c) => `${c.count} ${t(c.labelKey)}`).join(', ')}>
             {counts
               .filter((c) => c.count > 0)
               .map((c) => (
@@ -53,11 +58,11 @@ export function OnlinePlayersPanel({ players, now }: { players: readonly OnlineP
               .map((c) => (
                 <span key={c.key} style={styles.legendItem}>
                   <span style={{ ...styles.dot, backgroundColor: c.color }} aria-hidden />
-                  <strong style={styles.legendCount}>{c.count}</strong> {c.label}
+                  <strong style={styles.legendCount}>{c.count}</strong> {t(c.labelKey)}
                 </span>
               ))}
           </div>
-          <Table head={['Player', 'Doing', 'Last input', '']} leftColumns={2}>
+          <Table head={[t('adminLive.player'), t('adminLive.doing'), t('adminLive.lastInput'), '']} leftColumns={2}>
             {players.map((p, i) => (
               <PlayerRow key={`${p.name}-${i}`} player={p} now={now} />
             ))}
@@ -69,13 +74,14 @@ export function OnlinePlayersPanel({ players, now }: { players: readonly OnlineP
 }
 
 function PlayerRow({ player, now }: { player: OnlinePlayer; now: number }) {
+  const { t } = useTranslation()
   const group = groupOf(player.activity)
   const away = isAway(player, now)
   return (
     <tr style={away ? styles.awayRow : undefined}>
       <td style={{ ...cellStyle.td, whiteSpace: 'nowrap' }}>
         <span style={styles.name}>{player.name}</span>
-        {!player.signedIn && <span style={styles.tag}> guest</span>}
+        {!player.signedIn && <span style={styles.tag}> {t('adminLive.guest')}</span>}
       </td>
       <td style={{ ...cellStyle.td, whiteSpace: 'normal' }}>
         <span style={styles.doing}>
@@ -85,18 +91,18 @@ function PlayerRow({ player, now }: { player: OnlinePlayer; now: number }) {
         {player.searching && (
           <span style={styles.searching}>
             {' '}
-            · also searching {player.searching}
+            {t('adminLive.alsoSearching', { query: player.searching })}
             {player.searchingSince ? ` (${formatAgo(now - Date.parse(player.searchingSince))})` : ''}
           </span>
         )}
       </td>
       <td style={{ ...cellStyle.td, color: away ? adminTheme.textMuted : adminTheme.textSecondary }}>
-        {player.lastInputAt ? `${formatAgo(now - Date.parse(player.lastInputAt))} ago` : '—'}
+        {player.lastInputAt ? t('adminLive.ago', { time: formatAgo(now - Date.parse(player.lastInputAt)) }) : '—'}
       </td>
       <td style={cellStyle.tdNum}>
         {player.gameSessionId ? (
           <a style={styles.link} href={`/?spectate=${encodeURIComponent(player.gameSessionId)}`} target="_blank" rel="noreferrer">
-            Watch ↗
+            {t('adminLive.watch')} ↗
           </a>
         ) : null}
       </td>
@@ -115,10 +121,11 @@ const FEED_COLORS: Record<string, string> = {
 }
 
 export function ActivityFeedPanel({ feed, now }: { feed: readonly ActivityFeedEntry[]; now: number }) {
+  const { t } = useTranslation()
   return (
-    <Panel title="Recent activity" subtitle="Since the last server restart · newest first">
+    <Panel title={t('adminLive.recentActivity')} subtitle={t('adminLive.feedSubtitle')}>
       {feed.length === 0 ? (
-        <p style={cellStyle.muted}>Nothing yet.</p>
+        <p style={cellStyle.muted}>{t('adminLive.nothingYet')}</p>
       ) : (
         <ol style={styles.feed}>
           {feed.map((e, i) => (
