@@ -60,6 +60,7 @@ Continue the in-progress i18n task from this working tree. The user chose **core
 - Localized the account/profile avatar editor and crop controls, game-deck save/view flows, tournament history/detail and status badges, ante spoils, and the signed-in deck-migration banner.
 - Localized the admin sign-in and dashboard hub, plus the replay player's back-button accessibility label.
 - Localized the admin activity, online-player, and global stats dashboards, including chart legends, localized bucket dates, table states, and database summaries.
+- Localized the live game/lobby maintenance view and player roster/detail surfaces while keeping backend status tokens and player/card data intact.
 - Corrected the stale Otaria layout test assertion in `src/components/game/otariaOverviewLayout.test.ts`: `(true, 1, 1)` is right; use `(true, 0, 1)` for the no-map/null case.
 - Existing tests adapted to render translated Otaria components under an `I18nextProvider` and use the changed label copy.
 
@@ -69,7 +70,7 @@ Continue the in-progress i18n task from this working tree. The user chose **core
 - Full `npm test` passes: 122 files, 1,411 tests.
 - `npm run build` passes.
 - The running browser was manually checked in French on the Cards and Stats pages, including the global language switcher and route persistence. Gameplay overlays have not had a full scenario-driven browser walkthrough.
-- The latest profile/tournament/account/admin/replay changes also pass the full test suite, typecheck, production build, and `git diff --check`. API-backed profile/game screens were not manually exercised in the browser because the game-server was unavailable during the prior browser attempt.
+- The latest profile/tournament/account/admin/replay/live-admin/player-detail changes also pass the full test suite, typecheck, production build, and `git diff --check`. API-backed profile/game screens were not manually exercised in the browser because the game-server was unavailable during the prior browser attempt.
 
 ## Current working tree / safety
 

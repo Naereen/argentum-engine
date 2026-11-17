@@ -15,6 +15,7 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import type React from 'react'
+import { useTranslation } from 'react-i18next'
 import { type LiveGame, type LiveLobby, type LiveOverview, endLiveGame, fetchLiveOverview } from '@/api/adminLiveOverview'
 import type { AdminAuth } from '@/api/adminAuth'
 import { formatAgo, formatClock, gameModeLabel } from './statFormat'
@@ -26,6 +27,7 @@ const REFRESH_MS = 10_000
 const IDLE_AFTER_MS = 5 * 60_000
 
 export function AdminLiveOverview({ auth, onBack }: { auth: AdminAuth; onBack: () => void }) {
+  const { t } = useTranslation()
   const [overview, setOverview] = useState<LiveOverview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showAiOnly, setShowAiOnly] = useState(false)
@@ -35,22 +37,22 @@ export function AdminLiveOverview({ auth, onBack }: { auth: AdminAuth; onBack: (
       setOverview(await fetchLiveOverview(auth))
       setError(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load the live overview')
+      setError(e instanceof Error ? e.message : t('adminLive.loadFailed'))
     }
-  }, [auth])
+  }, [auth, t])
 
   const endGame = useCallback(
     async (game: LiveGame) => {
-      const players = game.seats.map((s) => s.name).join(' vs ')
-      if (!window.confirm(`End ${players} now? It is recorded as a draw.`)) return
+      const players = game.seats.map((s) => s.name).join(` ${t('adminActivity.versus')} `)
+      if (!window.confirm(t('adminLive.endConfirm', { players }))) return
       try {
         await endLiveGame(auth, game.gameSessionId)
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to end the game')
+        setError(e instanceof Error ? e.message : t('adminLive.endFailed'))
       }
       void load()
     },
-    [auth, load],
+    [auth, load, t],
   )
 
   useEffect(() => {
@@ -69,13 +71,13 @@ export function AdminLiveOverview({ auth, onBack }: { auth: AdminAuth; onBack: (
 
   return (
     <AdminScreen
-      title="Live overview"
-      subtitle="Everything running on the server right now"
+      title={t('adminLive.overviewTitle')}
+      subtitle={t('adminLive.overviewSubtitle')}
       onBack={onBack}
-      backLabel="← Dashboard"
+      backLabel={t('adminStats.back')}
       right={
         <button type="button" style={styles.refresh} onClick={() => void load()}>
-          Refresh
+          {t('adminLive.refresh')}
         </button>
       }
     >
@@ -85,11 +87,11 @@ export function AdminLiveOverview({ auth, onBack }: { auth: AdminAuth; onBack: (
           <MaintenanceVerdict activeGames={activeWithHumans.length} idleGames={withHumans.length - activeWithHumans.length} lobbies={busyLobbies.length} />
 
           <div style={styles.metrics}>
-            <StatCard label="Online players" value={overview.onlinePlayers} />
-            <StatCard label="Games with players" value={withHumans.length} accent={withHumans.length > 0} />
-            <StatCard label="…active in last 5 min" value={activeWithHumans.length} />
-            <StatCard label="No connected human" value={aiOnly.length} />
-            <StatCard label="Running tournaments" value={busyLobbies.length} />
+            <StatCard label={t('adminLive.onlinePlayers')} value={overview.onlinePlayers} />
+            <StatCard label={t('adminLive.gamesWithPlayers')} value={withHumans.length} accent={withHumans.length > 0} />
+            <StatCard label={t('adminLive.activeLastFive')} value={activeWithHumans.length} />
+            <StatCard label={t('adminLive.noConnectedHuman')} value={aiOnly.length} />
+            <StatCard label={t('adminLive.runningTournaments')} value={busyLobbies.length} />
           </div>
 
           <div style={styles.activityRow}>
@@ -102,19 +104,19 @@ export function AdminLiveOverview({ auth, onBack }: { auth: AdminAuth; onBack: (
           </div>
 
           <Panel
-            title="Games"
-            subtitle={`Updated ${formatClock(overview.generatedAt)} · refreshes every ${REFRESH_MS / 1000}s`}
+            title={t('adminLive.games')}
+            subtitle={t('adminLive.refreshInterval', { time: formatClock(overview.generatedAt), seconds: REFRESH_MS / 1000 })}
             action={
               <label style={styles.toggle}>
                 <input type="checkbox" checked={showAiOnly} onChange={(e) => setShowAiOnly(e.target.checked)} />
-                Show games with no connected human ({aiOnly.length})
+                {t('adminLive.showAiOnly', { count: aiOnly.length })}
               </label>
             }
           >
             {visible.length === 0 ? (
-              <p style={cellStyle.muted}>No games with connected players.</p>
+              <p style={cellStyle.muted}>{t('adminLive.noConnectedGames')}</p>
             ) : (
-              <Table head={['Players', 'Mode', 'Turn', 'Started', 'Last action', 'Auto-ends', 'Watching', '']} leftColumns={6}>
+              <Table head={[t('adminLive.players'), t('adminLive.mode'), t('adminLive.turn'), t('adminLive.started'), t('adminLive.lastAction'), t('adminLive.autoEnds'), t('adminLive.watchingCount'), '']} leftColumns={6}>
                 {visible.map((g) => (
                   <GameRow key={g.gameSessionId} game={g} now={now} onEnd={() => void endGame(g)} />
                 ))}
@@ -122,11 +124,11 @@ export function AdminLiveOverview({ auth, onBack }: { auth: AdminAuth; onBack: (
             )}
           </Panel>
 
-          <Panel title="Tournament lobbies" subtitle="Drafting, deckbuilding, or playing rounds">
+          <Panel title={t('adminLive.tournamentLobbies')} subtitle={t('adminLive.lobbySubtitle')}>
             {overview.lobbies.length === 0 ? (
-              <p style={cellStyle.muted}>No tournaments in progress.</p>
+              <p style={cellStyle.muted}>{t('adminLive.noTournamentsRunning')}</p>
             ) : (
-              <Table head={['Mode', 'Sets', 'Stage', 'Players online', 'Round']} leftColumns={3}>
+              <Table head={[t('adminLive.mode'), t('adminLive.sets'), t('adminLive.stage'), t('adminLive.playersOnline'), t('adminLive.round')]} leftColumns={3}>
                 {overview.lobbies.map((l) => (
                   <LobbyRow key={l.lobbyId} lobby={l} />
                 ))}
@@ -140,16 +142,17 @@ export function AdminLiveOverview({ auth, onBack }: { auth: AdminAuth; onBack: (
 }
 
 function MaintenanceVerdict({ activeGames, idleGames, lobbies }: { activeGames: number; idleGames: number; lobbies: number }) {
+  const { t } = useTranslation()
   const quiet = activeGames === 0 && lobbies === 0
   const parts: string[] = []
-  if (activeGames > 0) parts.push(`${activeGames} game${activeGames === 1 ? '' : 's'} being played`)
-  if (lobbies > 0) parts.push(`${lobbies} tournament${lobbies === 1 ? '' : 's'} running`)
-  if (idleGames > 0) parts.push(`${idleGames} idle game${idleGames === 1 ? '' : 's'} with a player still connected`)
+  if (activeGames > 0) parts.push(t(activeGames === 1 ? 'adminLive.activeGameOne' : 'adminLive.activeGamesMany', { count: activeGames }))
+  if (lobbies > 0) parts.push(t(lobbies === 1 ? 'adminLive.runningTournamentOne' : 'adminLive.runningTournamentsMany', { count: lobbies }))
+  if (idleGames > 0) parts.push(t(idleGames === 1 ? 'adminLive.idleGameOne' : 'adminLive.idleGamesMany', { count: idleGames }))
   return (
     <div style={{ ...styles.verdict, borderColor: quiet ? adminTheme.good : adminTheme.bad }}>
       <span style={{ ...styles.verdictDot, backgroundColor: quiet ? adminTheme.good : adminTheme.bad }} aria-hidden />
       <span>
-        <strong style={{ color: adminTheme.text }}>{quiet ? 'Quiet — a restart would interrupt no active play.' : 'Busy — a restart would interrupt play.'}</strong>
+        <strong style={{ color: adminTheme.text }}>{quiet ? t('adminLive.quietRestart') : t('adminLive.busyRestart')}</strong>
         {parts.length > 0 && <span style={styles.verdictDetail}> {parts.join(' · ')}.</span>}
       </span>
     </div>
@@ -157,19 +160,21 @@ function MaintenanceVerdict({ activeGames, idleGames, lobbies }: { activeGames: 
 }
 
 function GameRow({ game, now, onEnd }: { game: LiveGame; now: number; onEnd: () => void }) {
+  const { t, i18n } = useTranslation()
   const mode = gameModeLabel(game.gameMode, game.format)
   const idle = isIdle(game, now)
+  const locale = i18n.resolvedLanguage ?? 'en'
   return (
     <tr>
       <td style={cellStyle.td}>
         {game.seats.map((s, i) => (
           <span key={`${s.name}-${i}`}>
-            {i > 0 && <span style={styles.vs}> vs </span>}
+            {i > 0 && <span style={styles.vs}> {t('adminActivity.versus')} </span>}
             <span style={s.name === game.activePlayerName ? styles.active : undefined}>{s.name}</span>
             {s.isAi ? (
-              <span style={styles.tag}> AI</span>
+              <span style={styles.tag}> {t('adminActivity.ai')}</span>
             ) : (
-              !s.connected && <span style={styles.disconnected} title="Disconnected"> ⦸</span>
+              !s.connected && <span style={styles.disconnected} title={t('adminLive.disconnected')}> ⦸</span>
             )}
             {s.life != null && <span style={styles.life}> {s.life}</span>}
           </span>
@@ -179,39 +184,46 @@ function GameRow({ game, now, onEnd }: { game: LiveGame; now: number; onEnd: () 
         {mode.primary}
         {mode.variant ? <span style={styles.tag}> › {mode.variant}</span> : null}
         {game.setCode ? <span style={styles.tag}> · {game.setCode}</span> : null}
-        {game.ranked ? <span style={styles.ranked}> · Ranked</span> : null}
+        {game.ranked ? <span style={styles.ranked}> · {t('adminLive.ranked')}</span> : null}
       </td>
       <td style={cellStyle.td}>
-        {game.gameOver ? 'Over' : !game.started ? 'Pregame' : `T${game.turnNumber ?? '?'} · ${prettyStep(game.step)}`}
+        {game.gameOver
+          ? t('adminLive.over')
+          : !game.started
+            ? t('adminLive.pregame')
+            : t('adminLive.turnStep', {
+                turn: game.turnNumber ?? '?',
+                step: game.step ? t(`phases.steps.${game.step}`, { defaultValue: prettyStep(game.step) }) : '—',
+              })}
       </td>
       <td style={cellStyle.td}>
         {game.startedAt ? (
           <>
-            {formatStarted(game.startedAt, now)}
-            <span style={styles.tag}> · {formatAgo(now - Date.parse(game.startedAt))} ago</span>
+            {formatStarted(game.startedAt, now, locale)}
+            <span style={styles.tag}> · {t('adminLive.ago', { time: formatAgo(now - Date.parse(game.startedAt)) })}</span>
           </>
         ) : (
           '—'
         )}
       </td>
       <td style={{ ...cellStyle.td, color: idle ? adminTheme.textMuted : adminTheme.good }}>
-        {game.lastActionAt ? `${formatAgo(now - Date.parse(game.lastActionAt))} ago` : '—'}
+        {game.lastActionAt ? t('adminLive.ago', { time: formatAgo(now - Date.parse(game.lastActionAt)) }) : '—'}
       </td>
-      <td style={cellStyle.td} title="Games with no connected human are ended as a draw after 30 min without a move, or 60 min without a connected player">
-        {game.autoEndAt ? <span style={styles.tag}>in {formatAgo(Date.parse(game.autoEndAt) - now)}</span> : '—'}
+      <td style={cellStyle.td} title={t('adminLive.autoEndTitle')}>
+        {game.autoEndAt ? <span style={styles.tag}>{t('adminLive.autoEndIn', { time: formatAgo(Date.parse(game.autoEndAt) - now) })}</span> : '—'}
       </td>
       <td style={cellStyle.tdNum}>{game.spectatorCount || '—'}</td>
       <td style={{ ...cellStyle.tdNum, whiteSpace: 'nowrap' }}>
         {game.started && !game.gameOver ? (
           <a style={styles.link} href={`/?spectate=${encodeURIComponent(game.gameSessionId)}`} target="_blank" rel="noreferrer">
-            Watch ↗
+            {t('adminLive.watch')} ↗
           </a>
         ) : (
           <span style={styles.tag}>—</span>
         )}
         {!game.gameOver && (
-          <button type="button" style={styles.end} onClick={onEnd} title="End this game now as a draw">
-            End
+          <button type="button" style={styles.end} onClick={onEnd} title={t('adminLive.endGameTitle')}>
+            {t('adminLive.endGame')}
           </button>
         )}
       </td>
@@ -238,11 +250,11 @@ function LobbyRow({ lobby }: { lobby: LiveLobby }) {
 }
 
 /** Clock time for a game started today, date and time for an older one — the long-forgotten ones. */
-function formatStarted(iso: string, now: number): string {
+function formatStarted(iso: string, now: number, locale: string): string {
   const started = new Date(iso)
-  const time = started.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  if (started.toDateString() === new Date(now).toDateString()) return time
-  return `${started.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${time}`
+  const time = started.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
+  if (started.toLocaleDateString(locale) === new Date(now).toLocaleDateString(locale)) return time
+  return `${started.toLocaleDateString(locale, { month: 'short', day: 'numeric' })} ${time}`
 }
 
 function isIdle(game: LiveGame, now: number): boolean {

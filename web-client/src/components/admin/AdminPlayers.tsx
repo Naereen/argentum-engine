@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from 'react'
 import type React from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   type AdminGamesPage,
   type AdminUserDetail,
@@ -42,6 +43,7 @@ export function AdminPlayers({
   onCloseDetail: () => void
   onBack: () => void
 }) {
+  const { t } = useTranslation()
   const [users, setUsers] = useState<AdminUserSummary[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -52,12 +54,12 @@ export function AdminPlayers({
     setLoading(true)
     fetchUsers(auth, filter)
       .then((u) => !cancelled && setUsers(u))
-      .catch((e) => !cancelled && setError(e instanceof Error ? e.message : 'Failed to load players'))
+      .catch((e) => !cancelled && setError(e instanceof Error ? e.message : t('adminPlayersUi.loadPlayersFailed')))
       .finally(() => !cancelled && setLoading(false))
     return () => {
       cancelled = true
     }
-  }, [auth, filter])
+  }, [auth, filter, t])
 
   /** Reflect an admin-flag change from the detail view back into the roster row. */
   const applyAdminChange = (id: string, isAdmin: boolean) =>
@@ -77,23 +79,23 @@ export function AdminPlayers({
 
   return (
     <AdminScreen
-      title="Players"
-      subtitle={`${users.length} registered account${users.length === 1 ? '' : 's'}`}
+      title={t('adminUi.playersTitle')}
+      subtitle={t(users.length === 1 ? 'adminPlayersUi.registeredOne' : 'adminPlayersUi.registeredMany', { count: users.length })}
       onBack={onBack}
-      backLabel="← Dashboard"
+      backLabel={t('adminStats.back')}
     >
       {error && <p style={styles.error}>{error}</p>}
       <Panel
-        title={isAllGames(filter) ? 'Every game' : `Games ${describeFilter(filter)}`}
-        subtitle="Games, wins and win rate leave out games a player never took an action in"
+        title={isAllGames(filter) ? t('adminPlayersUi.everyGame') : t('adminPlayersUi.gamesFilter', { filter: describeFilter(filter) })}
+        subtitle={t('adminPlayersUi.filterSubtitle')}
         action={<StatsFilterBar filter={filter} onChange={setFilter} />}
       >
         {loading && users.length === 0 ? (
-          <p style={cellStyle.muted}>Loading players…</p>
+          <p style={cellStyle.muted}>{t('adminPlayersUi.loadingPlayers')}</p>
         ) : users.length === 0 ? (
-          <p style={cellStyle.muted}>No registered accounts yet.</p>
+          <p style={cellStyle.muted}>{t('adminPlayersUi.noAccounts')}</p>
         ) : (
-          <Table head={['Player', 'Games', 'Wins', 'Win %', 'Last played', '']}>
+          <Table head={[t('adminPlayersUi.player'), t('adminPlayersUi.games'), t('adminPlayersUi.wins'), t('adminPlayersUi.winPercent'), t('adminPlayersUi.lastPlayed'), '']}>
             {users.map((u) => {
               const winRate = u.games > 0 ? Math.round((u.wins / u.games) * 100) : 0
               return (
@@ -104,7 +106,7 @@ export function AdminPlayers({
                       <div>
                         <div style={styles.playerNameRow}>
                           <span style={styles.playerName}>{u.displayName}</span>
-                          {u.isAdmin && <span style={styles.adminBadge}>ADMIN</span>}
+                          {u.isAdmin && <span style={styles.adminBadge}>{t('adminPlayersUi.adminBadge')}</span>}
                         </div>
                         <div style={styles.playerEmail}>{u.email}</div>
                       </div>
@@ -115,7 +117,7 @@ export function AdminPlayers({
                   <td style={cellStyle.tdNum}>{u.games > 0 ? `${winRate}%` : '—'}</td>
                   <td style={cellStyle.tdNum}>{u.lastPlayed ? u.lastPlayed.slice(0, 10) : '—'}</td>
                   <td style={cellStyle.tdNum}>
-                    <span style={styles.viewLink}>View →</span>
+                    <span style={styles.viewLink}>{t('adminPlayersUi.view')}</span>
                   </td>
                 </tr>
               )
@@ -138,6 +140,7 @@ function PlayerDetail({
   onBack: () => void
   onAdminChange: (id: string, isAdmin: boolean) => void
 }) {
+  const { t } = useTranslation()
   const [detail, setDetail] = useState<AdminUserDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [updating, setUpdating] = useState(false)
@@ -155,11 +158,11 @@ function PlayerDetail({
     let cancelled = false
     fetchUserDetail(auth, id, filter)
       .then((d) => !cancelled && setDetail(d))
-      .catch((e) => !cancelled && setError(e instanceof Error ? e.message : 'Failed to load player'))
+      .catch((e) => !cancelled && setError(e instanceof Error ? e.message : t('adminPlayersUi.loadPlayerFailed')))
     return () => {
       cancelled = true
     }
-  }, [auth, id, filter])
+  }, [auth, id, filter, t])
 
   useEffect(() => {
     let cancelled = false
@@ -184,7 +187,7 @@ function PlayerDetail({
       setDetail({ ...detail, isAdmin })
       onAdminChange(id, isAdmin)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update admin status')
+      setError(e instanceof Error ? e.message : t('adminPlayersUi.updateAdminFailed'))
     } finally {
       setUpdating(false)
     }
@@ -197,32 +200,32 @@ function PlayerDetail({
       disabled={updating}
       onClick={() => void toggleAdmin()}
     >
-      {updating ? 'Saving…' : detail.isAdmin ? 'Revoke admin' : 'Make admin'}
+      {updating ? t('adminPlayersUi.saving') : detail.isAdmin ? t('adminPlayersUi.revokeAdmin') : t('adminPlayersUi.makeAdmin')}
     </button>
   )
 
   return (
     <AdminScreen
-      title={detail?.displayName ?? 'Player'}
+      title={detail?.displayName ?? t('adminPlayersUi.playerDefault')}
       subtitle={detail?.email}
       onBack={onBack}
-      backLabel="← Players"
+      backLabel={t('adminPlayersUi.backToPlayers')}
       right={adminButton}
     >
       {error && <p style={styles.error}>{error}</p>}
       {!detail ? (
-        <p style={cellStyle.muted}>Loading…</p>
+        <p style={cellStyle.muted}>{t('adminPlayersUi.loading')}</p>
       ) : (
         <>
           <div style={styles.identity}>
             <Avatar name={detail.displayName} avatar={detail.avatar} />
-            <div style={styles.meta}>Joined {detail.createdAt.slice(0, 10)}</div>
+            <div style={styles.meta}>{t('adminPlayersUi.joined', { date: detail.createdAt.slice(0, 10) })}</div>
           </div>
 
           {detail.isAdmin && (
             <div style={styles.adminNotice}>
-              <span style={styles.adminBadge}>ADMIN</span>
-              <span style={cellStyle.muted}>This account can reach the admin dashboard with its own sign-in.</span>
+              <span style={styles.adminBadge}>{t('adminPlayersUi.adminBadge')}</span>
+              <span style={cellStyle.muted}>{t('adminPlayersUi.adminAccessNotice')}</span>
             </div>
           )}
 
@@ -231,11 +234,11 @@ function PlayerDetail({
           </div>
 
           <div style={styles.cardRow}>
-            <StatCard label="Games" value={detail.stats.games} />
-            <StatCard label="Wins" value={detail.stats.wins} />
-            <StatCard label="Losses" value={detail.stats.losses} />
+            <StatCard label={t('adminPlayersUi.games')} value={detail.stats.games} />
+            <StatCard label={t('adminPlayersUi.wins')} value={detail.stats.wins} />
+            <StatCard label={t('adminPlayersUi.losses')} value={detail.stats.losses} />
             <StatCard
-              label="Win rate"
+              label={t('adminPlayersUi.winRate')}
               value={detail.stats.games > 0 ? `${Math.round(detail.stats.winRate * 100)}%` : '—'}
               accent
             />
@@ -246,25 +249,25 @@ function PlayerDetail({
           </div>
 
           {detail.colors.length > 0 && (
-            <Panel title="Colors played">
+            <Panel title={t('adminPlayersUi.colorsPlayed')}>
               <ChipList items={detail.colors.map((c) => `${colorLabel(c.label)} · ${c.count}`)} />
             </Panel>
           )}
 
           {detail.modes.length > 0 && (
-            <Panel title="Game modes">
+            <Panel title={t('adminPlayersUi.gameModes')}>
               <ChipList items={mergeModeBuckets(detail.modes).map((m) => `${m.label} · ${m.count}`)} />
             </Panel>
           )}
 
           {detail.opponents.length > 0 && (
-            <Panel title="Head to head">
-              <Table head={['Opponent', 'W', 'L']}>
+            <Panel title={t('adminPlayersUi.headToHead')}>
+              <Table head={[t('adminPlayersUi.opponent'), t('adminPlayersUi.winsShort'), t('adminPlayersUi.lossesShort')]}>
                 {detail.opponents.map((o, i) => (
                   <tr key={`${o.opponent}-${i}`}>
                     <td style={cellStyle.td}>
                       {o.opponent}
-                      {o.isAi && <span style={styles.aiTag}> AI</span>}
+                      {o.isAi && <span style={styles.aiTag}> {t('adminActivity.ai')}</span>}
                     </td>
                     <td style={cellStyle.tdNum}>{o.wins}</td>
                     <td style={cellStyle.tdNum}>{o.losses}</td>
@@ -275,14 +278,14 @@ function PlayerDetail({
           )}
 
           {detail.topCards.length > 0 && (
-            <Panel title="Most-played cards">
+            <Panel title={t('adminPlayersUi.mostPlayedCards')}>
               <ChipList items={detail.topCards.map((c) => `${c.cardName} · ${c.copies}`)} />
             </Panel>
           )}
 
           {detail.tournaments.length > 0 && (
-            <Panel title="Tournaments">
-              <Table head={['Date', 'Tournament', 'Record', 'Place']}>
+            <Panel title={t('adminPlayersUi.tournaments')}>
+              <Table head={[t('adminPlayersUi.date'), t('adminPlayersUi.tournaments'), t('adminPlayersUi.record'), t('adminPlayersUi.place')]}>
                 {detail.tournaments.map((t) => (
                   <tr key={t.id} style={styles.row} onClick={() => setOpenTournament(t.id)}>
                     <td style={cellStyle.td}>{t.endedAt.slice(0, 10)}</td>
@@ -306,9 +309,9 @@ function PlayerDetail({
           )}
 
           {(games.total > 0 || !isAllGames(filter)) && (
-            <Panel title={`Games · ${games.total}`}>
-              {games.total === 0 && <p style={cellStyle.muted}>No games {describeFilter(filter)}.</p>}
-              <Table head={['Date', 'Mode', 'Colors', 'Opponent', 'Result', 'Deck', 'Replay']}>
+            <Panel title={t('adminPlayersUi.gamesCount', { count: games.total })}>
+              {games.total === 0 && <p style={cellStyle.muted}>{t('adminPlayersUi.noGamesFilter', { filter: describeFilter(filter) })}</p>}
+              <Table head={[t('adminPlayersUi.date'), t('adminPlayersUi.mode'), t('adminPlayersUi.colors'), t('adminPlayersUi.opponent'), t('adminPlayersUi.result'), t('adminPlayersUi.deck'), t('adminPlayersUi.replay')]}>
                 {games.entries.map((g, i) => (
                   <tr key={`${g.gameId}-${i}`}>
                     <td style={cellStyle.td}>{g.endedAt.slice(0, 10)}</td>
@@ -328,28 +331,28 @@ function PlayerDetail({
                       style={{ ...cellStyle.tdNum, color: g.notCounted ? adminTheme.textMuted : g.won ? adminTheme.good : adminTheme.bad }}
                       title={
                         g.notCounted === 'NO_ACTION'
-                          ? 'Not counted: this player never took an action'
+                          ? t('adminPlayersUi.notCountedNoAction')
                           : g.notCounted
-                            ? 'Not counted: no opponent ever took an action'
+                            ? t('adminPlayersUi.notCountedNoOpponent')
                             : undefined
                       }
                     >
-                      {g.won ? 'Win' : 'Loss'}
-                      {g.notCounted && <span style={styles.notCounted}>not counted</span>}
+                      {g.won ? t('accountHistory.win') : t('accountHistory.loss')}
+                      {g.notCounted && <span style={styles.notCounted}>{t('adminPlayersUi.notCounted')}</span>}
                     </td>
                     <td style={cellStyle.tdNum}>
                       <button
                         type="button"
                         style={styles.rowLink}
-                        onClick={() => setDeckModal({ gameId: g.gameId, opponent: g.opponents ?? 'opponent' })}
+                        onClick={() => setDeckModal({ gameId: g.gameId, opponent: g.opponents ?? t('adminPlayersUi.opponent') })}
                       >
-                        View
+                        {t('adminPlayersUi.viewDeck')}
                       </button>
                     </td>
                     <td style={cellStyle.tdNum}>
                       {g.hasReplay ? (
                         <button type="button" style={styles.rowLink} onClick={() => watchReplay(g.gameId)}>
-                          Watch
+                          {t('adminPlayersUi.watch')}
                         </button>
                       ) : (
                         '—'
@@ -366,10 +369,10 @@ function PlayerDetail({
                     disabled={gamesPage === 0}
                     onClick={() => setGamesPage((p) => Math.max(0, p - 1))}
                   >
-                    ← Newer
+                    {t('adminPlayersUi.newer')}
                   </button>
                   <span style={cellStyle.muted}>
-                    Page {gamesPage + 1} of {Math.max(1, Math.ceil(games.total / GAMES_PAGE_SIZE))}
+                    {t('adminPlayersUi.page', { current: gamesPage + 1, total: Math.max(1, Math.ceil(games.total / GAMES_PAGE_SIZE)) })}
                   </span>
                   <button
                     type="button"
@@ -380,7 +383,7 @@ function PlayerDetail({
                     disabled={(gamesPage + 1) * GAMES_PAGE_SIZE >= games.total}
                     onClick={() => setGamesPage((p) => p + 1)}
                   >
-                    Older →
+                    {t('adminPlayersUi.older')}
                   </button>
                 </div>
               )}
