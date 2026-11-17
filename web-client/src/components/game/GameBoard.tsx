@@ -1336,13 +1336,17 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
         }}>
         {(isHijacking || isHijacked || hotseat) && (() => {
           const actingSeat = pendingDecision?.playerId ?? gameState.priorityPlayerId
-          const actingName = gameState.players.find((p) => p.playerId === actingSeat)?.name ?? 'active player'
+          const actingName = gameState.players.find((p) => p.playerId === actingSeat)?.name ?? t('gameCore.activePlayer')
           const text = hotseat
-            ? (responsive.isMobile ? `Acting as ${actingName}` : `Hotseat — acting as ${actingName}`)
+            ? (responsive.isMobile
+              ? t('gameCore.actingAs', { playerName: actingName })
+              : t('gameCore.hotseatActingAs', { playerName: actingName }))
             : (() => {
                 const otherId = youAreHijacking ?? youAreHijackedBy
-                const otherName = gameState.players.find((p) => p.playerId === otherId)?.name ?? 'opponent'
-                return isHijacking ? `You control ${otherName}'s choices` : `${otherName} controls your choices`
+                const otherName = gameState.players.find((p) => p.playerId === otherId)?.name ?? t('gameCore.opponent')
+                return isHijacking
+                  ? t('gameCore.youControlChoices', { playerName: otherName })
+                  : t('gameCore.otherControlsChoices', { playerName: otherName })
               })()
           return (
             <div
@@ -1930,7 +1934,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                 cursor: passEnabled ? 'pointer' : 'default',
               }}
             >
-              {passEnabled ? getPassButtonLabel() : 'Pass'}
+              {passEnabled ? getPassButtonLabel() : t('gameCore.pass')}
             </button>
           </div>
         )
@@ -2306,7 +2310,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                   letterSpacing: '0.05em',
                   fontWeight: 600,
                 }}>
-                  {hasFixedTotal ? 'Allocated' : 'X'}
+                  {hasFixedTotal ? t('gameCore.allocated') : 'X'}
                 </span>
                 <span style={{
                   color: canConfirm ? '#86efac' : '#fbbf24',

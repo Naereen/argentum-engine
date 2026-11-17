@@ -11,6 +11,7 @@
  *   server just sent: the game itself, the Jump In pack choice, or the Constructed lobby.
  */
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { isAppRoute, useHomeVisible } from '@/hooks/useHomeVisible'
 import { useGameStore } from '@/store/gameStore.ts'
@@ -19,6 +20,7 @@ import styles from './Matchmaking.module.css'
 import { formatWait, queueLabel } from './queues'
 
 export default function MatchmakingLayer() {
+  const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
   const status = useGameStore((s) => s.matchmaking)
@@ -41,7 +43,7 @@ export default function MatchmakingLayer() {
       <MatchFoundDialog />
       {!homeVisible && status?.searching && (
         <SearchingPill
-          label={queueLabel(status.mode, status.format, status.ranked)}
+          label={queueLabel(t, status.mode, status.format, status.ranked)}
           since={status.searchingSince ?? null}
           inGame={inGame}
         />
@@ -52,6 +54,7 @@ export default function MatchmakingLayer() {
 
 function SearchingPill({ label, since, inGame }: { label: string; since: number | null; inGame: boolean }) {
   const leave = useGameStore((s) => s.leaveMatchmaking)
+  const { t } = useTranslation()
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000)
@@ -64,13 +67,13 @@ function SearchingPill({ label, since, inGame }: { label: string; since: number 
       role="status"
       aria-live="polite"
       data-testid="matchmaking-pill"
-      title={inGame ? 'When a match is found you’ll be asked first — accepting ends this game' : undefined}
+      title={inGame ? t('matchmaking.searchingInGameTitle') : undefined}
     >
       <span className={styles.spinner} aria-hidden />
-      <span className={styles.pillLabel}>Searching {label}</span>
+      <span className={styles.pillLabel}>{t('matchmaking.searching', { queue: label })}</span>
       {since !== null && <span className={styles.wait}>{formatWait(now - since)}</span>}
-      {inGame && <span className={styles.pillHint}>· you’ll be asked first</span>}
-      <button type="button" className={styles.pillClose} onClick={leave} aria-label="Stop searching" title="Stop searching">
+      {inGame && <span className={styles.pillHint}>· {t('matchmaking.askedFirst')}</span>}
+      <button type="button" className={styles.pillClose} onClick={leave} aria-label={t('matchmaking.stopSearching')} title={t('matchmaking.stopSearching')}>
         ×
       </button>
     </div>

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import i18n from '@/i18n'
 import {
   activeQueues,
   formatWait,
@@ -36,10 +37,17 @@ describe('matchmaking queue helpers', () => {
   })
 
   it('names a queue, leaving "Casual" off modes that are never ranked', () => {
-    expect(queueLabel('RANDOM_DECK', null, false)).toBe('Casual Random deck')
-    expect(queueLabel('CONSTRUCTED', 'STANDARD_BRAWL', true)).toBe('Ranked Standard Brawl')
-    expect(queueLabel('JUMP_IN', null, false)).toBe('Jump In')
-    expect(queueLabel('MOMIR_BASIC', null, false)).toBe('Momir Basic')
+    expect(queueLabel(i18n.t, 'RANDOM_DECK', null, false)).toBe('Casual Random deck')
+    expect(queueLabel(i18n.t, 'CONSTRUCTED', 'STANDARD_BRAWL', true)).toBe('Ranked Standard Brawl')
+    expect(queueLabel(i18n.t, 'JUMP_IN', null, false)).toBe('Jump In')
+    expect(queueLabel(i18n.t, 'MOMIR_BASIC', null, false)).toBe('Momir Basic')
+  })
+
+  it('localizes a queue without translating format names', async () => {
+    await i18n.changeLanguage('fr')
+    expect(queueLabel(i18n.t, 'CONSTRUCTED', 'STANDARD_BRAWL', true)).toBe('Classé : Standard Brawl')
+    expect(queueLabel(i18n.t, 'RANDOM_DECK', null, false)).toBe('Partie amicale : Deck aléatoire')
+    await i18n.changeLanguage('en')
   })
 
   it('normalises a stored choice to a queue the server accepts', () => {

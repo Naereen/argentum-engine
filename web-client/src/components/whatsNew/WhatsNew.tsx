@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { SetIcon } from '@/components/ui/SetIcon'
-import { ANNOUNCEMENTS, type Announcement, type AnnouncementKind } from './announcements'
+import { ANNOUNCEMENTS, type Announcement, type AnnouncementKind, type AnnouncementTranslationId } from './announcements'
 import {
   initialReadState,
   isRead,
@@ -34,6 +34,35 @@ const KIND_LABEL_KEY: Record<AnnouncementKind, 'whatsNew.newSet' | 'whatsNew.gam
   set: 'whatsNew.newSet',
   mode: 'whatsNew.gameMode',
   feature: 'whatsNew.feature',
+}
+
+const ANNOUNCEMENT_TEXT_KEYS = {
+  otariaHumanLobbies: {
+    title: 'whatsNew.entries.otariaHumanLobbies.title',
+    body: 'whatsNew.entries.otariaHumanLobbies.body',
+  },
+  otariaAiTakeover: {
+    title: 'whatsNew.entries.otariaAiTakeover.title',
+    body: 'whatsNew.entries.otariaAiTakeover.body',
+  },
+  otariaFullAi: {
+    title: 'whatsNew.entries.otariaFullAi.title',
+    body: 'whatsNew.entries.otariaFullAi.body',
+  },
+  explorerOfOtaria: {
+    title: 'whatsNew.entries.explorerOfOtaria.title',
+    body: 'whatsNew.entries.explorerOfOtaria.body',
+    tryIf: 'whatsNew.entries.explorerOfOtaria.tryIf',
+  },
+} as const satisfies Record<AnnouncementTranslationId, { title: string; body: string; tryIf?: string }>
+
+function announcementCopy(entry: Announcement, t: TFunction) {
+  const keys = entry.translationId ? ANNOUNCEMENT_TEXT_KEYS[entry.translationId] : null
+  return {
+    title: keys ? t(keys.title) : entry.title,
+    body: keys ? t(keys.body) : entry.body,
+    tryIf: entry.tryIf && keys && 'tryIf' in keys ? t(keys.tryIf) : entry.tryIf,
+  }
 }
 
 function loadReadState(): ReadState {
@@ -136,7 +165,7 @@ export function WhatsNew({ compact = false }: { compact?: boolean } = {}) {
       {!open && !compact && latestUnread && (
         <button type="button" className={styles.peek} onClick={() => setOpen(true)}>
           <span className={styles.peekTag}>{t('whatsNew.new')}</span>
-          <span className={styles.peekTitle}>{latestUnread.title}</span>
+          <span className={styles.peekTitle}>{announcementCopy(latestUnread, t).title}</span>
         </button>
       )}
 
@@ -190,13 +219,14 @@ export function WhatsNew({ compact = false }: { compact?: boolean } = {}) {
                 <ul className={styles.entries}>
                   {entries.map((entry) => {
                     const read = isRead(readState, entry)
+                    const copy = announcementCopy(entry, t)
                     return (
                       <li key={entry.id}>
                         <button
                           type="button"
                           className={`${styles.entry} ${styles[`kind_${entry.kind}`]} ${read ? '' : styles.entryUnread}`}
                           onClick={() => update((s) => markRead(s, entry))}
-                          aria-label={read ? entry.title : t('whatsNew.unreadAnnouncement', { title: entry.title })}
+                          aria-label={read ? copy.title : t('whatsNew.unreadAnnouncement', { title: copy.title })}
                         >
                           <span className={styles.tile} aria-hidden>
                             <EntryIcon entry={entry} />
@@ -207,11 +237,11 @@ export function WhatsNew({ compact = false }: { compact?: boolean } = {}) {
                               <span className={styles.metaSep}>·</span>
                               <time dateTime={entry.date}>{relativeDay(entry.date, today, locale, t)}</time>
                             </span>
-                            <span className={styles.title}>{entry.title}</span>
-                            <span className={styles.body}>{entry.body}</span>
-                            {entry.tryIf && (
+                            <span className={styles.title}>{copy.title}</span>
+                            <span className={styles.body}>{copy.body}</span>
+                            {copy.tryIf && (
                               <span className={styles.tryIf}>
-                                <span className={styles.tryIfLabel}>{t('whatsNew.tryIf')}</span> {entry.tryIf}
+                                <span className={styles.tryIfLabel}>{t('whatsNew.tryIf')}</span> {copy.tryIf}
                               </span>
                             )}
                           </span>

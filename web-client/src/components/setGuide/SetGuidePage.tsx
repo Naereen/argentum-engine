@@ -179,7 +179,7 @@ export function SetGuidePage() {
       </div>
 
       {error ? (
-        <div className={pageStyles.panel} role="alert">{error}</div>
+        <div className={pageStyles.panel} role="alert">{t('setGuide.loadError', { error })}</div>
       ) : !sets ? (
         <div className={pageStyles.empty}>{t('setGuide.loading')}</div>
       ) : shown.length === 0 ? (
@@ -268,7 +268,7 @@ function SetTile({
   const p = set.profile
   return (
     <li className={styles.tile} data-comparing={comparing}>
-      <button type="button" className={styles.tileOpen} onClick={onOpen} aria-label={`About ${set.name}`} />
+      <button type="button" className={styles.tileOpen} onClick={onOpen} aria-label={t('setGuide.aboutSet', { name: set.name })} />
       <SetIcon code={set.code} className={styles.tileWatermark} />
       <div className={styles.tileHead}>
         <SetIcon code={set.code} className={styles.tileIcon} />
@@ -339,7 +339,7 @@ function SetMap({ sets, onOpen }: { sets: readonly GuideSet[]; onOpen: (code: st
                         className={styles.mapDot}
                         data-power={s.profile!.power}
                         onClick={() => onOpen(s.code)}
-                        title={`${s.name} — ${s.profile!.tagline}`}
+                        title={t('setGuide.mapSetTitle', { name: s.name, tagline: s.profile!.tagline })}
                         aria-label={`${s.name}: ${t(`setGuide.ratings.speed.words.word${sp}`)}, ${t(`setGuide.ratings.complexity.words.word${c}`)}, ${t(`setGuide.ratings.power.words.word${s.profile!.power}`)} ${t('setGuide.power')}`}
                       >
                         <SetIcon code={s.code} />

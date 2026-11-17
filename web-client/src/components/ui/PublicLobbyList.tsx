@@ -12,6 +12,8 @@
  * are bots.
  */
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import type { TournamentFormat } from '@/types'
 import { labelForFormat } from '@/utils/deckLegality'
 import { Avatar } from '@/components/profile/accountUi'
@@ -64,10 +66,10 @@ export type PublicLobbyEntry =
 
 type Category = 'duel' | 'multiplayer' | 'tournament'
 
-const CATEGORY_LABELS: Record<Category, string> = {
-  duel: '1v1',
-  multiplayer: 'Multiplayer',
-  tournament: 'Tournaments',
+const CATEGORY_LABEL_KEYS: Record<Category, 'publicLobbies.categories.duel' | 'publicLobbies.categories.multiplayer' | 'publicLobbies.categories.tournaments'> = {
+  duel: 'publicLobbies.categories.duel',
+  multiplayer: 'publicLobbies.categories.multiplayer',
+  tournament: 'publicLobbies.categories.tournaments',
 }
 
 /** Lobby count past which the category filter shows (when more than one category is present). */
@@ -86,6 +88,7 @@ export function PublicLobbyList({
   onlinePlayers: number | null
   onJoin: (entry: PublicLobbyEntry) => void
 }) {
+  const { t } = useTranslation()
   const [category, setCategory] = useState<Category | 'all'>('all')
   const [query, setQuery] = useState('')
 
@@ -110,7 +113,7 @@ export function PublicLobbyList({
   const needle = showSearch ? query.trim().toLowerCase() : ''
   const visible = sorted.filter((entry) =>
     (!showFilter || activeCategory === 'all' || categoryOf(entry) === activeCategory) &&
-    (!needle || searchText(entry).includes(needle)),
+    (!needle || searchText(entry, t).includes(needle)),
   )
 
   if (lobbies.length === 0 && !error && (onlinePlayers ?? 0) === 0) return null
@@ -124,13 +127,13 @@ export function PublicLobbyList({
     <section className={styles.panel} aria-labelledby="open-lobbies-title">
       <header className={styles.header}>
         <h2 id="open-lobbies-title" className={styles.title}>
-          Open lobbies
+          {t('publicLobbies.title')}
           {lobbies.length > 0 && <span className={styles.count}>{lobbies.length}</span>}
         </h2>
         {onlinePlayers !== null && onlinePlayers > 0 && (
           <span className={styles.online}>
             <span className={styles.onlineDot} aria-hidden />
-            {onlinePlayers} online
+            {t('publicLobbies.onlinePlayers', { count: onlinePlayers })}
           </span>
         )}
       </header>
@@ -138,12 +141,12 @@ export function PublicLobbyList({
       {(showFilter || showSearch) && (
         <div className={styles.toolbar}>
           {showFilter && (
-            <div className={styles.filters} role="group" aria-label="Filter lobbies">
-              <FilterChip label="All" count={lobbies.length} active={activeCategory === 'all'} onClick={() => setCategory('all')} />
+            <div className={styles.filters} role="group" aria-label={t('publicLobbies.filterLobbies')}>
+              <FilterChip label={t('publicLobbies.all')} count={lobbies.length} active={activeCategory === 'all'} onClick={() => setCategory('all')} />
               {presentCategories.map((c) => (
                 <FilterChip
                   key={c}
-                  label={CATEGORY_LABELS[c]}
+                  label={t(CATEGORY_LABEL_KEYS[c])}
                   count={counts[c]}
                   active={activeCategory === c}
                   onClick={() => setCategory(c)}
@@ -158,8 +161,8 @@ export function PublicLobbyList({
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search host, set or format"
-                aria-label="Search lobbies"
+                placeholder={t('publicLobbies.searchPlaceholder')}
+                aria-label={t('publicLobbies.searchLobbies')}
                 className={styles.searchInput}
               />
             </div>
@@ -169,12 +172,12 @@ export function PublicLobbyList({
 
       {lobbies.length === 0 ? (
         <p className={styles.empty}>
-          {error ?? 'No open lobbies right now. Create one from Play and pick “Anyone” to list it here.'}
+          {error ?? t('publicLobbies.empty')}
         </p>
       ) : visible.length === 0 ? (
         <div className={styles.noMatch}>
-          <span>No lobbies match{needle ? ` “${query.trim()}”` : ''}.</span>
-          <button type="button" className={styles.clearButton} onClick={clearFilters}>Clear filters</button>
+          <span>{needle ? t('publicLobbies.noMatchesQuery', { query: query.trim() }) : t('publicLobbies.noMatches')}</span>
+          <button type="button" className={styles.clearButton} onClick={clearFilters}>{t('publicLobbies.clearFilters')}</button>
         </div>
       ) : (
         <ul className={styles.list} data-scrolls={visible.length > 3}>
@@ -186,9 +189,9 @@ export function PublicLobbyList({
 
       {visible.length > 0 && visible.length < lobbies.length && (
         <p className={styles.footnote}>
-          Showing {visible.length} of {lobbies.length}
+          {t('publicLobbies.showingCount', { visible: visible.length, total: lobbies.length })}
           {' · '}
-          <button type="button" className={styles.linkButton} onClick={clearFilters}>Show all</button>
+          <button type="button" className={styles.linkButton} onClick={clearFilters}>{t('publicLobbies.showAll')}</button>
         </p>
       )}
     </section>
@@ -196,20 +199,21 @@ export function PublicLobbyList({
 }
 
 function LobbyRow({ entry, onJoin }: { entry: PublicLobbyEntry; onJoin: (entry: PublicLobbyEntry) => void }) {
-  const title = lobbyTitle(entry)
-  const tags = lobbyTags(entry)
+  const { t } = useTranslation()
+  const title = lobbyTitle(entry, t)
+  const tags = lobbyTags(entry, t)
   const host = entry.hostName ?? null
   const others = (entry.playerNames ?? []).filter((n) => n !== host)
   const aiSeats = aiSeatsOf(entry)
   const openSeats = Math.max(0, entry.maxPlayers - entry.playerCount)
-  const waited = entry.openSeconds !== undefined ? formatWaited(entry.openSeconds) : null
+  const waited = entry.openSeconds !== undefined ? formatWaited(entry.openSeconds, t) : null
 
   return (
     <li className={styles.row} data-category={categoryOf(entry)}>
       <div className={styles.rowTop}>
-        <span className={styles.mode}>{modeLabel(entry)}</span>
-        {entry.ranked && <span className={styles.ranked}>Ranked</span>}
-        {waited && <span className={styles.waited} title="How long this lobby has been open">{waited}</span>}
+        <span className={styles.mode}>{modeLabel(entry, t)}</span>
+        {entry.ranked && <span className={styles.ranked}>{t('publicLobbies.ranked')}</span>}
+        {waited && <span className={styles.waited} title={t('publicLobbies.lobbyOpenDuration')}>{waited}</span>}
       </div>
 
       <div className={styles.rowMain}>
@@ -225,9 +229,11 @@ function LobbyRow({ entry, onJoin }: { entry: PublicLobbyEntry; onJoin: (entry: 
           type="button"
           onClick={() => onJoin(entry)}
           className={styles.joinButton}
-          aria-label={`Join ${host ? `${host}’s ` : ''}${title} lobby`}
+          aria-label={host
+            ? t('publicLobbies.joinLobbyWithHost', { host, title })
+            : t('publicLobbies.joinLobby', { title })}
         >
-          Join
+          {t('publicLobbies.join')}
         </button>
       </div>
 
@@ -237,12 +243,12 @@ function LobbyRow({ entry, onJoin }: { entry: PublicLobbyEntry; onJoin: (entry: 
             <>
               <Avatar name={host} avatar={entry.hostAvatar} small />
               <span className={styles.hostText}>
-                Hosted by <span className={styles.hostName}>{host}</span>
-                {others.length > 0 && <span className={styles.others}> · with {others.join(', ')}</span>}
+                {t('publicLobbies.hostedBy')} <span className={styles.hostName}>{host}</span>
+                {others.length > 0 && <span className={styles.others}> · {t('publicLobbies.withPlayers', { players: others.join(', ') })}</span>}
               </span>
             </>
           ) : (
-            <span className={styles.hostText}>Host unknown</span>
+            <span className={styles.hostText}>{t('publicLobbies.hostUnknown')}</span>
           )}
           {aiSeats > 0 && <AiBadge count={aiSeats} />}
         </span>
@@ -258,11 +264,18 @@ function LobbyRow({ entry, onJoin }: { entry: PublicLobbyEntry; onJoin: (entry: 
  * small gap, so the two read apart by colour, shape and grouping.
  */
 function SeatMeter({ filled, ai, total, openSeats }: { filled: number; ai: number; total: number; openSeats: number }) {
-  const humans = filled - ai
-  const left = openSeats === 1 ? '1 seat left' : `${openSeats} seats left`
-  const label = ai > 0 ? `${plural(humans, 'player')}, ${ai} AI, ${left}` : left
+  const { t } = useTranslation()
+  const humans = Math.max(0, filled - ai)
+  const left = t('publicLobbies.seatsLeft', { count: openSeats })
+  const label = ai > 0
+    ? t('publicLobbies.seatSummary', {
+        players: t('publicLobbies.humanPlayers', { count: humans }),
+        ai: t('publicLobbies.aiPlayers', { count: ai }),
+        left,
+      })
+    : left
   return (
-    <span className={styles.seats} title={label} aria-label={`${filled} of ${total} seats taken: ${label}`}>
+    <span className={styles.seats} title={label} aria-label={t('publicLobbies.seatsTaken', { count: filled, filled, total, summary: label })}>
       {total <= 8 && (
         <span className={styles.pips} aria-hidden>
           {Array.from({ length: total }, (_, i) => (
@@ -282,11 +295,12 @@ function SeatMeter({ filled, ai, total, openSeats }: { filled: number; ai: numbe
 
 /** "3 AI" beside the host: the byline lists people by name, so the bots get a count of their own. */
 function AiBadge({ count }: { count: number }) {
-  const label = count === 1 ? '1 AI player' : `${count} AI players`
+  const { t } = useTranslation()
+  const label = t('publicLobbies.aiPlayers', { count })
   return (
-    <span className={styles.aiBadge} title={`${label} seated`} aria-label={`${label} seated`}>
+    <span className={styles.aiBadge} title={t('publicLobbies.aiSeated', { players: label })} aria-label={t('publicLobbies.aiSeated', { players: label })}>
       <BotIcon />
-      {count} AI
+      {t('publicLobbies.aiCount', { count })}
     </span>
   )
 }
@@ -325,104 +339,102 @@ function aiSeatsOf(entry: PublicLobbyEntry): number {
   return Math.max(0, Math.min(entry.aiPlayerCount ?? 0, entry.playerCount))
 }
 
-function plural(n: number, word: string): string {
-  return `${n} ${word}${n === 1 ? '' : 's'}`
-}
-
 function categoryOf(entry: PublicLobbyEntry): Category {
   if (entry.kind === 'quickGame') return entry.twoHeadedGiant ? 'multiplayer' : 'duel'
   return (entry.gameMode ?? 'TOURNAMENT') === 'TOURNAMENT' ? 'tournament' : 'multiplayer'
 }
 
 /** The table shape — the first thing that decides whether a lobby is for you. */
-function modeLabel(entry: PublicLobbyEntry): string {
-  if (entry.kind === 'quickGame') return entry.twoHeadedGiant ? 'Two-Headed Giant' : '1v1 Duel'
+function modeLabel(entry: PublicLobbyEntry, t: TFunction): string {
+  if (entry.kind === 'quickGame') return entry.twoHeadedGiant
+    ? t('publicLobbies.modes.twoHeadedGiant')
+    : t('publicLobbies.modes.duel')
   switch (entry.gameMode ?? 'TOURNAMENT') {
-    case 'FREE_FOR_ALL': return 'Free-for-All'
-    case 'TWO_HEADED_GIANT': return 'Two-Headed Giant'
-    case 'TEAM_VS_TEAM': return 'Team vs. Team'
-    case 'TOURNAMENT': return 'Tournament'
+    case 'FREE_FOR_ALL': return t('publicLobbies.modes.freeForAll')
+    case 'TWO_HEADED_GIANT': return t('publicLobbies.modes.twoHeadedGiant')
+    case 'TEAM_VS_TEAM': return t('publicLobbies.modes.teamVsTeam')
+    case 'TOURNAMENT': return t('publicLobbies.modes.tournament')
   }
 }
 
 /** What is being played: the sets or cube for limited, the deck format for constructed. */
-function lobbyTitle(entry: PublicLobbyEntry): string {
+function lobbyTitle(entry: PublicLobbyEntry, t: TFunction): string {
   if (entry.kind === 'quickGame') {
-    if (entry.momirBasic) return 'Momir Basic'
+    if (entry.momirBasic) return t('publicLobbies.modes.momirBasic')
     if (entry.format) return labelForFormat(entry.format)
-    return 'Any deck'
+    return t('publicLobbies.anyDeck')
   }
-  if (entry.format === 'PREMADE_DECKS') return entry.deckFormat ? labelForFormat(entry.deckFormat) : 'Constructed'
+  if (entry.format === 'PREMADE_DECKS') return entry.deckFormat ? labelForFormat(entry.deckFormat) : t('publicLobbies.formats.constructed')
   if (entry.cubeName) return entry.cubeName
-  return entry.setNames.join(' + ') || formatTournamentFormat(entry.format)
+  return entry.setNames.join(' + ') || formatTournamentFormat(entry.format, t)
 }
 
 /** The rules that shape the experience, as short tags. */
-function lobbyTags(entry: PublicLobbyEntry): string[] {
+function lobbyTags(entry: PublicLobbyEntry, t: TFunction): string[] {
   if (entry.kind === 'quickGame') {
-    if (entry.momirBasic) return ['60 basics, random creatures']
-    return [entry.format ? `${labelForFormat(entry.format)}-legal decks` : 'Bring your own deck']
+    if (entry.momirBasic) return [t('publicLobbies.tags.momir')]
+    return [entry.format
+      ? t('publicLobbies.tags.formatLegalDecks', { format: labelForFormat(entry.format) })
+      : t('publicLobbies.tags.bringYourOwnDeck')]
   }
   const tags: string[] = []
   if (entry.format === 'PREMADE_DECKS') {
-    tags.push('Bring your own deck')
+    tags.push(t('publicLobbies.tags.bringYourOwnDeck'))
   } else {
-    tags.push(formatTournamentFormat(entry.format))
-    if (entry.cubeName) tags.push('Cube')
-    tags.push(`${entry.boosterCount} ${isDraft(entry.format) ? 'packs' : 'boosters'}`)
+    tags.push(formatTournamentFormat(entry.format, t))
+    if (entry.cubeName) tags.push(t('publicLobbies.tags.cube'))
+    tags.push(t('publicLobbies.tags.boosters', { count: entry.boosterCount }))
   }
   if ((entry.gameMode ?? 'TOURNAMENT') === 'TOURNAMENT') {
-    if ((entry.bestOf ?? 1) > 1) tags.push(`Best of ${entry.bestOf}`)
-    if (entry.gamesPerMatch > 1) tags.push(`Meet each player ${entry.gamesPerMatch}×`)
+    if ((entry.bestOf ?? 1) > 1) tags.push(t('publicLobbies.tags.bestOf', { count: entry.bestOf }))
+    if (entry.gamesPerMatch > 1) tags.push(t('publicLobbies.tags.gamesPerPlayer', { count: entry.gamesPerMatch }))
   }
   return tags
 }
 
-function searchText(entry: PublicLobbyEntry): string {
+function searchText(entry: PublicLobbyEntry, t: TFunction): string {
   const parts = [
-    lobbyTitle(entry),
-    modeLabel(entry),
-    ...lobbyTags(entry),
+    lobbyTitle(entry, t),
+    modeLabel(entry, t),
+    ...lobbyTags(entry, t),
     entry.hostName ?? '',
     ...(entry.playerNames ?? []),
     entry.lobbyId,
   ]
   if (entry.kind === 'tournament') parts.push(...entry.setNames)
   else if (entry.setCode) parts.push(entry.setCode)
-  if (entry.ranked) parts.push('ranked')
-  if (aiSeatsOf(entry) > 0) parts.push('ai bot')
+  if (entry.ranked) parts.push(t('publicLobbies.ranked'))
+  if (aiSeatsOf(entry) > 0) parts.push(t('publicLobbies.aiBot'))
   return parts.join(' ').toLowerCase()
 }
 
-function isDraft(format: TournamentFormat): boolean {
-  return format === 'DRAFT' || format === 'COMMANDER_DRAFT' || format === 'WINSTON_DRAFT' || format === 'GRID_DRAFT'
-}
-
-function formatTournamentFormat(format: TournamentFormat): string {
+function formatTournamentFormat(format: TournamentFormat, t: TFunction): string {
   switch (format) {
     case 'WINSTON_DRAFT':
-      return 'Winston Draft'
+      return t('publicLobbies.formats.winstonDraft')
     case 'GRID_DRAFT':
-      return 'Grid Draft'
+      return t('publicLobbies.formats.gridDraft')
     case 'DRAFT':
-      return 'Draft'
+      return t('publicLobbies.formats.draft')
     case 'COMMANDER_DRAFT':
-      return 'Commander Draft'
+      return t('publicLobbies.formats.commanderDraft')
     case 'SEALED':
-      return 'Sealed'
+      return t('publicLobbies.formats.sealed')
     case 'COMMANDER_SEALED':
-      return 'Commander Sealed'
+      return t('publicLobbies.formats.commanderSealed')
     case 'PREMADE_DECKS':
-      return 'Premade Decks'
+      return t('publicLobbies.formats.premadeDecks')
   }
 }
 
 /** "just now", "4m", "1h 20m" — coarse on purpose; it only says whether the host is likely still there. */
-function formatWaited(seconds: number): string {
+function formatWaited(seconds: number, t: TFunction): string {
   const minutes = Math.floor(seconds / 60)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes}m`
+  if (minutes < 1) return t('publicLobbies.justNow')
+  if (minutes < 60) return t('publicLobbies.minutesAgo', { count: minutes })
   const hours = Math.floor(minutes / 60)
   const rest = minutes % 60
-  return rest ? `${hours}h ${rest}m` : `${hours}h`
+  return rest
+    ? t('publicLobbies.hoursMinutesAgo', { hours, minutes: rest })
+    : t('publicLobbies.hoursAgo', { count: hours })
 }

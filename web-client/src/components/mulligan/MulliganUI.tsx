@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore, type MulliganState } from '@/store/gameStore.ts'
 import type { EntityId } from '@/types'
 import { useResponsive, calculateFittingCardWidth, type ResponsiveSizes } from '@/hooks/useResponsive.ts'
@@ -10,6 +11,7 @@ import styles from './MulliganUI.module.css'
  * Mulligan UI overlay.
  */
 export function MulliganUI() {
+  const { t } = useTranslation()
   const mulliganState = useGameStore((state) => state.mulliganState)
   const responsive = useResponsive()
   const [minimized, setMinimized] = useState(false)
@@ -25,7 +27,7 @@ export function MulliganUI() {
         onClick={() => setMinimized(false)}
         className={styles.minimizedButton}
       >
-        ↑ Return to Card Selection
+        ↑ {t('mulligan.returnToCardSelection')}
       </button>
     )
   }
@@ -93,6 +95,7 @@ function computeMulliganCardWidth(
  * Mulligan decision phase - keep or mulligan.
  */
 function MulliganDecision({ state, responsive }: { state: MulliganState; responsive: ResponsiveSizes }) {
+  const { t } = useTranslation()
   const keepHand = useGameStore((s) => s.keepHand)
   const mulligan = useGameStore((s) => s.mulligan)
   const tournamentState = useGameStore((s) => s.tournamentState)
@@ -126,29 +129,42 @@ function MulliganDecision({ state, responsive }: { state: MulliganState; respons
       {subgame && (
         <div className={styles.subgameBanner} data-testid="mulligan-subgame-banner">
           <p className={styles.subgameEyebrow}>
-            {subgame.depth > 1 ? `Subgame · ${subgame.depth} deep` : 'Subgame'}
-            {subgameSource ? ` · ${subgameSource}` : ''}
+            {subgame.depth > 1
+              ? subgameSource
+                ? t('mulligan.subgameDepthWithSource', { depth: subgame.depth, sourceName: subgameSource })
+                : t('mulligan.subgameDepth', { depth: subgame.depth })
+              : subgameSource
+                ? t('mulligan.subgameWithSource', { sourceName: subgameSource })
+                : t('mulligan.subgame')}
           </p>
           <p className={styles.subgameText}>
-            A separate game: your library is your deck, and the main game waits until it's over.
+            {t('mulligan.subgameDescription')}
           </p>
         </div>
       )}
 
       {tournamentInfo && !subgame && (
         <div className={styles.tournamentBanner}>
-          <p className={styles.tournamentRound}>Round {tournamentInfo.round}</p>
+          <p className={styles.tournamentRound}>{t('mulligan.round', { round: tournamentInfo.round })}</p>
           <p className={styles.tournamentMatchup}>
-            You ({tournamentInfo.playerRecord}) vs {tournamentInfo.opponentName}
-            {tournamentInfo.opponentRecord ? ` (${tournamentInfo.opponentRecord})` : ''}
+            {tournamentInfo.opponentRecord
+              ? t('mulligan.matchupWithRecords', {
+                  playerRecord: tournamentInfo.playerRecord,
+                  opponent: tournamentInfo.opponentName,
+                  opponentRecord: tournamentInfo.opponentRecord,
+                })
+              : t('mulligan.matchup', {
+                  playerRecord: tournamentInfo.playerRecord,
+                  opponent: tournamentInfo.opponentName,
+                })}
           </p>
         </div>
       )}
 
       <h2 className={styles.title}>
         {state.mulliganCount === 0
-          ? 'Opening Hand'
-          : `Mulligan ${state.mulliganCount}`}
+          ? t('mulligan.openingHand')
+          : t('mulligan.mulliganCount', { count: state.mulliganCount })}
       </h2>
 
       <div
@@ -158,13 +174,13 @@ function MulliganDecision({ state, responsive }: { state: MulliganState; respons
           {state.isOnThePlay ? '⚔' : '✦'}
         </span>
         <span className={styles.playDrawLabel}>
-          {state.isOnThePlay ? 'On the Play' : 'On the Draw'}
+          {state.isOnThePlay ? t('mulligan.onThePlay') : t('mulligan.onTheDraw')}
         </span>
       </div>
 
       <p className={styles.subtitle}>
         {state.mulliganCount > 0 &&
-          `If you keep, you'll put ${state.cardsToPutOnBottom} card(s) on the bottom.`}
+          t('mulligan.bottomCardsWarning', { count: state.cardsToPutOnBottom })}
       </p>
 
       {/* Hand preview */}
@@ -175,7 +191,7 @@ function MulliganDecision({ state, responsive }: { state: MulliganState; respons
             <MulliganCard
               key={cardId}
               cardId={cardId}
-              cardName={cardInfo?.name || 'Unknown'}
+              cardName={cardInfo?.name || t('common.unknownCard')}
               imageUri={cardInfo?.imageUri}
               selectable={false}
               cardWidth={cardWidth}
@@ -187,11 +203,11 @@ function MulliganDecision({ state, responsive }: { state: MulliganState; respons
       {/* Action buttons */}
       <div className={styles.buttonContainer}>
         <button onClick={keepHand} className={styles.keepButton}>
-          Keep Hand
+          {t('mulligan.keepHand')}
         </button>
 
         <button onClick={mulligan} className={styles.mulliganButton}>
-          Mulligan
+          {t('mulligan.mulligan')}
         </button>
       </div>
     </>
@@ -202,6 +218,7 @@ function MulliganDecision({ state, responsive }: { state: MulliganState; respons
  * Choose cards to put on bottom after keeping.
  */
 function ChooseBottomCards({ state, responsive, onMinimize }: { state: MulliganState; responsive: ResponsiveSizes; onMinimize: () => void }) {
+  const { t } = useTranslation()
   const chooseBottomCards = useGameStore((s) => s.chooseBottomCards)
   const toggleMulliganCard = useGameStore((s) => s.toggleMulliganCard)
 
@@ -214,12 +231,11 @@ function ChooseBottomCards({ state, responsive, onMinimize }: { state: MulliganS
   return (
     <>
       <h2 className={styles.title}>
-        Choose {state.cardsToPutOnBottom} Card
-        {state.cardsToPutOnBottom > 1 ? 's' : ''} for Bottom
+        {t('mulligan.chooseBottomCards', { count: state.cardsToPutOnBottom })}
       </h2>
 
       <p className={styles.subtitle}>
-        Selected: {state.selectedCards.length} / {state.cardsToPutOnBottom}
+        {t('mulligan.selectedCount', { selected: state.selectedCards.length, total: state.cardsToPutOnBottom })}
       </p>
 
       {/* Hand with selectable cards */}
@@ -230,7 +246,7 @@ function ChooseBottomCards({ state, responsive, onMinimize }: { state: MulliganS
             <MulliganCard
               key={cardId}
               cardId={cardId}
-              cardName={cardInfo?.name || 'Unknown'}
+              cardName={cardInfo?.name || t('common.unknownCard')}
               imageUri={cardInfo?.imageUri}
               selectable
               isSelected={state.selectedCards.includes(cardId)}
@@ -244,14 +260,14 @@ function ChooseBottomCards({ state, responsive, onMinimize }: { state: MulliganS
       {/* Action buttons */}
       <div className={styles.buttonContainer}>
         <button onClick={onMinimize} className={styles.viewBattlefieldButton}>
-          View Battlefield
+          {t('decisions.viewBattlefield')}
         </button>
         <button
           onClick={() => chooseBottomCards(state.selectedCards)}
           disabled={!canConfirm}
           className={styles.confirmButton}
         >
-          Confirm
+          {t('common.confirm')}
         </button>
       </div>
     </>
@@ -322,4 +338,3 @@ function MulliganCard({
     </div>
   )
 }
-

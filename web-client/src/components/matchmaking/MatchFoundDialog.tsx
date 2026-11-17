@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import overlay from '@/components/game/overlay/GameOverlays.module.css'
 import styles from './Matchmaking.module.css'
@@ -6,11 +7,11 @@ import type { MatchmakingMode } from '@/types'
 import { queueLabel } from './queues'
 
 /** What accepting leads to, so nobody is surprised to land straight in a game. */
-const AFTER_ACCEPT: Record<MatchmakingMode, string> = {
-  RANDOM_DECK: 'The game starts as soon as you both accept.',
-  MOMIR_BASIC: 'The game starts as soon as you both accept.',
-  JUMP_IN: 'Once you both accept, pick your two packs.',
-  CONSTRUCTED: 'Once you both accept, pick your deck.',
+const AFTER_ACCEPT: Record<MatchmakingMode, 'matchmaking.afterAccept.random' | 'matchmaking.afterAccept.jumpIn' | 'matchmaking.afterAccept.constructed'> = {
+  RANDOM_DECK: 'matchmaking.afterAccept.random',
+  MOMIR_BASIC: 'matchmaking.afterAccept.random',
+  JUMP_IN: 'matchmaking.afterAccept.jumpIn',
+  CONSTRUCTED: 'matchmaking.afterAccept.constructed',
 }
 
 /**
@@ -20,6 +21,7 @@ const AFTER_ACCEPT: Record<MatchmakingMode, string> = {
  * into the game, Jump In to the pack choice, Constructed to a lobby to pick decks in.
  */
 export function MatchFoundDialog() {
+  const { t } = useTranslation()
   const offer = useGameStore((s) => s.matchOffer)
   const respond = useGameStore((s) => s.respondToMatch)
   // Matchmaking keeps you searching through a warm-up against the AI; accepting ends that game.
@@ -31,12 +33,12 @@ export function MatchFoundDialog() {
     const id = window.setInterval(() => setNow(Date.now()), 250)
     // A backgrounded tab still gets the news through its title.
     const previousTitle = document.title
-    document.title = 'Match found! — Argentum'
+    document.title = `${t('matchmaking.matchFound')} — Argentum`
     return () => {
       window.clearInterval(id)
       document.title = previousTitle
     }
-  }, [offer])
+  }, [offer, t])
 
   if (!offer) return null
 
@@ -47,11 +49,11 @@ export function MatchFoundDialog() {
   return (
     <div className={`${overlay.scrim} ${overlay.scrimFixed}`} role="dialog" aria-modal="true" aria-labelledby="match-found-title">
       <div className={overlay.card} data-testid="match-found">
-        <p className={overlay.eyebrow}>{queueLabel(offer.mode, offer.format, offer.ranked)}</p>
-        <h2 id="match-found-title" className={overlay.waitTitle}>Match found</h2>
+        <p className={overlay.eyebrow}>{queueLabel(t, offer.mode, offer.format, offer.ranked)}</p>
+        <h2 id="match-found-title" className={overlay.waitTitle}>{t('matchmaking.matchFound')}</h2>
         <p className={overlay.reason}>
-          Opponent: <strong>{offer.opponentName}</strong>
-          {offer.opponentRating != null && <> · rating {offer.opponentRating}</>}
+          {t('matchmaking.opponent', { name: offer.opponentName })}
+          {offer.opponentRating != null && <> · {t('matchmaking.rating', { rating: offer.opponentRating })}</>}
         </p>
         <div className={styles.countdown} aria-hidden>
           <div
@@ -59,18 +61,18 @@ export function MatchFoundDialog() {
             style={{ width: `${offer.acceptWindowMs > 0 ? (remainingMs / offer.acceptWindowMs) * 100 : 0}%` }}
           />
         </div>
-        <p className={overlay.reason}>{AFTER_ACCEPT[offer.mode]}</p>
+        <p className={overlay.reason}>{t(AFTER_ACCEPT[offer.mode])}</p>
         <p className={overlay.reason}>
           {accepted
-            ? `Waiting for ${offer.opponentName} to accept… (${seconds}s)`
-            : `Accept within ${seconds}s or you leave the queue.`}
+            ? t('matchmaking.waitingForOpponent', { opponent: offer.opponentName, seconds })
+            : t('matchmaking.acceptWithin', { seconds })}
         </p>
         {inWarmUp && !accepted && (
-          <p className={styles.warmUpNote}>Accepting ends your game against the AI.</p>
+          <p className={styles.warmUpNote}>{t('matchmaking.acceptEndsWarmup')}</p>
         )}
         <div className={overlay.actions}>
           <button type="button" className={overlay.secondary} onClick={() => respond(false)}>
-            Decline
+            {t('matchmaking.decline')}
           </button>
           <button
             type="button"
@@ -80,7 +82,7 @@ export function MatchFoundDialog() {
             autoFocus
             data-testid="match-found-accept"
           >
-            {accepted ? 'Accepted' : 'Accept'}
+            {accepted ? t('matchmaking.accepted') : t('matchmaking.accept')}
           </button>
         </div>
       </div>

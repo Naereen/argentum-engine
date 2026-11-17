@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import type { BudgetModalDecision } from '@/types'
 import { useResponsive } from '@/hooks/useResponsive.ts'
@@ -44,6 +45,7 @@ export function BudgetModalDecisionUI({
 }: {
   decision: BudgetModalDecision
 }) {
+  const { t } = useTranslation()
   const [modeCounts, setModeCounts] = useState<number[]>(
     () => new Array(decision.modes.length).fill(0) as number[]
   )
@@ -97,7 +99,7 @@ export function BudgetModalDecisionUI({
         className={styles.floatingReturnButton}
         onClick={() => setMinimized(false)}
       >
-        Return to {decision.prompt}
+        {t('decisions.returnToPrompt', { prompt: decision.prompt })}
       </button>
     )
   }
@@ -108,7 +110,7 @@ export function BudgetModalDecisionUI({
       {sourceCardImageUrl && (
         <img
           src={sourceCardImageUrl}
-          alt={`Source: ${sourceCardName ?? 'card'}`}
+          alt={t('decisions.sourceCard', { cardName: sourceCardName ?? t('common.unknownCard') })}
           className={styles.bannerCardImage}
           onMouseEnter={() => setIsHoveringSource(true)}
           onMouseLeave={() => setIsHoveringSource(false)}
@@ -254,13 +256,15 @@ export function BudgetModalDecisionUI({
           onClick={() => setMinimized(true)}
           className={styles.viewBattlefieldButton}
         >
-          View Battlefield
+          {t('decisions.viewBattlefield')}
         </button>
         <button
           onClick={handleConfirm}
           className={styles.confirmButton}
         >
-          {totalSpent === 0 ? 'Skip' : `Confirm (${totalSpent}/${decision.budget})`}
+          {totalSpent === 0
+            ? t('decisions.skip')
+            : t('decisions.confirmBudget', { spent: totalSpent, budget: decision.budget })}
         </button>
       </div>
     </div>

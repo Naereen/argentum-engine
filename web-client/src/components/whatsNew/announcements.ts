@@ -15,11 +15,17 @@
  */
 
 export type AnnouncementKind = 'set' | 'mode' | 'feature'
+export type AnnouncementTranslationId =
+  | 'otariaHumanLobbies'
+  | 'otariaAiTakeover'
+  | 'otariaFullAi'
+  | 'explorerOfOtaria'
 
 export interface Announcement {
   id: string
   date: string
   kind: AnnouncementKind
+  translationId?: AnnouncementTranslationId
   title: string
   body: string
   /** Set code for `kind: 'set'`, rendered as the set's Keyrune symbol. */
@@ -33,6 +39,7 @@ export const ANNOUNCEMENTS: readonly Announcement[] = [
     id: 'feature-otaria-human-lobbies',
     date: '2026-11-15',
     kind: 'feature',
+    translationId: 'otariaHumanLobbies',
     title: 'Invite friends to explore Otaria',
     body: 'The Otaria playtest now supports private multiplayer lobbies. Share an invite link, let each player choose a seat and Jumpstart booster, and start when everyone is ready; AI explorers fill any seats left open.',
   },
@@ -40,6 +47,7 @@ export const ANNOUNCEMENTS: readonly Announcement[] = [
     id: 'feature-otaria-ai-takeover',
     date: '2026-11-14',
     kind: 'feature',
+    translationId: 'otariaAiTakeover',
     title: 'Let AI take over your Otaria seat',
     body: 'The Otaria playtest now lets you hand your seat to the AI while you step away. The game keeps progressing, and you can take control back whenever you return.',
   },
@@ -65,6 +73,7 @@ export const ANNOUNCEMENTS: readonly Announcement[] = [
     id: 'feature-otaria-full-ai',
     date: '2026-11-12',
     kind: 'feature',
+    translationId: 'otariaFullAi',
     title: 'Watch an autonomous Otaria playtest',
     body: 'The local Otaria playtest now offers Full AI (fast): watch three to five AI explorers play every seat, with short action delays and no human input. Select it at /otaria for a quick overview of the experimental mode; unsupported events can still stop a run.',
   },
@@ -72,6 +81,7 @@ export const ANNOUNCEMENTS: readonly Announcement[] = [
     id: 'mode-explorer-of-otaria',
     date: '2026-11-11',
     kind: 'mode',
+    translationId: 'explorerOfOtaria',
     title: 'Explorer of: Otaria',
     body: 'Explore Otaria on a hex map: move between terrain and named locations, gather cards into your reserve, prepare your library and face rival explorers or creature encounters. Start a local playtest at /otaria against two to four AI opponents, with ready-made starting decks and no API key needed. This experimental mode is still in development; some exploration events and supply cards are not yet supported.',
     tryIf: 'exploration, growing your deck as you play and multiplayer adventures in Otaria',

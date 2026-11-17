@@ -13,6 +13,11 @@ import type { DeckFormat, MatchmakingMode } from '@/types'
 import type { LobbyRecipe } from '../lobby/lobbyRecipe'
 import { defaultOptions, recipeForOptions } from '../lobby/playModes'
 
+type PracticeCaptionKey =
+  | 'matchmaking.practice.momir'
+  | 'matchmaking.practice.constructed'
+  | 'matchmaking.practice.random'
+
 const COMMANDER_SHAPED: ReadonlySet<DeckFormat> = new Set<DeckFormat>(['COMMANDER', 'BRAWL', 'STANDARD_BRAWL'])
 
 type Warmup = 'RANDOM' | 'MOMIR' | 'CONSTRUCTED'
@@ -38,10 +43,10 @@ export function practiceRecipe(mode: MatchmakingMode | null, format: DeckFormat 
 }
 
 /** What the warm-up button promises, so it never starts something the player didn't expect. */
-export function practiceCaption(mode: MatchmakingMode | null, format: DeckFormat | null): string {
+export function practiceCaption(mode: MatchmakingMode | null, format: DeckFormat | null): PracticeCaptionKey {
   switch (warmupFor(mode, format)) {
-    case 'MOMIR': return 'Momir Basic · you stay in the queue'
-    case 'CONSTRUCTED': return 'Pick a deck · you stay in the queue'
-    case 'RANDOM': return 'Random deck · you stay in the queue'
+    case 'MOMIR': return 'matchmaking.practice.momir'
+    case 'CONSTRUCTED': return 'matchmaking.practice.constructed'
+    case 'RANDOM': return 'matchmaking.practice.random'
   }
 }

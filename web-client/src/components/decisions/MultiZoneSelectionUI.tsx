@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import type { EntityId, SelectCardsDecision, ClientCard } from '@/types'
 import { ZoneType } from '@/types'
@@ -15,12 +16,12 @@ interface ZoneGroup {
 
 const ZONE_ORDER: ZoneType[] = [ZoneType.BATTLEFIELD, ZoneType.HAND, ZoneType.LIBRARY, ZoneType.GRAVEYARD, ZoneType.EXILE]
 
-const ZONE_LABELS: Partial<Record<ZoneType, string>> = {
-  [ZoneType.BATTLEFIELD]: 'Battlefield',
-  [ZoneType.HAND]: 'Hand',
-  [ZoneType.LIBRARY]: 'Library',
-  [ZoneType.GRAVEYARD]: 'Graveyard',
-  [ZoneType.EXILE]: 'Exile',
+const ZONE_LABEL_KEYS: Partial<Record<ZoneType, 'decisions.zoneBattlefield' | 'decisions.zoneHand' | 'decisions.zoneLibrary' | 'decisions.zoneGraveyard' | 'decisions.zoneExile'>> = {
+  [ZoneType.BATTLEFIELD]: 'decisions.zoneBattlefield',
+  [ZoneType.HAND]: 'decisions.zoneHand',
+  [ZoneType.LIBRARY]: 'decisions.zoneLibrary',
+  [ZoneType.GRAVEYARD]: 'decisions.zoneGraveyard',
+  [ZoneType.EXILE]: 'decisions.zoneExile',
 }
 
 /**
@@ -38,6 +39,7 @@ export function MultiZoneSelectionUI({
   decision: SelectCardsDecision
   responsive: ResponsiveSizes
 }) {
+  const { t } = useTranslation()
   const [selectedCards, setSelectedCards] = useState<EntityId[]>([])
   const [hoveredCardId, setHoveredCardId] = useState<EntityId | null>(null)
   const [minimized, setMinimized] = useState(false)
@@ -54,7 +56,7 @@ export function MultiZoneSelectionUI({
       const cards = decision.options
         .filter((id) => zoneOf(id) === zone)
         .map((id) => ({ id, card: gameState?.cards[id] }))
-      return { zone, label: ZONE_LABELS[zone] ?? zone, cards }
+      return { zone, label: ZONE_LABEL_KEYS[zone] ? t(ZONE_LABEL_KEYS[zone]!) : t('decisions.zoneOther'), cards }
     })
     .filter((group) => group.cards.length > 0)
 
@@ -64,7 +66,7 @@ export function MultiZoneSelectionUI({
     .filter((id) => { const zone = zoneOf(id); return !zone || !knownZones.has(zone) })
     .map((id) => ({ id, card: gameState?.cards[id] }))
   if (otherCards.length > 0) {
-    zoneGroups.push({ zone: ZoneType.BATTLEFIELD, label: 'Other', cards: otherCards })
+    zoneGroups.push({ zone: ZoneType.BATTLEFIELD, label: t('decisions.zoneOther'), cards: otherCards })
   }
 
   const hoveredCard = hoveredCardId ? gameState?.cards[hoveredCardId] : null
@@ -130,7 +132,7 @@ export function MultiZoneSelectionUI({
         className={styles.floatingReturnButton}
         onClick={() => setMinimized(false)}
       >
-        Return to Card Selection
+        {t('decisions.returnToCardSelection')}
       </button>
     )
   }
@@ -155,7 +157,7 @@ export function MultiZoneSelectionUI({
       {sourceCardImageUrl && (
         <img
           src={sourceCardImageUrl}
-          alt={`Source: ${sourceCardName ?? 'card'}`}
+          alt={t('decisions.sourceCard', { cardName: sourceCardName ?? t('common.unknownCard') })}
           className={styles.bannerCardImage}
           onMouseEnter={() => setIsHoveringSource(true)}
           onMouseLeave={() => setIsHoveringSource(false)}
@@ -174,18 +176,22 @@ export function MultiZoneSelectionUI({
 
       <p className={styles.hint}>
         {conditionalMinimums.length > 0
-          ? `Selected: ${selectedCards.length} / ${requiredMinimum}; fewer is allowed if the selection matches the requirement`
+          ? t('decisions.conditionalSelectionCount', { selected: selectedCards.length, minimum: requiredMinimum })
           : decision.minSelections === decision.maxSelections
-          ? `Selected: ${selectedCards.length} / ${decision.minSelections}`
+          ? t('decisions.selectionCount', { selected: selectedCards.length, total: decision.minSelections })
           : decision.minSelections === 0
-            ? `Select up to ${decision.maxSelections}`
-            : `Selected: ${selectedCards.length} / ${decision.minSelections} - ${decision.maxSelections}`
+            ? t('decisions.selectUpTo', { count: decision.maxSelections })
+            : t('decisions.selectionRange', {
+                selected: selectedCards.length,
+                minimum: decision.minSelections,
+                maximum: decision.maxSelections,
+              })
         }
       </p>
 
       {conditionalMinimums.map((minimum) => (
         <div key={`${minimum.requiredSelections}-${minimum.minimumSelections}-${minimum.requiredMatches}`} className={styles.hint}>
-          {minimum.description ?? `You may select ${minimum.minimumSelections} if it matches the requirement.`}
+          {minimum.description ?? t('decisions.minimumSelectionHint', { minimum: minimum.minimumSelections })}
         </div>
       ))}
 
@@ -198,17 +204,17 @@ export function MultiZoneSelectionUI({
               <div className={styles.zoneSectionHeader}>
                 <span className={styles.zoneSectionLabel}>{group.label}</span>
                 <span className={styles.zoneSectionCount}>
-                  {group.cards.length} card{group.cards.length !== 1 ? 's' : ''}
+                  {t('decisions.cardCount', { count: group.cards.length })}
                   {zoneSelectedCount > 0 && (
                     <span className={styles.zoneSectionSelected}>
-                      {' '}&middot; {zoneSelectedCount} selected
+                      {' '}&middot; {t('decisions.selectedCount', { count: zoneSelectedCount })}
                     </span>
                   )}
                 </span>
               </div>
               <div className={styles.cardContainer} style={{ gap }}>
                 {group.cards.map(({ id, card }) => {
-                  const cardName = card?.name ?? 'Unknown Card'
+                  const cardName = card?.name ?? t('common.unknownCard')
                   const imageUri = card?.imageUri
                   return (
                     <DecisionCard
@@ -236,14 +242,14 @@ export function MultiZoneSelectionUI({
           onClick={() => setMinimized(true)}
           className={styles.viewBattlefieldButton}
         >
-          View Battlefield
+          {t('decisions.viewBattlefield')}
         </button>
         {canSkip && selectedCards.length === 0 ? (
           <button
             onClick={handleSkip}
             className={styles.confirmButton}
           >
-            {decision.declineLabel ?? 'Select None'}
+            {decision.declineLabel ?? t('decisions.selectNone')}
           </button>
         ) : (
           <button
@@ -251,7 +257,7 @@ export function MultiZoneSelectionUI({
             disabled={!canConfirm}
             className={styles.confirmButton}
           >
-            Confirm Selection ({selectedCards.length})
+            {t('decisions.confirmSelectionCount', { count: selectedCards.length })}
           </button>
         )}
       </div>

@@ -3,6 +3,7 @@
  * this module only names the choices and reads the server's searching counts.
  */
 import type { DeckFormat, MatchmakingMode, MatchmakingQueueCount } from '@/types'
+import type { TFunction } from 'i18next'
 
 /** One queue: a mode, the Constructed format (null for every other mode), and casual or ranked. */
 export interface QueueChoice {
@@ -13,46 +14,39 @@ export interface QueueChoice {
 
 export interface QueueModeOption {
   readonly mode: MatchmakingMode
-  /** The segment label — short enough for four to share the rail. */
-  readonly label: string
-  /** The full name, used in "Searching …" and the match-found prompt. */
-  readonly name: string
-  /** One line on what the game is, under the mode picker. */
-  readonly blurb: string
   /** Whether a ranked queue exists. Mirrors the server's `MatchmakingMode.rankable`. */
   readonly rankable: boolean
 }
 
+export const QUEUE_MODE_TEXT_KEYS = {
+  RANDOM_DECK: {
+    label: 'matchmaking.modes.randomDeck.label',
+    name: 'matchmaking.modes.randomDeck.name',
+    blurb: 'matchmaking.modes.randomDeck.blurb',
+  },
+  JUMP_IN: {
+    label: 'matchmaking.modes.jumpIn.label',
+    name: 'matchmaking.modes.jumpIn.name',
+    blurb: 'matchmaking.modes.jumpIn.blurb',
+  },
+  MOMIR_BASIC: {
+    label: 'matchmaking.modes.momir.label',
+    name: 'matchmaking.modes.momir.name',
+    blurb: 'matchmaking.modes.momir.blurb',
+  },
+  CONSTRUCTED: {
+    label: 'matchmaking.modes.constructed.label',
+    name: 'matchmaking.modes.constructed.name',
+    blurb: 'matchmaking.modes.constructed.blurb',
+  },
+} as const satisfies Record<MatchmakingMode, { label: string; name: string; blurb: string }>
+
 /** Every mode, easiest yes first: the three that need no deck, then bring-your-own. */
 export const QUEUE_MODES: readonly QueueModeOption[] = [
-  {
-    mode: 'RANDOM_DECK',
-    label: 'Random',
-    name: 'Random deck',
-    blurb: 'You each get a sealed deck from the same random set.',
-    rankable: true,
-  },
-  {
-    mode: 'JUMP_IN',
-    label: 'Jump In',
-    name: 'Jump In',
-    blurb: 'Pick two themed packs; together they make your deck.',
-    rankable: false,
-  },
-  {
-    mode: 'MOMIR_BASIC',
-    label: 'Momir',
-    name: 'Momir Basic',
-    blurb: '60 basics and Momir Vig: a random creature each turn.',
-    rankable: false,
-  },
-  {
-    mode: 'CONSTRUCTED',
-    label: 'Constructed',
-    name: 'Constructed',
-    blurb: 'Bring a deck legal in the format you pick.',
-    rankable: true,
-  },
+  { mode: 'RANDOM_DECK', rankable: true },
+  { mode: 'JUMP_IN', rankable: false },
+  { mode: 'MOMIR_BASIC', rankable: false },
+  { mode: 'CONSTRUCTED', rankable: true },
 ]
 
 export interface QueueFormatOption {
@@ -98,24 +92,21 @@ export function normaliseQueue(choice: {
   return { mode, format, ranked: choice.ranked === true && queueMode(mode).rankable }
 }
 
-/** What the game is called, casual or ranked aside: "Random deck", "Jump In", "Pauper". */
-export function queueGameLabel(mode: MatchmakingMode | null | undefined, format: DeckFormat | null | undefined): string {
-  if (mode === 'CONSTRUCTED') return QUEUE_FORMATS.find((o) => o.format === format)?.label ?? String(format)
-  return queueMode(mode).name
-}
-
 /**
  * "Ranked Pauper", "Casual Random deck", "Jump In". A mode without a ranked queue is always casual,
  * so saying so would only add a word.
  */
 export function queueLabel(
+  t: TFunction,
   mode: MatchmakingMode | null | undefined,
   format: DeckFormat | null | undefined,
   ranked: boolean | undefined,
 ): string {
-  const game = queueGameLabel(mode, format)
+  const game = mode === 'CONSTRUCTED'
+    ? QUEUE_FORMATS.find((o) => o.format === format)?.label ?? t('matchmaking.unknownFormat')
+    : t(QUEUE_MODE_TEXT_KEYS[queueMode(mode).mode].name)
   if (!queueMode(mode).rankable) return game
-  return `${ranked ? 'Ranked' : 'Casual'} ${game}`
+  return t(ranked ? 'matchmaking.rankedQueue' : 'matchmaking.casualQueue', { game })
 }
 
 function isQueue(count: MatchmakingQueueCount, choice: QueueChoice): boolean {

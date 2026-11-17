@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import type { ChooseOptionDecision } from '@/types'
 import { DungeonMap } from '../game/dungeon/DungeonMap'
@@ -26,6 +27,7 @@ export function dungeonChoiceKind(decision: ChooseOptionDecision): 'dungeon' | '
  * The options and their order are the server's; this only draws them and answers with the index.
  */
 export function DungeonChoiceDecisionUI({ decision }: { decision: ChooseOptionDecision }) {
+  const { t } = useTranslation()
   const kind = dungeonChoiceKind(decision)
   const submitOptionDecision = useGameStore((s) => s.submitOptionDecision)
   const players = useGameStore((s) => s.gameState?.players)
@@ -35,7 +37,7 @@ export function DungeonChoiceDecisionUI({ decision }: { decision: ChooseOptionDe
   if (minimized) {
     return (
       <button className={styles.floatingReturnButton} onClick={() => setMinimized(false)}>
-        Return to {decision.prompt}
+        {t('decisions.returnToPrompt', { prompt: decision.prompt })}
       </button>
     )
   }
@@ -128,12 +130,12 @@ export function DungeonChoiceDecisionUI({ decision }: { decision: ChooseOptionDe
 
       <div className={styles.optionButtonRow}>
         <button onClick={() => setMinimized(true)} className={styles.viewBattlefieldButton}>
-          View Battlefield
+          {t('decisions.viewBattlefield')}
         </button>
         <button onClick={confirm} disabled={selected === null} className={styles.confirmButton}>
           {selected === null
-            ? kind === 'room' ? 'Choose a room' : 'Choose a dungeon'
-            : `Venture into ${decision.options[selected]}`}
+            ? kind === 'room' ? t('decisions.chooseRoom') : t('decisions.chooseDungeon')
+            : t('decisions.ventureInto', { dungeon: decision.options[selected] })}
         </button>
       </div>
     </div>

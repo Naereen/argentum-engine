@@ -80,6 +80,7 @@ Continue the in-progress i18n task from this working tree. The user chose **core
 - Latest continuation: `npm run typecheck`, locale plus gameplay tests (17 files / 347 tests), full `npm test` (122 files / 1,411 tests), and `npm run build` all pass. The Preferences screen and both English/French switcher states were manually checked in the browser; the config endpoint briefly returned 502 during server startup, then recovered.
 - Latest map/chart batch: `npm run typecheck`, full `npm test` (122 files / 1,411 tests), `npm run build`, focused locale/admin/set-completion checks, and `git diff --check` pass.
 - Latest Set Completion batch: `npm run typecheck`, locale and page-switch tests (2 files / 4 tests), full `npm test` (123 files / 1,412 tests), production build, and `git diff --check` pass. Manually switched the live page between English and French in the browser, verified localStorage persistence after reload, and reviewed the French page with real set data; the backend returned 502 only during its cold start and then recovered.
+- Latest Set Guide / What's New batch: translated the Set Guide's remaining page-level load error, map title, accessible tile label, and shortened French search placeholder; added French copy for the two newest Otaria features, with a feed language-switch test. Per the user's latest direction, do not translate news entries about newly implemented sets. Typecheck, focused locale/feed tests, full suite (124 files / 1,413 tests), and production build pass; French Set Guide and Otaria announcement copy were reviewed in the browser.
 
 ## Current working tree / safety
 
@@ -87,8 +88,8 @@ There is unrelated untracked `Explorer-Of-version-novembre-2026/`. Do not stage 
 
 ## Important remaining work
 
-1. **Continue the broad UI audit.** Set Completion is now localized; inspect remaining user-facing source strings across game decisions/logs, replay, admin/dev/scenario, announcements, set guide, and any remaining account/lobby surfaces. Preserve card content, user-authored text, and protocol values.
-2. **Help/documentation exclusion.** Per the user's explicit direction, do not translate `src/help/topics.ts` or the large Help page/content. Leave the help content in English; do not alter stable topic IDs or deep links.
+1. **Continue the broad UI audit.** Set Completion is now localized. The Set Guide's curated profile prose remains English; continue through it and inspect remaining user-facing strings across game decisions/logs, replay, admin/dev/scenario, and any other account/lobby surfaces. Preserve card content, user-authored text, and protocol values.
+2. **Help and news exclusions.** Per the user's explicit direction, do not translate `src/help/topics.ts` or the large Help page/content, or news entries for newly implemented sets. Leave those copy blocks in English; do not alter stable IDs or deep links.
 3. **Locale integrity and verification.** Keep leaf-key parity, non-empty values, matching interpolation placeholders, strict i18next key typing, and the persistence/switcher tests. Run focused and full checks after further changes.
 4. **Browser and commit.** Do not run E2E. Manually exercise the app for player-visible changes when the full app is available. Keep `Explorer-Of-version-novembre-2026/` untouched; stage only task files and make local commits, never push.
 

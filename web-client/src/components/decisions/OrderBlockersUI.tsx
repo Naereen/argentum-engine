@@ -128,7 +128,9 @@ export function OrderBlockersUI({ decision, responsive }: OrderBlockersUIProps) 
           pointerEvents: 'auto',
         }}
       >
-        {decision.orderingTitle ? `Return to ${decision.orderingTitle}` : 'Return to Damage Assignment'}
+        {decision.orderingTitle
+          ? t('decisions.returnToPrompt', { prompt: decision.orderingTitle })
+          : t('decisions.returnToDamageAssignment')}
       </button>
     )
   }
@@ -162,7 +164,7 @@ export function OrderBlockersUI({ decision, responsive }: OrderBlockersUIProps) 
             fontWeight: 600,
           }}
         >
-          {decision.orderingTitle ?? 'Order Damage Assignment'}
+          {decision.orderingTitle ?? t('decisions.orderDamageAssignment')}
         </h2>
       </div>
 
@@ -186,7 +188,7 @@ export function OrderBlockersUI({ decision, responsive }: OrderBlockersUIProps) 
           maxWidth: 500,
         }}
       >
-        {decision.orderingTitle ? decision.prompt : 'Order the blockers for damage assignment. The leftmost creature receives damage first and must receive lethal damage before the next can be assigned any.'}
+        {decision.orderingTitle ? decision.prompt : t('decisions.orderBlockersForDamage')}
       </p>
 
       {/* Card arrangement with FIRST/LAST indicators */}
@@ -219,7 +221,7 @@ export function OrderBlockersUI({ decision, responsive }: OrderBlockersUIProps) 
               borderBottom: '12px solid #f87171',
             }}
           />
-          {decision.firstLabel ?? 'FIRST TO RECEIVE DAMAGE'}
+          {decision.firstLabel ?? t('decisions.firstToReceiveDamage')}
           <div
             style={{
               width: 0,
@@ -310,7 +312,7 @@ export function OrderBlockersUI({ decision, responsive }: OrderBlockersUIProps) 
             fontSize: responsive.fontSize.small,
           }}
         >
-          {decision.lastLabel ?? '(rightmost = last to receive damage)'}
+          {decision.lastLabel ?? t('decisions.lastToReceiveDamage')}
         </div>
       </div>
 
@@ -330,7 +332,7 @@ export function OrderBlockersUI({ decision, responsive }: OrderBlockersUIProps) 
             transition: 'all 0.15s',
           }}
         >
-          View Battlefield
+          {t('decisions.viewBattlefield')}
         </button>
         <button
           onClick={handleConfirm}
@@ -346,7 +348,7 @@ export function OrderBlockersUI({ decision, responsive }: OrderBlockersUIProps) 
             transition: 'all 0.15s',
           }}
         >
-          Confirm Order
+          {t('decisions.confirmOrder')}
         </button>
       </div>
     </div>
@@ -398,7 +400,7 @@ function BlockerCard({
   onMouseLeave: () => void
 }) {
   const { t } = useTranslation()
-  const cardName = stateCard?.name || cardInfo?.name || 'Unknown Card'
+  const cardName = stateCard?.name || cardInfo?.name || t('common.unknownCard')
   const imageUri = stateCard?.imageUri || cardInfo?.imageUri
   const cardImageUrl = imageUri || `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(cardName)}&format=image&version=normal`
   const power = stateCard?.power

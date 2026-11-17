@@ -6,6 +6,8 @@
  * captures intent and mirrors the server's queue state.
  */
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import { useAuthStore } from '@/store/authStore'
 import type { MatchmakingMode, MatchmakingQueueCount } from '@/types'
@@ -20,6 +22,7 @@ import {
   normaliseQueue,
   queueLabel,
   queueMode,
+  QUEUE_MODE_TEXT_KEYS,
   searchingIn,
   searchingInMode,
   type QueueChoice,
@@ -48,6 +51,7 @@ function saveChoice(choice: QueueChoice) {
 }
 
 export function FindOpponentPanel({ onSignIn }: { onSignIn: () => void }) {
+  const { t } = useTranslation()
   const status = useGameStore((s) => s.matchmaking)
   const counts = useGameStore((s) => s.matchmakingQueues)
   const joinMatchmaking = useGameStore((s) => s.joinMatchmaking)
@@ -93,21 +97,19 @@ export function FindOpponentPanel({ onSignIn }: { onSignIn: () => void }) {
 
   return (
     <section className={styles.panel} aria-labelledby="find-opponent-title" data-testid="find-opponent">
-      <span id="find-opponent-title" className={styles.title}>Find an opponent</span>
+      <span id="find-opponent-title" className={styles.title}>{t('matchmaking.findOpponent')}</span>
 
       {waiting.length > 0 && (
-        <ul className={styles.waitingList} aria-label="Players waiting for a game">
+        <ul className={styles.waitingList} aria-label={t('matchmaking.playersWaitingForGame')}>
           {waiting.map((q) => {
             const needsSignIn = q.ranked && !rankedAvailable
-            const label = queueLabel(q.mode, q.format, q.ranked)
+            const label = queueLabel(t, q.mode, q.format, q.ranked)
             return (
               <li key={`${q.mode}-${q.format ?? ''}-${q.ranked}`} className={styles.waitingRow} data-testid="waiting-queue">
                 <span className={styles.waitingDot} aria-hidden />
                 <span className={styles.waitingText}>
                   <span className={styles.waitingQueue}>{label}</span>
-                  <span className={styles.waitingCount}>
-                    {q.searching === 1 ? '1 player waiting' : `${q.searching} players waiting`}
-                  </span>
+                  <span className={styles.waitingCount}>{t('matchmaking.playersWaiting', { count: q.searching })}</span>
                 </span>
                 <button
                   type="button"
@@ -115,9 +117,9 @@ export function FindOpponentPanel({ onSignIn }: { onSignIn: () => void }) {
                   onClick={() => (needsSignIn
                     ? onSignIn()
                     : play({ mode: q.mode, format: q.format ?? null, ranked: q.ranked }))}
-                  title={needsSignIn ? 'Sign in to play ranked' : `Play ${label} now`}
+                  title={needsSignIn ? t('matchmaking.signInToPlayRanked') : t('matchmaking.playQueueNow', { queue: label })}
                 >
-                  {needsSignIn ? 'Sign in' : 'Play'}
+                  {needsSignIn ? t('matchmaking.signIn') : t('matchmaking.play')}
                 </button>
               </li>
             )
@@ -128,7 +130,7 @@ export function FindOpponentPanel({ onSignIn }: { onSignIn: () => void }) {
       {searching ? (
         <>
           <SearchingRow
-            label={queueLabel(status.mode, status.format, status.ranked)}
+            label={queueLabel(t, status.mode, status.format, status.ranked)}
             since={status.searchingSince ?? null}
             others={Math.max(0, searchingIn(counts, normaliseQueue({
               mode: status.mode ?? undefined,
@@ -151,8 +153,8 @@ export function FindOpponentPanel({ onSignIn }: { onSignIn: () => void }) {
                 </svg>
               </span>
               <span className={styles.practiceText}>
-                <span className={styles.practiceLabel}>Play the AI while you wait</span>
-                <span className={styles.practiceCaption}>{practiceCaption(status.mode ?? null, status.format ?? null)}</span>
+                <span className={styles.practiceLabel}>{t('matchmaking.playAiWhileWaiting')}</span>
+                <span className={styles.practiceCaption}>{t(practiceCaption(status.mode ?? null, status.format ?? null))}</span>
               </span>
               <span className={styles.practiceArrow} aria-hidden>→</span>
             </button>
@@ -165,28 +167,28 @@ export function FindOpponentPanel({ onSignIn }: { onSignIn: () => void }) {
             counts={counts}
             onChange={(next) => choose({ mode: next })}
           />
-          <p className={styles.blurb} id="find-opponent-blurb">{mode.blurb}</p>
+          <p className={styles.blurb} id="find-opponent-blurb">{t(QUEUE_MODE_TEXT_KEYS[mode.mode].blurb)}</p>
           <div className={styles.controls}>
             {accountsEnabled && mode.rankable && (
               <select
                 className={`${styles.pick} ${styles.pickMode}`}
-                aria-label="Casual or ranked"
+                aria-label={t('matchmaking.casualOrRanked')}
                 value={effective.ranked ? 'ranked' : 'casual'}
                 onChange={(e) => {
                   if (e.target.value === 'signin') { onSignIn(); return }
                   choose({ ranked: e.target.value === 'ranked' })
                 }}
               >
-                <option value="casual">Casual</option>
+                <option value="casual">{t('matchmaking.casual')}</option>
                 {rankedAvailable
-                  ? <option value="ranked">Ranked</option>
-                  : <option value="signin">Ranked — sign in</option>}
+                  ? <option value="ranked">{t('matchmaking.ranked')}</option>
+                  : <option value="signin">{t('matchmaking.rankedSignIn')}</option>}
               </select>
             )}
             {choice.mode === 'CONSTRUCTED' && (
               <select
                 className={`${styles.pick} ${styles.pickFormat}`}
-                aria-label="Format"
+                aria-label={t('matchmaking.format')}
                 value={choice.format ?? ''}
                 onChange={(e) => choose({ format: e.target.value as QueueChoice['format'] })}
               >
@@ -194,7 +196,7 @@ export function FindOpponentPanel({ onSignIn }: { onSignIn: () => void }) {
                   const n = searchingIn(counts, { mode: 'CONSTRUCTED', format: o.format, ranked: effective.ranked })
                   return (
                     <option key={o.format} value={o.format}>
-                      {o.label}{n > 0 ? ` · ${n} waiting` : ''}
+                      {o.label}{n > 0 ? ` · ${t('matchmaking.waitingShort', { count: n })}` : ''}
                     </option>
                   )
                 })}
@@ -207,7 +209,7 @@ export function FindOpponentPanel({ onSignIn }: { onSignIn: () => void }) {
               aria-describedby="find-opponent-blurb"
               onClick={() => joinMatchmaking(effective.mode, effective.format, effective.ranked)}
             >
-              Search
+              {t('matchmaking.search')}
             </button>
           </div>
         </>
@@ -215,8 +217,8 @@ export function FindOpponentPanel({ onSignIn }: { onSignIn: () => void }) {
 
       {status?.notice ? (
         <p className={styles.footnote} role="status">
-          {status.notice}
-          <button type="button" className={styles.footnoteDismiss} aria-label="Dismiss" onClick={dismissNotice}>×</button>
+          {localizedNotice(status.notice, t)}
+          <button type="button" className={styles.footnoteDismiss} aria-label={t('common.dismiss')} onClick={dismissNotice}>×</button>
         </p>
       ) : null}
     </section>
@@ -236,6 +238,7 @@ function ModePicker({
   counts: readonly MatchmakingQueueCount[] | null
   onChange: (mode: MatchmakingMode) => void
 }) {
+  const { t } = useTranslation()
   const refs = useRef<(HTMLButtonElement | null)[]>([])
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0
@@ -248,7 +251,7 @@ function ModePicker({
   }
 
   return (
-    <div className={styles.modes} role="radiogroup" aria-label="Game mode" onKeyDown={onKeyDown}>
+    <div className={styles.modes} role="radiogroup" aria-label={t('matchmaking.gameMode')} onKeyDown={onKeyDown}>
       {QUEUE_MODES.map((o, i) => {
         const selected = o.mode === value
         const waiting = searchingInMode(counts, o.mode)
@@ -262,11 +265,13 @@ function ModePicker({
             tabIndex={selected ? 0 : -1}
             className={`${styles.mode} ${selected ? styles.modeSelected : ''}`}
             onClick={() => onChange(o.mode)}
-            title={waiting > 0 ? `${o.name} · ${waiting} waiting` : o.name}
+            title={waiting > 0
+              ? t('matchmaking.modeWaitingTitle', { mode: t(QUEUE_MODE_TEXT_KEYS[o.mode].name), count: waiting })
+              : t(QUEUE_MODE_TEXT_KEYS[o.mode].name)}
             data-testid={`find-opponent-mode-${o.mode}`}
           >
-            {o.label}
-            {waiting > 0 && <span className={styles.modeDot} aria-label={`${waiting} waiting`} />}
+            {t(QUEUE_MODE_TEXT_KEYS[o.mode].label)}
+            {waiting > 0 && <span className={styles.modeDot} aria-label={t('matchmaking.playersWaiting', { count: waiting })} />}
           </button>
         )
       })}
@@ -285,6 +290,7 @@ function SearchingRow({
   others: number
   onCancel: () => void
 }) {
+  const { t } = useTranslation()
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000)
@@ -296,14 +302,25 @@ function SearchingRow({
       className={styles.searchingRow}
       role="status"
       aria-live="polite"
-      title={others > 0 ? `${others} other ${others === 1 ? 'player' : 'players'} in this queue` : 'You’ll be paired as soon as someone joins'}
+      title={others > 0 ? t('matchmaking.otherPlayersInQueue', { count: others }) : t('matchmaking.pairedWhenJoined')}
     >
       <span className={styles.spinner} aria-hidden />
       <span className={styles.searchingText}>{label}</span>
       {since !== null && <span className={styles.wait}>{formatWait(now - since)}</span>}
       <button type="button" className={styles.cancel} onClick={onCancel} data-testid="find-opponent-cancel">
-        Cancel
+        {t('common.cancel')}
       </button>
     </div>
   )
+}
+
+function localizedNotice(notice: string, t: TFunction): string {
+  switch (notice) {
+    case "You didn't accept the match in time":
+      return t('matchmaking.notices.matchExpired')
+    case 'Your opponent is no longer available — back in the queue':
+      return t('matchmaking.notices.opponentUnavailable')
+    default:
+      return notice
+  }
 }
