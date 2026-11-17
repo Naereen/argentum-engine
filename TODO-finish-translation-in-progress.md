@@ -62,6 +62,8 @@ Continue the in-progress i18n task from this working tree. The user chose **core
 - Localized the admin activity, online-player, and global stats dashboards, including chart legends, localized bucket dates, table states, and database summaries.
 - Localized the live game/lobby maintenance view and player roster/detail surfaces while keeping backend status tokens and player/card data intact.
 - Localized the AI-vs-human admin analytics view, including its range controls, chart legends and tooltips, filters, outcomes, recent-form labels, player exclusions, localized game-mode names, dates, and deck/replay dialogs.
+- Localized the Preferences page, admin player-deck dialogs and saved-deck states, known tournament-format labels, and the replay-list back action. Saved-deck load failures now display an error instead of appearing as an empty list.
+- Removed duplicate keys in the English/French game and draft dictionaries and duplicate French preference entries. Split title-case “Counters”/“Damage” labels from the lowercase gameplay allocation nouns so both render correctly.
 - Corrected the stale Otaria layout test assertion in `src/components/game/otariaOverviewLayout.test.ts`: `(true, 1, 1)` is right; use `(true, 0, 1)` for the no-map/null case.
 - Existing tests adapted to render translated Otaria components under an `I18nextProvider` and use the changed label copy.
 
@@ -73,6 +75,7 @@ Continue the in-progress i18n task from this working tree. The user chose **core
 - The running browser was manually checked in French on the Cards and Stats pages, including the global language switcher and route persistence. Gameplay overlays have not had a full scenario-driven browser walkthrough.
 - The latest profile/tournament/account/admin/replay/live-admin/player-detail changes also pass the full test suite, typecheck, production build, and `git diff --check`. API-backed profile/game screens were not manually exercised in the browser because the game-server was unavailable during the prior browser attempt.
 - The AI-vs-human analytics batch also passes `npm run typecheck`, the locale parity/interpolation tests, the full test suite (122 files / 1,411 tests), and the production build. Its API-backed chart/list state was not manually exercised because the game-server is unavailable.
+- Latest continuation: `npm run typecheck`, locale plus gameplay tests (17 files / 347 tests), full `npm test` (122 files / 1,411 tests), and `npm run build` all pass. The Preferences screen and both English/French switcher states were manually checked in the browser; the config endpoint briefly returned 502 during server startup, then recovered.
 
 ## Current working tree / safety
 

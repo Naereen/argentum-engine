@@ -8,8 +8,10 @@ import { AccountPage } from '@/components/profile/accountUi'
 import { pageStyles as p } from '@/components/ui/PageShell'
 import { useAuthStore } from '@/store/authStore'
 import { syncPreferences } from '@/store/preferencesStore'
+import { useTranslation } from 'react-i18next'
 
 export function PreferencesPage() {
+  const { t } = useTranslation()
   const status = useAuthStore((st) => st.status)
   const accountsEnabled = useAuthStore((st) => st.accountsEnabled)
   const init = useAuthStore((st) => st.init)
@@ -24,15 +26,15 @@ export function PreferencesPage() {
   }, [status])
 
   return (
-    <AccountPage title="Preferences" width="narrow">
+    <AccountPage title={t('preferencesPage.title')} width="narrow">
       <div>
-        <h1 className={p.h1}>Preferences</h1>
+        <h1 className={p.h1}>{t('preferencesPage.title')}</h1>
         <p className={p.lede}>
           {status === 'authenticated'
-              ? 'Saved to your account, so they follow you to every device.'
-              : accountsEnabled
-                ? 'Saved in this browser. Sign in to keep them on every device.'
-                : 'Saved in this browser.'}
+            ? t('preferencesPage.savedToAccount')
+            : accountsEnabled
+              ? t('preferencesPage.savedInBrowserWithSignIn')
+              : t('preferencesPage.savedInBrowser')}
         </p>
       </div>
       <PreferencesPanel />

@@ -17,6 +17,8 @@ import type { GameDecks } from '@/api/account'
 import { DeckCardBody, GameDeckColumns } from '@/components/deck/GameDeckView'
 import { Panel, adminTheme, cellStyle } from './adminUi'
 import { colorLabel } from './statFormat'
+import i18n from '@/i18n'
+import { useTranslation } from 'react-i18next'
 
 /** Close callbacks of the open admin modals, innermost last — Escape closes only the top one. */
 const openModals: Array<{ current: () => void }> = []
@@ -34,6 +36,7 @@ export function ModalShell({ title, subtitle, actions, width = 820, onClose, chi
   onClose: () => void
   children: React.ReactNode
 }) {
+  const { t } = useTranslation()
   const closeRef = useRef(onClose)
   closeRef.current = onClose
   useEffect(() => {
@@ -67,7 +70,7 @@ export function ModalShell({ title, subtitle, actions, width = 820, onClose, chi
           </div>
           <div style={styles.headerActions}>
             {actions}
-            <button type="button" style={styles.close} onClick={onClose} aria-label="Close">
+            <button type="button" style={styles.close} onClick={onClose} aria-label={t('common.close')}>
               ✕
             </button>
           </div>
@@ -86,6 +89,7 @@ export function AdminDeckModal({ auth, userId, gameId, opponentLabel, onClose }:
   opponentLabel: string
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [decks, setDecks] = useState<GameDecks | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -95,20 +99,20 @@ export function AdminDeckModal({ auth, userId, gameId, opponentLabel, onClose }:
     setError(null)
     fetchUserGameDecks(auth, userId, gameId)
       .then((d) => live && setDecks(d))
-      .catch(() => live && setError('Could not load this game’s decks.'))
+      .catch(() => live && setError(t('profileUi.loadDecksError')))
     return () => {
       live = false
     }
-  }, [auth, userId, gameId])
+  }, [auth, userId, gameId, t])
 
   return (
-    <ModalShell title="Game decks" subtitle={`vs ${opponentLabel}`} onClose={onClose}>
+    <ModalShell title={t('profileUi.gameDecks')} subtitle={t('profileUi.versus', { opponent: opponentLabel })} onClose={onClose}>
       {error ? (
         <p style={styles.error}>{error}</p>
       ) : !decks ? (
-        <p style={cellStyle.muted}>Loading…</p>
+        <p style={cellStyle.muted}>{t('adminPlayerDecks.loading')}</p>
       ) : decks.participants.length === 0 ? (
-        <p style={cellStyle.muted}>No decklist was recorded for this game.</p>
+        <p style={cellStyle.muted}>{t('profileUi.noDecklist')}</p>
       ) : (
         <GameDeckColumns participants={decks.participants} />
       )}
@@ -118,14 +122,26 @@ export function AdminDeckModal({ auth, userId, gameId, opponentLabel, onClose }:
 
 /** A panel listing the account's saved decks, each openable into the polished deck viewer. */
 export function AdminSavedDecks({ auth, userId }: { auth: AdminAuth; userId: string }) {
+  const { t } = useTranslation()
   const [decks, setDecks] = useState<AdminUserDeck[] | null>(null)
   const [open, setOpen] = useState<AdminUserDeck | null>(null)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     let live = true
     fetchUserSavedDecks(auth, userId)
-      .then((d) => live && setDecks(d))
-      .catch(() => live && setDecks([]))
+      .then((d) => {
+        if (live) {
+          setDecks(d)
+          setError(false)
+        }
+      })
+      .catch(() => {
+        if (live) {
+          setDecks([])
+          setError(true)
+        }
+      })
     return () => {
       live = false
     }
@@ -133,21 +149,28 @@ export function AdminSavedDecks({ auth, userId }: { auth: AdminAuth; userId: str
 
   if (decks === null) {
     return (
-      <Panel title="Saved decks">
-        <p style={cellStyle.muted}>Loading…</p>
+      <Panel title={t('adminPlayerDecks.savedDecks')}>
+        <p style={cellStyle.muted}>{t('adminPlayerDecks.loading')}</p>
+      </Panel>
+    )
+  }
+  if (error) {
+    return (
+      <Panel title={t('adminPlayerDecks.savedDecks')}>
+        <p style={styles.error}>{t('adminPlayerDecks.loadFailed')}</p>
       </Panel>
     )
   }
   if (decks.length === 0) {
     return (
-      <Panel title="Saved decks">
-        <p style={cellStyle.muted}>This account hasn’t saved any decks.</p>
+      <Panel title={t('adminPlayerDecks.savedDecks')}>
+        <p style={cellStyle.muted}>{t('adminPlayerDecks.empty')}</p>
       </Panel>
     )
   }
 
   return (
-    <Panel title={`Saved decks · ${decks.length}`}>
+    <Panel title={t('adminPlayerDecks.savedDecksCount', { count: decks.length })}>
       <div style={styles.deckGrid}>
         {decks.map((d) => {
           const total = d.cards.reduce((sum, c) => sum + c.copies, 0)
@@ -157,7 +180,7 @@ export function AdminSavedDecks({ auth, userId }: { auth: AdminAuth; userId: str
               <span style={styles.deckName}>{d.name}</span>
               <span style={styles.deckMeta}>
                 {d.format ? `${prettyFormat(d.format)} · ` : ''}
-                {total} cards
+                {t('adminPlayerDecks.cardsCount', { count: total })}
               </span>
               <span style={styles.deckColors}>{colors ? colorLabel(colors) : 'Colourless'}</span>
             </button>
@@ -187,6 +210,15 @@ function colorsOf(d: AdminUserDeck): string {
 }
 
 function prettyFormat(f: string): string {
+  switch (f) {
+    case 'SEALED': return i18n.t('adminPlayerDecks.formatSealed')
+    case 'DRAFT': return i18n.t('adminPlayerDecks.formatDraft')
+    case 'WINSTON_DRAFT': return i18n.t('adminPlayerDecks.formatWinstonDraft')
+    case 'GRID_DRAFT': return i18n.t('adminPlayerDecks.formatGridDraft')
+    case 'COMMANDER_DRAFT': return i18n.t('adminPlayerDecks.formatCommanderDraft')
+    case 'COMMANDER_SEALED': return i18n.t('adminPlayerDecks.formatCommanderSealed')
+    case 'PREMADE_DECKS': return i18n.t('adminPlayerDecks.formatPremade')
+  }
   return f.charAt(0).toUpperCase() + f.slice(1).toLowerCase()
 }
 

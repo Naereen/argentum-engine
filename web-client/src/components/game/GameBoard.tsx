@@ -2202,7 +2202,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
             const isPartial = distributeState.allowPartial === true
             const isPrevention = distributeState.prompt.toLowerCase().includes('prevention')
             const isCounters = distributeState.prompt.toLowerCase().includes('counter')
-            const noun = isCounters ? t('gameCore.counters') : isPrevention ? t('gameCore.prevention') : t('gameCore.damage')
+            const noun = isCounters ? t('gameCore.countersNoun') : isPrevention ? t('gameCore.prevention') : t('gameCore.damageNoun')
             const confirmLabel = isCounters ? t('common.confirm') : isPrevention ? t('gameCore.confirmPrevention') : t('gameCore.confirmDamage')
             const canConfirm = isPartial ? true : distributeRemaining === 0
             const isComplete = distributeRemaining === 0

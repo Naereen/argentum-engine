@@ -246,7 +246,7 @@ function GameListView({
               }}
             />
             <button type="button" onClick={onBack} className={pageStyles.buttonGhost}>
-              ← Back
+              {t('replay.backToList')}
             </button>
             <button
               type="button"

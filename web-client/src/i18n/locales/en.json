@@ -111,6 +111,28 @@
     "loadDecksError": "Could not load this game’s decks.",
     "noDecklist": "No decklist was recorded for this game."
   },
+  "preferencesPage": {
+    "title": "Preferences",
+    "savedToAccount": "Saved to your account, so they follow you to every device.",
+    "savedInBrowserWithSignIn": "Saved in this browser. Sign in to keep them on every device.",
+    "savedInBrowser": "Saved in this browser."
+  },
+  "adminPlayerDecks": {
+    "savedDecks": "Saved decks",
+    "savedDecksCount": "Saved decks · {{count}}",
+    "loading": "Loading…",
+    "loadFailed": "Could not load this account’s saved decks.",
+    "empty": "This account hasn’t saved any decks.",
+    "cardsCount_one": "{{count}} card",
+    "cardsCount_other": "{{count}} cards",
+    "formatSealed": "Sealed",
+    "formatDraft": "Draft",
+    "formatWinstonDraft": "Winston Draft",
+    "formatGridDraft": "Grid Draft",
+    "formatCommanderDraft": "Commander Draft",
+    "formatCommanderSealed": "Commander Sealed",
+    "formatPremade": "Premade"
+  },
   "deckMigration": {
     "saved": "Decks saved to your account ✓",
     "availableOne": "You have {{count}} deck saved only in this browser.",
@@ -2061,8 +2083,10 @@
     "waysToPlay": "Ways to play",
     "base": "Base",
     "counters": "Counters",
+    "countersNoun": "counters",
     "effects": "Effects",
     "damage": "Damage",
+    "damageNoun": "damage",
     "protectedBy": "Protected by",
     "controlledBy": "Controlled by",
     "grantedTypes": "Granted types",
@@ -2094,10 +2118,8 @@
     "chooseDefenderForEachAttacker": "Choose a defender for every attacker first",
     "attackWithCount": "Attack with {{count}}",
     "noBlocks": "No blocks",
-    "counters": "counters",
     "counter": "counter",
     "prevention": "prevention",
-    "damage": "damage",
     "confirmPrevention": "Confirm prevention",
     "confirmDamage": "Confirm damage",
     "allAllocated": "All {{noun}} allocated",
@@ -3024,13 +3046,7 @@
       "poolBy": "Group pool by",
       "colorless": "Colorless",
       "monoColor": "Mono-{{color}}",
-      "threeColors": "{{count}} colors",
-      "cardsPickedHere": "Cards you pick will show up here.",
-      "creatures": "Creatures",
-      "spells": "Spells",
-      "manaCurve": "Mana curve",
-      "groupPoolBy": "Group pool by",
-    "new": "NEW"
+      "threeColors": "{{count}} colors"
   },
   "gridDraft": {
     "title": "Grid Draft",
