@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useGameStore } from '@/store/gameStore.ts'
 import overlay from '@/components/game/overlay/GameOverlays.module.css'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Full-screen overlay shown when the server reports this tab's session was taken over
@@ -9,6 +10,7 @@ import overlay from '@/components/game/overlay/GameOverlays.module.css'
  * explicitly — the other tab then gets this same overlay.
  */
 export function SessionReplacedOverlay() {
+  const { t } = useTranslation()
   const sessionReplaced = useGameStore((s) => s.sessionReplaced)
   const connect = useGameStore((s) => s.connect)
   const [reclaiming, setReclaiming] = useState(false)
@@ -26,16 +28,15 @@ export function SessionReplacedOverlay() {
   return (
     <div className={`${overlay.scrim} ${overlay.scrimFixed}`} role="dialog" aria-modal="true" aria-labelledby="session-replaced-title">
       <div className={overlay.card}>
-        <p className={overlay.eyebrow}>Session moved</p>
-        <h2 id="session-replaced-title" className={overlay.waitTitle}>Opened in another tab</h2>
+        <p className={overlay.eyebrow}>{t('sessionReplaced.title')}</p>
+        <h2 id="session-replaced-title" className={overlay.waitTitle}>{t('sessionReplaced.heading')}</h2>
         <p className={overlay.reason}>
-          Your session is now active in a different tab or device.
-          {storedName ? ' You can take it back and continue playing here.' : ' Refresh the page to continue here.'}
+          {t(storedName ? 'sessionReplaced.takeBack' : 'sessionReplaced.refresh')}
         </p>
         {storedName && (
           <div className={overlay.actions}>
             <button type="button" className={overlay.primary} onClick={reclaim} disabled={reclaiming}>
-              {reclaiming ? 'Reconnecting…' : 'Use here'}
+              {reclaiming ? t('connection.reconnectingEllipsis') : t('sessionReplaced.useHere')}
             </button>
           </div>
         )}

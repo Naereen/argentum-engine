@@ -18,9 +18,10 @@
  * the game starts" tooltip — so callers only supply the behaviour, never the presentation.
  */
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { AvailableSet } from '@/types/messages'
 import { SetIcon } from './SetIcon'
-import { SetPickerModal, setProductLabel } from './SetPickerModal'
+import { SetPickerModal } from './SetPickerModal'
 import styles from './GameUI.module.css'
 
 /**
@@ -93,10 +94,11 @@ export function SetSelector({
   align = 'end',
   onSelectRandom,
   emptyMeansRandom = false,
-  emptyLabel = 'No sets selected yet',
+  emptyLabel,
   selectedProducts,
   onToggleProduct,
 }: SetSelectorProps) {
+  const { t } = useTranslation()
   const [pickerOpen, setPickerOpen] = useState(false)
 
   const isSingle = mode === 'single'
@@ -109,8 +111,8 @@ export function SetSelector({
     !selectedCodes.some((code) => isRandomSetCode(code) || !sets.find((s) => s.code === code)?.extensionSet)
 
   const buttonLabel = isSingle
-    ? hasSelection ? 'Change set' : 'Choose a set'
-    : hasSelection ? '+ Add set' : 'Choose sets'
+    ? hasSelection ? t('setPicker.changeSet') : t('setPicker.chooseASet')
+    : hasSelection ? t('setPicker.addSet') : t('setPicker.chooseSets')
 
   return (
     <div className={`${styles.setSelection} ${align === 'start' ? styles.setSelectionStart : ''}`}>
@@ -119,9 +121,9 @@ export function SetSelector({
           {/* The one chip that stands for an absence: nothing is selected, and that *is* the
               answer — the server rolls a set when the game starts. */}
           {!hasSelection ? (
-            <span className={styles.setChip} title="A random set is rolled when the game starts">
+            <span className={styles.setChip} title={t('setPicker.randomSetRolled')}>
               <span className={styles.setChipIcon} aria-hidden>🎲</span>
-              <span className={styles.setChipName}>Random Set</span>
+              <span className={styles.setChipName}>{t('setPicker.randomSet')}</span>
             </span>
           ) : (
             selectedCodes.map((code) => (
@@ -131,19 +133,23 @@ export function SetSelector({
                 sets={sets}
                 accent={accent}
                 removable={!disabled}
-                productLabels={(selectedProducts?.[code] ?? []).map(setProductLabel)}
+                productLabels={(selectedProducts?.[code] ?? []).map((id) => ({
+                  beginnerbox: t('setPicker.beginnerBox'),
+                  startercollection: t('setPicker.starterCollection'),
+                  setextension: t('setPicker.setExtension'),
+                } as Record<string, string>)[id] ?? id.replace(/[-_]/g, ' '))}
                 onRemove={() => onToggleSet(code)}
               />
             ))
           )}
         </div>
       ) : (
-        <span className={styles.setSelectionEmpty}>{emptyLabel}</span>
+        <span className={styles.setSelectionEmpty}>{emptyLabel ?? t('setPicker.noSetsSelected')}</span>
       )}
 
       {needsBaseSet && (
         <span className={styles.setSelectionEmpty}>
-          Extension sets need a regular set alongside them.
+          {t('setPicker.extensionNeedsBase')}
         </span>
       )}
 
@@ -163,7 +169,7 @@ export function SetSelector({
           selectedCodes={selectedCodes}
           onToggleSet={onToggleSet}
           onClose={() => setPickerOpen(false)}
-          title={title ?? (isSingle ? 'Choose a set' : 'Choose sets')}
+          title={title ?? (isSingle ? t('setPicker.chooseASet') : t('setPicker.chooseSets'))}
           {...(onSelectRandom ? { onSelectRandom } : {})}
           {...(selectedProducts ? { selectedProducts } : {})}
           {...(onToggleProduct ? { onToggleProduct } : {})}
@@ -193,19 +199,20 @@ function SelectedSetChip({
   productLabels: readonly string[]
   onRemove: () => void
 }) {
+  const { t } = useTranslation()
   const random = isRandomSetCode(code)
   const set = random ? undefined : sets.find((s) => s.code === code)
-  const name = random ? 'Random Set' : set?.name ?? code
+  const name = random ? t('setPicker.randomSet') : set?.name ?? code
   const partial = set?.partial ?? false
 
   const title = productLabels.length > 0
-    ? `${name} — additions: ${productLabels.join(', ')}`
+    ? t('setPicker.chipAdditionsTitle', { setName: name, products: productLabels.join(', ') })
     : random
-      ? 'Random Set — revealed when the game starts'
+      ? t('setPicker.randomSetTitle')
       : partial
-        ? `${name} — partial (reduced card pool)`
+        ? t('setPicker.partialSetTitle', { setName: name })
         : set?.extensionSet
-          ? `${name} — extension set (needs a regular set alongside)`
+          ? t('setPicker.extensionSetTitle', { setName: name })
           : name
 
   return (
@@ -222,14 +229,14 @@ function SelectedSetChip({
         : <SetIcon code={code} className={styles.setChipIcon} />}
       <span className={styles.setChipName}>{name}</span>
       {productLabels.length > 0 && (
-        <span className={styles.setChipExtras} aria-label={`Additions: ${productLabels.join(', ')}`}>+</span>
+        <span className={styles.setChipExtras} aria-label={t('setPicker.additionsLabel', { products: productLabels.join(', ') })}>+</span>
       )}
       {removable && (
         <button
           type="button"
           className={styles.setChipRemove}
           onClick={onRemove}
-          aria-label={`Remove ${name}`}
+          aria-label={t('setPicker.removeSet', { setName: name })}
         >
           ×
         </button>

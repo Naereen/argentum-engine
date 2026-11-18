@@ -3,6 +3,7 @@ import { useGameStore } from '@/store/gameStore.ts'
 import { useViewingPlayer } from '@/store/selectors'
 import { estimatedShortfall, getRemainingCostSymbols, parseManaCost } from '@/utils/manaCost'
 import { ManaSymbol } from './ManaSymbols'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Floating HUD bar for the Harmonize creature-tap step. The player may tap one creature
@@ -12,6 +13,7 @@ import { ManaSymbol } from './ManaSymbols'
  * validates the tapped creature and the payment, has the final say.
  */
 export function HarmonizeSelector() {
+  const { t } = useTranslation()
   const harmonizeSelectionState = useGameStore((state) => state.harmonizeSelectionState)
   const interactionEpoch = useGameStore((state) => state.interactionEpoch)
   const cancelHarmonizeSelection = useGameStore((state) => state.cancelHarmonizeSelection)
@@ -53,14 +55,14 @@ export function HarmonizeSelector() {
   return (
     <div style={styles.bar}>
       <span style={styles.label}>
-        Harmonize <strong>{cardName}</strong>
+        {t('gameCore.harmonize')} <strong>{cardName}</strong>
       </span>
       <span style={styles.divider} />
       <span style={styles.hint}>
-        {selectedCreature ? `Tapping for ${reduction} generic` : 'Tap a creature to reduce (optional)'}
+        {selectedCreature ? t('gameCore.tappingForGeneric', { amount: reduction }) : t('gameCore.tapCreatureToReduce')}
       </span>
       <span style={styles.divider} />
-      <span style={styles.costLabel}>Cost:</span>
+      <span style={styles.costLabel}>{t('gameCore.cost')}</span>
       <div style={styles.manaSymbols}>
         {originalSymbols.map((symbol, i) => (
           <ManaSymbol key={i} symbol={symbol} size={18} />
@@ -73,22 +75,22 @@ export function HarmonizeSelector() {
             {remainingSymbols.length > 0 ? (
               remainingSymbols.map((symbol, i) => <ManaSymbol key={i} symbol={symbol} size={18} />)
             ) : (
-              <span style={styles.freeCast}>Free!</span>
+              <span style={styles.freeCast}>{t('gameCore.free')}</span>
             )}
           </div>
         </>
       )}
       {shortfall > 0 && (
-        <span style={styles.shortfall} title="An estimate — the server has the final say">
-          may be {shortfall} short
+        <span style={styles.shortfall} title={t('gameCore.serverEstimate')}>
+          {t('gameCore.mayBeShort', { amount: shortfall })}
         </span>
       )}
       <span style={styles.divider} />
       <button onClick={() => cancelHarmonizeSelection(interactionEpoch)} style={styles.cancelButton}>
-        Cancel
+        {t('common.cancel')}
       </button>
       <button onClick={() => confirmHarmonizeSelection(interactionEpoch)} style={styles.confirmButton}>
-        Cast
+        {t('gameCore.cast')}
       </button>
     </div>
   )

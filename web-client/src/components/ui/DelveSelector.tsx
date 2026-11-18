@@ -3,6 +3,7 @@ import { useGameStore } from '@/store/gameStore.ts'
 import { getCardImageUrl } from '@/utils/cardImages.ts'
 import { parseManaCost, getRemainingCostSymbols } from '@/utils/manaCost.ts'
 import { ManaSymbol } from './ManaSymbols'
+import { useTranslation } from 'react-i18next'
 import type { EntityId } from '@/types'
 
 /**
@@ -12,6 +13,7 @@ import type { EntityId } from '@/types'
  * The minimum delve needed is computed server-side by the mana solver.
  */
 export function DelveSelector() {
+  const { t } = useTranslation()
   const delveSelectionState = useGameStore((state) => state.delveSelectionState)
   const toggleDelveCard = useGameStore((state) => state.toggleDelveCard)
   const interactionEpoch = useGameStore((state) => state.interactionEpoch)
@@ -47,7 +49,7 @@ export function DelveSelector() {
           onClick={() => setViewingBattlefield(false)}
           style={styles.returnButton}
         >
-          Back to Delve
+          {t('gameCore.backToDelve')}
         </button>
       </div>
     )
@@ -56,7 +58,7 @@ export function DelveSelector() {
   return (
     <div style={styles.overlay}>
       <div style={styles.container}>
-        <h2 style={styles.title}>Delve</h2>
+        <h2 style={styles.title}>{t('gameCore.delve')}</h2>
         <p style={styles.cardName}>{cardName}</p>
 
         {/* Castability status */}
@@ -66,14 +68,14 @@ export function DelveSelector() {
             borderColor: castInfo.isCastable ? 'rgba(74, 222, 128, 0.5)' : 'rgba(255, 255, 255, 0.15)',
           }}>
             <div style={styles.castStatusRow}>
-              <span style={styles.castStatusLabel}>Remaining cost:</span>
+              <span style={styles.castStatusLabel}>{t('gameCore.remainingCost')}</span>
               <div style={styles.manaSymbols}>
                 {castInfo.remainingSymbols.length > 0 ? (
                   castInfo.remainingSymbols.map((symbol, i) => (
                     <ManaSymbol key={i} symbol={symbol} size={20} />
                   ))
                 ) : (
-                  <span style={{ color: '#4ade80', fontWeight: 600, fontSize: 14 }}>Free!</span>
+                  <span style={{ color: '#4ade80', fontWeight: 600, fontSize: 14 }}>{t('gameCore.free')}</span>
                 )}
               </div>
             </div>
@@ -85,8 +87,8 @@ export function DelveSelector() {
               marginTop: 6,
             }}>
               {castInfo.isCastable
-                ? `Castable (minimum ${castInfo.minDelveNeeded} card${castInfo.minDelveNeeded !== 1 ? 's' : ''})`
-                : `Exile ${castInfo.moreNeeded} more card${castInfo.moreNeeded !== 1 ? 's' : ''} to cast (minimum ${castInfo.minDelveNeeded})`
+                ? t('gameCore.delveCastable', { count: castInfo.minDelveNeeded })
+                : t('gameCore.delveMoreNeeded', { count: castInfo.moreNeeded, minimum: castInfo.minDelveNeeded })
               }
             </div>
           </div>
@@ -94,7 +96,7 @@ export function DelveSelector() {
 
         <div style={styles.cardsSection}>
           <p style={styles.cardsLabel}>
-            Exile cards from your graveyard to reduce the cost (up to {maxDelve}):
+            {t('gameCore.delveInstructions', { count: maxDelve })}
           </p>
           <div style={styles.cardGrid}>
             {validCards.map((card) => {
@@ -113,15 +115,15 @@ export function DelveSelector() {
         </div>
 
         <p style={styles.hint}>
-          {selectedCards.length} card{selectedCards.length !== 1 ? 's' : ''} selected to exile
+          {t('gameCore.delveSelected', { count: selectedCards.length })}
           {selectedCards.length < maxDelve && (
             <span style={styles.delveRemaining}>
-              {' '}&middot; exile {maxDelve - selectedCards.length} more to pay only colored mana
+              {' '}&middot; {t('gameCore.delveMoreToPayColored', { count: maxDelve - selectedCards.length })}
             </span>
           )}
           {selectedCards.length === maxDelve && (
             <span style={styles.delveComplete}>
-              {' '}&middot; generic cost fully covered
+              {' '}&middot; {t('gameCore.genericCostCovered')}
             </span>
           )}
         </p>
@@ -131,10 +133,10 @@ export function DelveSelector() {
             onClick={() => setViewingBattlefield(true)}
             style={styles.viewBattlefieldButton}
           >
-            View Battlefield
+            {t('gameCore.viewBattlefield')}
           </button>
           <button onClick={() => cancelDelveSelection(interactionEpoch)} style={styles.cancelButton}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             onClick={() => confirmDelveSelection(interactionEpoch)}
@@ -144,7 +146,7 @@ export function DelveSelector() {
               ...(!castInfo?.isCastable ? styles.confirmButtonDisabled : {}),
             }}
           >
-            Cast
+            {t('gameCore.cast')}
           </button>
         </div>
       </div>
@@ -166,6 +168,7 @@ function DelveCard({
   selected: boolean
   onClick: () => void
 }) {
+  const { t } = useTranslation()
   const [imgError, setImgError] = useState(false)
   const imageUrl = getCardImageUrl(name, imageUri, 'normal')
 
@@ -192,7 +195,7 @@ function DelveCard({
       )}
       {selected && (
         <div style={styles.selectedOverlay}>
-          <span style={styles.exileLabel}>EXILE</span>
+          <span style={styles.exileLabel}>{t('gameCore.exile').toUpperCase()}</span>
         </div>
       )}
     </button>

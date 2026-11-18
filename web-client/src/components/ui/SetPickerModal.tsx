@@ -22,6 +22,7 @@
  */
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import type { AvailableSet } from '@/types/messages'
 import { SetIcon } from './SetIcon'
 import { SetPickerPreview } from '@/components/setGuide/SetPickerPreview'
@@ -56,17 +57,14 @@ export interface SetPickerModalProps {
   onToggleProduct?: (setCode: string, productId: string) => void
 }
 
-const MONTH_ABBREVS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-// Format an ISO `YYYY-MM-DD` release date as e.g. "Oct 2002". Parsed manually to avoid timezone shifts.
-function formatReleaseDate(releaseDate?: string): string | null {
+function formatReleaseDate(releaseDate: string | undefined, language: string): string | null {
   if (!releaseDate) return null
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(releaseDate)
   if (!match) return null
-  const [, year, month] = match
-  if (!year) return null
-  const monthName = MONTH_ABBREVS[Number(month) - 1]
-  return monthName ? `${monthName} ${year}` : year
+  const [, year, month, day] = match
+  if (!year || !month || !day) return null
+  return new Intl.DateTimeFormat(language, { month: 'short', year: 'numeric', timeZone: 'UTC' })
+    .format(new Date(Date.UTC(Number(year), Number(month) - 1, Number(day))))
 }
 
 // Newest-first comparator on ISO `YYYY-MM-DD` keys; sets/blocks with no known release date sort last.
@@ -93,10 +91,11 @@ export function SetPickerModal({
   onClose,
   mode = 'multi',
   onSelectRandom,
-  title = 'Choose sets',
+  title,
   selectedProducts = {},
   onToggleProduct,
 }: SetPickerModalProps) {
+  const { t, i18n } = useTranslation()
   const [search, setSearch] = useState('')
   // Partially-implemented sets are hidden by default; the user opts into them with this toggle.
   const [showPartialSets, setShowPartialSets] = useState(false)
@@ -130,7 +129,7 @@ export function SetPickerModal({
   // those boosters draw from a reduced pool of implemented cards.
   const renderSetPickerRow = (set: AvailableSet) => {
     const selected = isSelected(set.code)
-    const released = formatReleaseDate(set.releaseDate)
+    const released = formatReleaseDate(set.releaseDate, i18n.resolvedLanguage ?? 'en')
     const products = set.products ?? []
     const tagline = setProfile(set.code)?.tagline
     const selectedProductIds = selectedProducts[set.code] ?? []
@@ -149,15 +148,15 @@ export function SetPickerModal({
           {set.name}
           {tagline && <span className={guide.pickerTagline}>{tagline}</span>}
         </span>
-        {set.partial && <span className={styles.setPartialBadge}>partial</span>}
-        {set.extensionSet && <span className={styles.setExtensionBadge}>extension</span>}
+        {set.partial && <span className={styles.setPartialBadge}>{t('setPicker.partial')}</span>}
+        {set.extensionSet && <span className={styles.setExtensionBadge}>{t('setPicker.extension')}</span>}
         {released && <span className={styles.setReleaseDate}>{released}</span>}
         {set.implementedCount != null && (
-          <span className={styles.setButtonCardCount}>{set.implementedCount} cards</span>
+          <span className={styles.setButtonCardCount}>{t('setPicker.cardCount', { count: set.implementedCount })}</span>
         )}
       </button>
       {selected && !isSingle && onToggleProduct && products.length > 0 && (
-        <div aria-label={`${set.name} additions`}>
+        <div aria-label={t('setPicker.additionsFor', { setName: set.name })}>
           {products.map((product) => {
             const checked = selectedProductIds.includes(product.id)
             return (
@@ -171,8 +170,14 @@ export function SetPickerModal({
                 style={{ paddingLeft: 54 }}
               >
                 <span className={styles.setPickerCheck} aria-hidden>{checked ? '✓' : ''}</span>
-                <span className={styles.setPickerName}>{setProductLabel(product.id)}</span>
-                <span className={styles.setButtonCardCount}>{product.cardCount} cards</span>
+                <span className={styles.setPickerName}>
+                  {({
+                    beginnerbox: t('setPicker.beginnerBox'),
+                    startercollection: t('setPicker.starterCollection'),
+                    setextension: t('setPicker.setExtension'),
+                  } as Record<string, string>)[product.id] ?? setProductLabel(product.id)}
+                </span>
+                <span className={styles.setButtonCardCount}>{t('setPicker.cardCount', { count: product.cardCount })}</span>
               </button>
             )
           })}
@@ -214,7 +219,7 @@ export function SetPickerModal({
       units.push({
         kind: 'block',
         key: name,
-        label: `${name} Block`,
+        label: t('setPicker.blockLabel', { name }),
         sets: blockMembers,
         sortKey: releaseSortKey(blockMembers[0]?.releaseDate), // newest in block, after sort above
       })
@@ -248,20 +253,20 @@ export function SetPickerModal({
     <div className={styles.deckViewerBackdrop} onClick={onClose}>
       <div className={`${styles.deckViewerPanel} ${guide.pickerPanel}`} style={{ maxWidth: 940 }} onClick={(e) => e.stopPropagation()}>
         <div className={styles.deckViewerHeader}>
-          <h3 className={styles.deckViewerTitle}>{title}</h3>
+          <h3 className={styles.deckViewerTitle}>{title ?? t('setPicker.chooseSets')}</h3>
           {!isSingle && (
             <span className={styles.setPickerSelectedCount}>
-              {selectedCodes.length} selected
+              {t('setPicker.selectedCount', { count: selectedCodes.length })}
             </span>
           )}
-          <button className={styles.deckViewerClose} onClick={onClose}>×</button>
+          <button className={styles.deckViewerClose} onClick={onClose} aria-label={t('common.close')}>×</button>
         </div>
         <div className={guide.pickerLayout}>
         <div className={`${styles.deckViewerBody} ${guide.pickerMain}`}>
           <input
             type="text"
             className={styles.setPickerSearch}
-            placeholder="Search sets by name or code…"
+            placeholder={t('setPicker.searchPlaceholder')}
             value={search}
             spellCheck={false}
             autoComplete="off"
@@ -280,14 +285,14 @@ export function SetPickerModal({
                 <span className={styles.setPickerSwitchThumb} />
               </span>
               <span className={styles.setPickerSwitchLabel}>
-                Show partial sets
+                {t('setPicker.showPartial')}
                 {partialSetCount > 0 && (
                   <span className={styles.setPickerSwitchCount}>{partialSetCount}</span>
                 )}
               </span>
             </button>
             <label className={styles.setPickerMinCards}>
-              <span>Min cards</span>
+              <span>{t('setPicker.minimumCards')}</span>
               <input
                 type="number"
                 min={0}
@@ -300,13 +305,11 @@ export function SetPickerModal({
             </label>
           </div>
           <p className={styles.setPickerNote}>
-            Sets tagged <span className={styles.setPartialBadge}>partial</span> aren't fully
-            implemented — their boosters draw from a reduced pool of the cards that exist.
-            {' '}Search includes partial sets and sets below the minimum card count.
+            {t('setPicker.partialExplanation', { partial: t('setPicker.partial') })}
+            {' '}{t('setPicker.searchIncludesHidden')}
             {!isSingle && pickerSets.some((s) => s.extensionSet) && (
               <>
-                {' '}Sets tagged <span className={styles.setExtensionBadge}>extension</span> are
-                bonus sheets — pick them together with at least one regular set.
+                {' '}{t('setPicker.extensionExplanation', { extension: t('setPicker.extension') })}
               </>
             )}
           </p>
@@ -319,7 +322,7 @@ export function SetPickerModal({
               >
                 <span className={styles.setPickerCheck} aria-hidden>{randomActive ? '✓' : ''}</span>
                 <span className={styles.setPickerIcon} aria-hidden>🎲</span>
-                <span className={styles.setPickerName}>Random Set</span>
+                <span className={styles.setPickerName}>{t('setPicker.randomSet')}</span>
               </button>
             )}
             {filteredPickerSets.length > 0 ? (
@@ -327,19 +330,18 @@ export function SetPickerModal({
             ) : (
               !showRandomRow && (
                 <div className={styles.setPickerEmpty}>
-                  No sets match.{' '}
+                  {t('setPicker.noMatches')}{' '}
                   {!showPartialSets && partialSetCount > 0
-                    ? 'Try enabling partial sets'
+                    ? t('setPicker.tryPartial')
                     : minCards > 0
-                      ? 'Try lowering the minimum card count'
-                      : 'Try a different search'}
-                  .
+                      ? t('setPicker.tryLowerMinimum')
+                      : t('setPicker.tryDifferentSearch')}
                 </div>
               )
             )}
           </div>
         </div>
-        <aside className={guide.pickerPreview} aria-label="About this set">
+        <aside className={guide.pickerPreview} aria-label={t('setPicker.aboutSet')}>
           <SetPickerPreview set={previewSet} />
         </aside>
         </div>
