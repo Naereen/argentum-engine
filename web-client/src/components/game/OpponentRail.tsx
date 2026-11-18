@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type React from 'react'
 import { useTranslation } from 'react-i18next'
+import i18n from '@/i18n'
 import { useGameStore } from '@/store/gameStore'
 import { isFollowingAction } from '@/store/slices/ui/boardViewSlice'
 import {
@@ -110,6 +111,7 @@ export function OpponentRail({
    */
   topOffset?: number
 }) {
+  const { t } = useTranslation()
   const responsive = useResponsiveContext()
   const opponents = useOpponents()
   const viewedOpponent = useViewedOpponent()
@@ -202,7 +204,7 @@ export function OpponentRail({
       {teamMode ? (
         <>
           {/* Your team: shared-life header (2HG only), then your "you" chip + your ally chip(s). */}
-          <TeamRailSection label="Your Team" color={teamColor(viewerTeam!)} life={sharedLife ? yourTeamLife : null}>
+          <TeamRailSection label={t('gameCore.railYourTeam')} color={teamColor(viewerTeam!)} life={sharedLife ? yourTeamLife : null}>
             {self && <BottomSeatRailChip seat={self} isViewerSeat />}
             {teammates.map((opponent) => (
               <RailChip
@@ -218,7 +220,7 @@ export function OpponentRail({
             ))}
           </TeamRailSection>
           {/* Opposing team: their shared life (2HG) above their seats, or per-player life on each. */}
-          <TeamRailSection label="Opponents" color={teamColor(enemyTeam)} life={sharedLife ? enemyTeamLife : null}>
+          <TeamRailSection label={t('gameCore.railOpponents')} color={teamColor(enemyTeam)} life={sharedLife ? enemyTeamLife : null}>
             {enemies.map((opponent) => (
               <RailChip
                 key={opponent.playerId}
@@ -261,26 +263,26 @@ export function OpponentRail({
       <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6, pointerEvents: 'none' }}>
         {overviewSupported(responsive) && (
           <CameraToggle
-            label="Overview"
+            label={t('gameCore.railOverview')}
             on={overviewMode}
             accent="#b8a4ff"
             onClick={toggleOverviewMode}
             title={
               overviewMode
-                ? 'Table overview: every opponent board is shown side-by-side. Click (or press 0) to focus one board.'
-                : 'Focused camera: one opponent board at a time. Click (or press 0) to see the whole table at once.'
+                ? t('gameCore.railOverviewTitleOn')
+                : t('gameCore.railOverviewTitleOff')
             }
           />
         )}
         <CameraToggle
-          label="Follow"
+          label={t('gameCore.railFollow')}
           on={followAction}
           accent="#7cc8ff"
           onClick={toggleFollowAction}
           title={
             followAction
-              ? 'Follow the action: the view slides to the active board automatically. Click for a manual camera.'
-              : 'Manual camera: the view only moves when you switch boards. Click to follow the action.'
+              ? t('gameCore.railFollowTitleOn')
+              : t('gameCore.railFollowTitleOff')
           }
         />
         {!railCompact(responsive) && (
@@ -485,8 +487,8 @@ function BottomSeatRailChip({ seat, isViewerSeat }: { seat: ClientPlayer; isView
     <div style={{ position: 'relative', pointerEvents: 'auto', width: '100%' }}>
       <div
         title={
-          `${isViewerSeat ? 'You' : seat.name} — Life ${seat.life} · Hand ${seat.handSize}` +
-          `${seat.hasLost ? ' · Eliminated' : ''}` +
+          `${isViewerSeat ? t('common.you') : seat.name} — ${t('gameCore.railLife')} ${seat.life} · ${t('gameCore.railHand')} ${seat.handSize}` +
+          `${seat.hasLost ? ` · ${t('gameCore.railEliminated')}` : ''}` +
           `${isViewerSeat ? '' : "\nShown at the bottom of the board (the header's View button switches seats)"}`
         }
         style={{
@@ -520,7 +522,7 @@ function BottomSeatRailChip({ seat, isViewerSeat }: { seat: ClientPlayer; isView
         {isActiveTurn && !tomb && (
           <span
             aria-hidden
-            title={isViewerSeat ? 'Your turn' : 'Active turn'}
+            title={isViewerSeat ? t('gameCore.railYourTurn') : t('gameCore.activeTurn')}
             style={{
               color: color.bright,
               fontSize: sz.marker,
@@ -578,7 +580,7 @@ function BottomSeatRailChip({ seat, isViewerSeat }: { seat: ClientPlayer; isView
               title={isViewerSeat ? undefined : 'Anchored to the bottom of the board'}
               style={{ fontSize: 9, opacity: 0.75, fontWeight: 600, flexShrink: 0 }}
             >
-              {isViewerSeat ? 'YOU' : 'VIEW'}
+              {isViewerSeat ? t('gameCore.railYou') : t('gameCore.railView')}
             </span>
           </span>
         )}
@@ -623,7 +625,7 @@ function BottomSeatRailChip({ seat, isViewerSeat }: { seat: ClientPlayer; isView
               color: handLimitSuffix(seat.maxHandSize) ? '#f0d488' : '#9fb0d0',
             }}
             title={handLimitSuffix(seat.maxHandSize)
-              ? `Hand ${seat.handSize} · maximum hand size ${seat.maxHandSize ?? '∞'}`
+              ? `${t('gameCore.railHand')} ${seat.handSize} · ${t('gameCore.railMaxHandSize')} ${seat.maxHandSize ?? t('gameCore.railNoMaximum')}`
               : undefined}
           >
             <HandCountIcon color={handLimitSuffix(seat.maxHandSize) ? '#f0d488' : '#8899bb'} />
@@ -690,7 +692,7 @@ function BottomSeatRailChip({ seat, isViewerSeat }: { seat: ClientPlayer; isView
         ) : hasPriority && !isActiveTurn ? (
           <span
             aria-hidden
-            title={isViewerSeat ? 'You hold priority' : 'Holding priority'}
+            title={isViewerSeat ? t('gameCore.railYouHoldPriority') : t('gameCore.holdingPriority')}
             style={{
               width: 6,
               height: 6,
@@ -1027,7 +1029,7 @@ function RailChip({
           (attackRelation === 'target' ? '\nThe only opponent you can attack' : '') +
           (attackRelation === 'attacker' ? '\nThe only opponent who can attack you' : '') +
           (isAttackRestricted ? "\nCan't be attacked this combat" : '') +
-          (isAlly ? '\nYour teammate' : '')
+          (isAlly ? `\n${t('gameCore.yourTeammate')}` : '')
         }
         onClick={handleChipClick}
         onKeyDown={(e) => {
@@ -1212,7 +1214,7 @@ function RailChip({
               color: handLimitSuffix(opponent.maxHandSize) ? '#f0d488' : '#9fb0d0',
             }}
             title={handLimitSuffix(opponent.maxHandSize)
-              ? `Hand ${opponent.handSize} · maximum hand size ${opponent.maxHandSize ?? '∞'}`
+              ? `${t('gameCore.railHand')} ${opponent.handSize} · ${t('gameCore.railMaxHandSize')} ${opponent.maxHandSize ?? t('gameCore.railNoMaximum')}`
               : undefined}
           >
             <HandCountIcon color={handLimitSuffix(opponent.maxHandSize) ? '#f0d488' : '#8899bb'} />
@@ -1490,18 +1492,18 @@ function distributeButtonStyle(enabled: boolean, activeColor: string): React.CSS
 function chipTitle(opponent: ClientPlayer): string {
   const lines = [
     opponent.name,
-    `Life ${opponent.life} · Hand ${opponent.handSize} · Library ${opponent.librarySize} · Graveyard ${opponent.graveyardSize}`,
+    `${i18n.t('gameCore.railLife')} ${opponent.life} · ${i18n.t('gameCore.railHand')} ${opponent.handSize} · ${i18n.t('gameCore.railLibrary')} ${opponent.librarySize} · ${i18n.t('gameCore.railGraveyard')} ${opponent.graveyardSize}`,
   ]
   if (handLimitSuffix(opponent.maxHandSize)) {
-    lines.push(`Max hand size ${opponent.maxHandSize ?? '∞ (no maximum)'}`)
+    lines.push(`${i18n.t('gameCore.railMaxHandSize')} ${opponent.maxHandSize ?? i18n.t('gameCore.railNoMaximum')}`)
   }
-  if (opponent.poisonCounters > 0) lines.push(`Poison ${opponent.poisonCounters}/10`)
-  if ((opponent.radCounters ?? 0) > 0) lines.push(`Rad ${opponent.radCounters}`)
-  if ((opponent.energyCounters ?? 0) > 0) lines.push(`Energy ${opponent.energyCounters}`)
-  if ((opponent.experienceCounters ?? 0) > 0) lines.push(`Experience ${opponent.experienceCounters}`)
+  if (opponent.poisonCounters > 0) lines.push(`${i18n.t('gameCore.railPoison')} ${opponent.poisonCounters}/10`)
+  if ((opponent.radCounters ?? 0) > 0) lines.push(`${i18n.t('gameCore.railRad')} ${opponent.radCounters}`)
+  if ((opponent.energyCounters ?? 0) > 0) lines.push(`${i18n.t('gameCore.railEnergy')} ${opponent.energyCounters}`)
+  if ((opponent.experienceCounters ?? 0) > 0) lines.push(`${i18n.t('gameCore.railExperience')} ${opponent.experienceCounters}`)
   for (const e of opponent.commanderDamage ?? []) {
     lines.push(`⚔ ${e.commanderName}: ${e.amount}/${e.threshold}`)
   }
-  if (opponent.hasLost) lines.push('Eliminated')
+  if (opponent.hasLost) lines.push(i18n.t('gameCore.railEliminated'))
   return lines.join('\n')
 }
