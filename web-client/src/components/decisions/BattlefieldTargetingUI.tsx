@@ -8,6 +8,7 @@ import { totalCapSum, totalCapsFor, wouldExceedTotalCaps } from '@/utils/targeti
 import { DecisionCardPreview } from './DecisionComponents'
 import { DraggableBanner } from './DraggableBanner'
 import styles from './DecisionUI.module.css'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Board targeting UI for **one** requirement of a ChooseTargetsDecision (battlefield permanents,
@@ -56,6 +57,7 @@ export function BattlefieldTargetingUI({
     onOpen: (carried: readonly EntityId[]) => void
   }
 }) {
+  const { t } = useTranslation()
   const startDecisionSelection = useGameStore((s) => s.startDecisionSelection)
   const decisionSelectionState = useGameStore((s) => s.decisionSelectionState)
   const cancelDecisionSelection = useGameStore((s) => s.cancelDecisionSelection)
@@ -138,8 +140,13 @@ export function BattlefieldTargetingUI({
   }
 
   const requirementLabel = totalRequirements > 1
-    ? `Choose Target (${requirementIndex + 1}/${totalRequirements})`
-    : 'Choose Target'
+    ? t('decisions.chooseTargetNumber', { current: requirementIndex + 1, total: totalRequirements })
+    : t('decisions.chooseTarget')
+  const pileLabel = pileButton?.zoneLabel.split(' / ').map((zone) =>
+    zone === 'Graveyard' ? t('decisions.zoneGraveyard')
+      : zone === 'Exile' ? t('decisions.zoneExile')
+        : zone,
+  ).join(' / ')
 
   const promptText = targetReq?.description ?? decision.prompt
 
@@ -148,7 +155,7 @@ export function BattlefieldTargetingUI({
       {sourceImageUrl && (
         <img
           src={sourceImageUrl}
-          alt={`Source: ${decision.context.sourceName ?? 'card'}`}
+          alt={t('decisions.sourceCard', { cardName: decision.context.sourceName ?? t('common.unknownCard') })}
           className={styles.bannerCardImage}
           onMouseEnter={() => setIsHoveringSource(true)}
           onMouseLeave={() => setIsHoveringSource(false)}
@@ -169,11 +176,11 @@ export function BattlefieldTargetingUI({
         {promptText}
       </div>
       <div className={styles.hint}>
-        {`${selectedCount} / ${maxTargets} selected`}
+        {t('decisions.selectedOfMaximum', { selected: selectedCount, maximum: maxTargets })}
       </div>
       {totalCaps.map((c) => (
         <div key={c.label} className={styles.hint}>
-          {`Total ${c.label}: ${totalCapSum(c, decisionSelectionState?.selectedOptions ?? [])} / ${c.cap}`}
+          {t('decisions.totalTargetCap', { label: c.label, total: totalCapSum(c, decisionSelectionState?.selectedOptions ?? []), cap: c.cap })}
         </div>
       ))}
       {decisionSelectionState?.warning && (
@@ -183,24 +190,24 @@ export function BattlefieldTargetingUI({
       )}
       {pileButton && (
         <div className={styles.hint}>
-          {`Click a highlighted permanent, or open the ${pileButton.zoneLabel.toLowerCase()}`}
+          {t('decisions.clickTargetOrOpenPile', { zone: pileLabel })}
         </div>
       )}
 
       <div className={styles.buttonContainerSmall}>
         {pileButton && (
           <button onClick={handleOpenPile} className={`${styles.confirmButton} ${styles.confirmButtonSmall}`}>
-            {`${pileButton.zoneLabel} (${pileButton.count})`}
+            {t('decisions.pileWithCount', { zone: pileLabel, count: pileButton.count })}
           </button>
         )}
         {onBack && (
           <button onClick={handleBack} className={`${styles.confirmButton} ${styles.confirmButtonSmall}`}>
-            ← Back
+            ← {t('common.back')}
           </button>
         )}
         {canDecline && selectedCount === 0 && (
           <button onClick={handleDecline} className={`${styles.confirmButton} ${styles.confirmButtonSmall}`}>
-            {targetReq?.emptyChoiceLabel ?? 'Decline'}
+            {targetReq?.emptyChoiceLabel ?? t('decisions.decline')}
           </button>
         )}
         {selectedCount > 0 && (
@@ -209,12 +216,12 @@ export function BattlefieldTargetingUI({
             disabled={!canConfirm}
             className={`${styles.confirmButton} ${styles.confirmButtonSmall}`}
           >
-            Confirm ({selectedCount})
+            {t('decisions.confirmSelectionCount', { count: selectedCount })}
           </button>
         )}
         {decision.canCancel && (
           <button onClick={handleCancel} className={`${styles.confirmButton} ${styles.confirmButtonSmall}`}>
-            Cancel
+            {t('common.cancel')}
           </button>
         )}
       </div>

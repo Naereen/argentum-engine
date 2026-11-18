@@ -209,12 +209,12 @@ export function AiInsightPanel() {
                 >
                   <span style={styles.timelineTurn}>
                     {held && <span style={styles.heldDot}>⏸ </span>}
-                    T{decision.insight.turnNumber} {kindTag(decision.insight.kind)}
+                    T{decision.insight.turnNumber} {t(kindTag(decision.insight.kind))}
                   </span>
                   <span style={styles.timelineChoice}>
                     {decision.humanOverride?.label ?? decision.insight.chosenLabel}
                   </span>
-                  {decision.humanOverride && <span style={styles.overrideTag}>yours</span>}
+                  {decision.humanOverride && <span style={styles.overrideTag}>{t('gameCore.aiYours')}</span>}
                 </button>
               )
             })}
@@ -248,6 +248,7 @@ function DecisionDetail({
   busy: boolean
   onPlay: (optionIndex: number) => void
 }) {
+  const { t } = useTranslation()
   const { insight } = decision
   // Bar width is relative to the biggest swing in this decision: the interesting question is
   // "how much better than the alternatives", and a fixed scale flattens every close call.
@@ -262,18 +263,26 @@ function DecisionDetail({
   return (
     <div style={styles.detail}>
       <div style={styles.detailMeta}>
-        Turn {insight.turnNumber} · {formatStep(insight.step)} ·{' '}
-        {insight.onOwnTurn ? "AI's turn" : 'your turn'} · {insight.thinkTimeMs}ms
-        {pinned && <span style={styles.pinned}> · pinned</span>}
+        {t('gameCore.aiInsightTurnMeta', {
+          turn: insight.turnNumber,
+          step: formatStep(insight.step),
+          turnType: t(insight.onOwnTurn ? 'gameCore.aiTurn' : 'gameCore.yourTurn'),
+          thinkTime: insight.thinkTimeMs,
+        })}
+        {pinned && <span style={styles.pinned}>{t('gameCore.aiPinned')}</span>}
       </div>
       <div style={styles.detailMeta}>
-        Baseline: {insight.baselineLabel} at {insight.baselineScore.toFixed(2)} — an option is only
-        taken if it scores above this.
+        {t('gameCore.aiBaselineExplanation', {
+          label: insight.baselineLabel,
+          score: insight.baselineScore.toFixed(2),
+        })}
       </div>
       {decision.humanOverride && (
         <div style={styles.overrideNote}>
-          You played <strong>{decision.humanOverride.label}</strong> instead of the AI's{' '}
-          <strong>{insight.chosenLabel}</strong>.
+          {t('gameCore.aiHumanOverride', {
+            humanChoice: decision.humanOverride.label,
+            aiChoice: insight.chosenLabel,
+          })}
         </div>
       )}
       <div style={styles.options}>
@@ -334,7 +343,7 @@ function OptionRow({
           {option.label}
         </span>
         {option.chosen && <span style={styles.aiPickTag}>{t('gameCore.aiPick')}</span>}
-        {playedByHuman && <span style={styles.playedTag}>played</span>}
+        {playedByHuman && <span style={styles.playedTag}>{t('gameCore.aiPlayed')}</span>}
         <span
           style={{
             ...styles.optionScore,
@@ -380,14 +389,17 @@ function OptionRow({
   )
 }
 
-function kindTag(kind: string): string {
+function kindTag(kind: string):
+  | 'gameCore.aiKindAttacks'
+  | 'gameCore.aiKindBlocks'
+  | 'gameCore.aiKindPriority' {
   switch (kind) {
     case 'DECLARE_ATTACKERS':
-      return 'attacks'
+      return 'gameCore.aiKindAttacks'
     case 'DECLARE_BLOCKERS':
-      return 'blocks'
+      return 'gameCore.aiKindBlocks'
     default:
-      return 'priority'
+      return 'gameCore.aiKindPriority'
   }
 }
 

@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react'
-import { Phase, Step, StepShortNames } from '@/types'
+import { Phase, Step } from '@/types'
 import type { ClientOtariaTurn } from '@/types'
 import { useResponsive } from '@/hooks/useResponsive.ts'
 import type { PriorityMode } from '@/store/selectors.ts'
+import { useTranslation } from 'react-i18next'
 
 interface StepStripProps {
   phase: Phase
@@ -23,7 +24,7 @@ interface StepStripProps {
    * Multiplayer: where the viewer sits in the turn order relative to the active player —
    * "You're next" / "You in 2". Rendered after the status text; absent on your own turn.
    */
-  turnQueueHint?: string | undefined
+  turnQueueDistance?: number | undefined
   /** Which side the active player sits on relative to the board: 'top' = opponent, 'bottom' = viewing player. */
   activeSide: 'top' | 'bottom'
   stopOverrides: { myTurnStops: Step[]; opponentTurnStops: Step[] }
@@ -80,24 +81,43 @@ function otariaPhaseGroups(turn: ClientOtariaTurn | null | undefined): PhaseGrou
 const NO_PRIORITY_STEPS = new Set<Step>([Step.UNTAP, Step.CLEANUP])
 
 /** Short labels shown under the active phase group */
-const STEP_PIP_LABELS: Record<Step, string> = {
-  [Step.UNTAP]: 'Un',
-  [Step.UPKEEP]: 'Up',
-  [Step.DRAW]: 'Dr',
-  [Step.PRECOMBAT_MAIN]: '',
-  [Step.BEGIN_COMBAT]: 'BC',
-  [Step.DECLARE_ATTACKERS]: 'Atk',
-  [Step.DECLARE_BLOCKERS]: 'Blk',
-  [Step.FIRST_STRIKE_COMBAT_DAMAGE]: '1st',
-  [Step.COMBAT_DAMAGE]: 'Dmg',
-  [Step.END_COMBAT]: 'EC',
-  [Step.POSTCOMBAT_MAIN]: '',
-  [Step.END]: 'End',
-  [Step.CLEANUP]: 'Cl',
-  [Step.OTARIA_PREPARATION]: 'Prep',
-  [Step.OTARIA_MOVEMENT]: 'Move',
-  [Step.OTARIA_EXPLORATION]: 'Explore',
-}
+const STEP_PIP_LABEL_KEYS = {
+  [Step.UNTAP]: 'phases.shortSteps.UNTAP',
+  [Step.UPKEEP]: 'phases.shortSteps.UPKEEP',
+  [Step.DRAW]: 'phases.shortSteps.DRAW',
+  [Step.PRECOMBAT_MAIN]: 'phases.shortSteps.PRECOMBAT_MAIN',
+  [Step.BEGIN_COMBAT]: 'phases.shortSteps.BEGIN_COMBAT',
+  [Step.DECLARE_ATTACKERS]: 'phases.shortSteps.DECLARE_ATTACKERS',
+  [Step.DECLARE_BLOCKERS]: 'phases.shortSteps.DECLARE_BLOCKERS',
+  [Step.FIRST_STRIKE_COMBAT_DAMAGE]: 'phases.shortSteps.FIRST_STRIKE_COMBAT_DAMAGE',
+  [Step.COMBAT_DAMAGE]: 'phases.shortSteps.COMBAT_DAMAGE',
+  [Step.END_COMBAT]: 'phases.shortSteps.END_COMBAT',
+  [Step.POSTCOMBAT_MAIN]: 'phases.shortSteps.POSTCOMBAT_MAIN',
+  [Step.END]: 'phases.shortSteps.END',
+  [Step.CLEANUP]: 'phases.shortSteps.CLEANUP',
+  [Step.OTARIA_PREPARATION]: 'phases.shortSteps.OTARIA_PREPARATION',
+  [Step.OTARIA_MOVEMENT]: 'phases.shortSteps.OTARIA_MOVEMENT',
+  [Step.OTARIA_EXPLORATION]: 'phases.shortSteps.OTARIA_EXPLORATION',
+} as const
+
+const STEP_TOOLTIP_LABEL_KEYS = {
+  [Step.UNTAP]: 'phases.steps.UNTAP',
+  [Step.UPKEEP]: 'phases.steps.UPKEEP',
+  [Step.DRAW]: 'phases.steps.DRAW',
+  [Step.PRECOMBAT_MAIN]: 'phases.steps.PRECOMBAT_MAIN',
+  [Step.BEGIN_COMBAT]: 'phases.steps.BEGIN_COMBAT',
+  [Step.DECLARE_ATTACKERS]: 'phases.steps.DECLARE_ATTACKERS',
+  [Step.DECLARE_BLOCKERS]: 'phases.steps.DECLARE_BLOCKERS',
+  [Step.FIRST_STRIKE_COMBAT_DAMAGE]: 'phases.steps.FIRST_STRIKE_COMBAT_DAMAGE',
+  [Step.COMBAT_DAMAGE]: 'phases.steps.COMBAT_DAMAGE',
+  [Step.END_COMBAT]: 'phases.steps.END_COMBAT',
+  [Step.POSTCOMBAT_MAIN]: 'phases.steps.POSTCOMBAT_MAIN',
+  [Step.END]: 'phases.steps.END',
+  [Step.CLEANUP]: 'phases.steps.CLEANUP',
+  [Step.OTARIA_PREPARATION]: 'phases.steps.OTARIA_PREPARATION',
+  [Step.OTARIA_MOVEMENT]: 'phases.steps.OTARIA_MOVEMENT',
+  [Step.OTARIA_EXPLORATION]: 'phases.steps.OTARIA_EXPLORATION',
+} as const
 
 type ColorSet = { border: string; glow: string; highlight: string; text: string }
 
@@ -138,13 +158,14 @@ export function StepStrip({
   priorityMode,
   activePlayerName,
   activePlayerLeft = false,
-  turnQueueHint,
+  turnQueueDistance,
   activeSide,
   stopOverrides,
   onToggleStop,
   isSpectator = false,
   otariaTurn,
 }: StepStripProps) {
+  const { t } = useTranslation()
   const responsive = useResponsive()
   const colors = priorityMode === 'waiting' && isActivePlayer
     ? waitingMyTurn
@@ -160,16 +181,14 @@ export function StepStrip({
   const currentStepIndex = stepOrder.indexOf(step)
 
   const statusText = activePlayerName
-    ? activePlayerLeft
-      ? `Ending ${activePlayerName}'s Turn`
-      : `${activePlayerName}'s Turn`
+    ? t(activePlayerLeft ? 'phases.playerTurnEnding' : 'phases.playerTurn', { playerName: activePlayerName })
     : priorityMode === 'ownTurn'
-    ? 'Your Turn'
-    : priorityMode === 'responding'
-    ? 'Responding'
-    : isActivePlayer
-    ? 'Your Turn'
-    : "Opponent's Turn"
+      ? t('phases.yourTurn')
+      : priorityMode === 'responding'
+        ? t('phases.responding')
+        : isActivePlayer
+          ? t('phases.yourTurn')
+          : t('phases.opponentTurn')
 
   const triangleHeight = isMobile ? 4 : 6
   const triangleColor = colors.highlight
@@ -262,7 +281,7 @@ export function StepStrip({
         }}>
           {statusText}
         </span>
-        {turnQueueHint && (
+        {turnQueueDistance != null && (
           <span style={{
             color: '#7d8494',
             fontSize: isMobile ? 8 : 9,
@@ -271,10 +290,10 @@ export function StepStrip({
             letterSpacing: '0.5px',
             whiteSpace: 'nowrap',
           }}>
-            · {turnQueueHint}
+            · {t(turnQueueDistance === 1 ? 'phases.youAreNext' : 'phases.youInTurns', { distance: turnQueueDistance })}
           </span>
         )}
-        <span title={`Round ${roundNumber}`} style={{
+        <span title={t('phases.round', { roundNumber })} style={{
           color: '#555',
           fontSize: isMobile ? 7 : 9,
         }}>
@@ -342,7 +361,7 @@ export function StepStrip({
                   lineHeight: 1,
                   opacity: 0.8,
                 }}>
-                  {STEP_PIP_LABELS[step] || StepShortNames[step]}
+                  {t(STEP_PIP_LABEL_KEYS[step])}
                 </span>
               )}
             </div>
@@ -445,6 +464,7 @@ function StepPip({
   hasOpponentTurnStop: boolean
   onToggleStop: (step: Step, isMyTurn: boolean) => void
 }) {
+  const { t } = useTranslation()
   const [hovered, setHovered] = useState(false)
   const handleMouseEnter = useCallback(() => setHovered(true), [])
   const handleMouseLeave = useCallback(() => setHovered(false), [])
@@ -497,7 +517,7 @@ function StepPip({
             color: isCurrent ? colors.highlight : '#ccc',
             fontWeight: isCurrent ? 600 : 400,
           }}>
-            {StepShortNames[step]}
+            {t(STEP_TOOLTIP_LABEL_KEYS[step])}
           </span>
         </div>
       )}
@@ -544,7 +564,7 @@ function StepPip({
             active={hasMyTurnStop}
             visible={showDots}
             size={dotSize}
-            title="My turn stop"
+            title={t('phases.myTurnStop')}
             color="#4fc3f7"
             onClick={() => onToggleStop(step, true)}
           />
@@ -552,7 +572,7 @@ function StepPip({
             active={hasOpponentTurnStop}
             visible={showDots}
             size={dotSize}
-            title="Opponent turn stop"
+            title={t('phases.opponentTurnStop')}
             color="#ffc107"
             onClick={() => onToggleStop(step, false)}
           />

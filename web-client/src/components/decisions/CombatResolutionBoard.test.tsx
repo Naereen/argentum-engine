@@ -1,5 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
+import { I18nextProvider } from 'react-i18next'
+import i18n from '@/i18n'
 import { entityId, type CombatResolutionDecision } from '@/types'
 
 vi.mock('@/store/gameStore.ts', () => ({
@@ -44,7 +46,9 @@ describe('combat resolution for a controlled encounter seat', () => {
       }],
     }
 
-    const html = renderToStaticMarkup(<CombatResolutionBoard decision={decision} />)
+    const html = renderToStaticMarkup(
+      <I18nextProvider i18n={i18n}><CombatResolutionBoard decision={decision} /></I18nextProvider>,
+    )
 
     expect(html).toContain('Attacker')
     expect(html).toContain('Face-down creature')

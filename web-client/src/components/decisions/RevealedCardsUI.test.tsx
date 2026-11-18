@@ -1,5 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { I18nextProvider } from 'react-i18next'
+import i18n from '@/i18n'
 import { entityId } from '@/types'
 import { otariaGameState, otariaViewer } from '@/test/otariaFixtures'
 import type { GameStore } from '@/store/slices/types'
@@ -39,7 +41,7 @@ beforeEach(() => {
 
 describe('Otaria event reveals', () => {
   it('uses a readable proxy without a bogus source-card lookup', () => {
-    const html = renderToStaticMarkup(<RevealedCardsUI />)
+    const html = renderToStaticMarkup(<I18nextProvider i18n={i18n}><RevealedCardsUI /></I18nextProvider>)
     expect(html).toContain('src="/images/otaria/events/naturalisation.png"')
     expect(html).toContain('width:300px')
     expect(html).not.toContain('scryfall')
@@ -47,7 +49,7 @@ describe('Otaria event reveals', () => {
 
   it('reduces the event image to keep controls visible on a short screen', () => {
     viewport = { viewportWidth: 1280, viewportHeight: 600, containerPadding: 16, isMobile: false }
-    const html = renderToStaticMarkup(<RevealedCardsUI />)
+    const html = renderToStaticMarkup(<I18nextProvider i18n={i18n}><RevealedCardsUI /></I18nextProvider>)
     expect(html).toContain('width:228px')
     expect(html).toContain('View Battlefield')
     expect(html).toContain('OK')
@@ -60,6 +62,6 @@ describe('Otaria event reveals', () => {
         imageUris: ['/images/forest.png'], source: null, isYourReveal: true,
       },
     })
-    expect(renderToStaticMarkup(<RevealedCardsUI />)).toContain('width:180px')
+    expect(renderToStaticMarkup(<I18nextProvider i18n={i18n}><RevealedCardsUI /></I18nextProvider>)).toContain('width:180px')
   })
 })

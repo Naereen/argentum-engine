@@ -5,6 +5,7 @@ import { useResponsive, calculateFittingCardWidth } from '@/hooks/useResponsive.
 import { getCardImageUrl } from '@/utils/cardImages.ts'
 import { DecisionCardPreview } from './DecisionComponents'
 import styles from './RevealedCardsUI.module.css'
+import { useTranslation } from 'react-i18next'
 
 /**
  * When the caster's reveal is immediately followed by a SelectCards decision whose
@@ -36,16 +37,22 @@ function isRevealCoveredByDecision(
 function zoneTransitionLabel(
   fromZone: string | null | undefined,
   toZone: string | null | undefined
-): string | null {
+): 'decisions.returnedToHandFromGraveyard'
+  | 'decisions.returnedToHandFromExile'
+  | 'decisions.shuffledIntoLibraryFromGraveyard'
+  | 'decisions.putIntoLibraryFromExile'
+  | 'decisions.returnedToBattlefieldFromGraveyard'
+  | 'decisions.returnedToBattlefieldFromExile'
+  | null {
   if (!fromZone || !toZone) return null
   const from = fromZone.toLowerCase()
   const to = toZone.toLowerCase()
-  if (from === 'graveyard' && to === 'hand') return 'Returned to hand from graveyard'
-  if (from === 'exile' && to === 'hand') return 'Returned to hand from exile'
-  if (from === 'graveyard' && to === 'library') return 'Shuffled into library from graveyard'
-  if (from === 'exile' && to === 'library') return 'Put into library from exile'
-  if (from === 'graveyard' && to === 'battlefield') return 'Returned to battlefield from graveyard'
-  if (from === 'exile' && to === 'battlefield') return 'Returned to battlefield from exile'
+  if (from === 'graveyard' && to === 'hand') return 'decisions.returnedToHandFromGraveyard'
+  if (from === 'exile' && to === 'hand') return 'decisions.returnedToHandFromExile'
+  if (from === 'graveyard' && to === 'library') return 'decisions.shuffledIntoLibraryFromGraveyard'
+  if (from === 'exile' && to === 'library') return 'decisions.putIntoLibraryFromExile'
+  if (from === 'graveyard' && to === 'battlefield') return 'decisions.returnedToBattlefieldFromGraveyard'
+  if (from === 'exile' && to === 'battlefield') return 'decisions.returnedToBattlefieldFromExile'
   return null
 }
 
@@ -57,6 +64,7 @@ function zoneTransitionLabel(
  * while the reveal is active.
  */
 export function RevealedCardsUI() {
+  const { t } = useTranslation()
   const revealedCardsInfo = useGameStore((state) => state.revealedCardsInfo)
   const revealedHandCardIds = useGameStore((state) => state.revealedHandCardIds)
   const gameState = useGameStore((state) => state.gameState)
@@ -101,7 +109,7 @@ export function RevealedCardsUI() {
           ? { ...card, imageUri: eventImageUri ?? card.imageUri }
           : {
               id: cardId,
-              name: revealedCardsInfo!.cardNames[index] ?? 'Unknown Card',
+              name: revealedCardsInfo!.cardNames[index] ?? t('common.unknownCard'),
               imageUri: eventImageUri,
               typeLine: null,
             }
@@ -122,25 +130,32 @@ export function RevealedCardsUI() {
   const opponentLabel = (ownerId: EntityId | undefined): string =>
     (isMultiplayer && ownerId
       ? gameState.players.find((p) => p.playerId === ownerId)?.name
-      : undefined) ?? 'Opponent'
+      : undefined) ?? t('decisions.opponent')
 
   // Title and subtitle
   const isYourReveal = !isHandReveal && revealedCardsInfo!.isYourReveal
-  const transitionLabel = isHandReveal
+  const transitionKey = isHandReveal
     ? null
     : zoneTransitionLabel(revealedCardsInfo!.fromZone ?? null, revealedCardsInfo!.toZone ?? null)
-  const actionWord = transitionLabel ?? 'Revealed'
-  const whoPrefix = isMixedReveal || isYourReveal
-    ? ''
-    : `${opponentLabel(revealedCardsInfo?.revealingPlayerId)} `
+  const actionWord = transitionKey ? t(transitionKey) : t('decisions.revealed')
+  const sourceName = revealedCardsInfo?.source
+  const revealingPlayerName = isMixedReveal || isYourReveal
+    ? null
+    : opponentLabel(revealedCardsInfo?.revealingPlayerId)
   const title = isHandReveal
-    ? "Opponent's Hand"
-    : `${whoPrefix}${actionWord}${revealedCardsInfo!.source ? ` — ${revealedCardsInfo!.source}` : ''}`
+    ? t('decisions.opponentsHand')
+    : revealingPlayerName
+      ? sourceName
+        ? t('decisions.revealedByPlayerFromSource', { playerName: revealingPlayerName, action: actionWord, sourceName })
+        : t('decisions.revealedByPlayer', { playerName: revealingPlayerName, action: actionWord })
+      : sourceName
+        ? t('decisions.revealedFromSource', { action: actionWord, sourceName })
+        : actionWord
 
   const subtitle = isHandReveal
     ? cards.length === 0
-      ? 'Opponent has no cards in hand'
-      : `${cards.length} card${cards.length !== 1 ? 's' : ''}`
+      ? t('decisions.opponentHasNoCards')
+      : t('decisions.revealedCardCount', { count: cards.length })
     : revealedCardsInfo!.cardNames.join(', ')
 
   // Calculate card size that fits all cards
@@ -180,7 +195,7 @@ export function RevealedCardsUI() {
         onClick={() => setMinimized(false)}
         className={styles.restoreButton}
       >
-        {isHandReveal ? "↑ Return to Opponent's Hand" : '↑ Return to Revealed Cards'}
+        {isHandReveal ? `↑ ${t('decisions.returnToOpponentsHand')}` : `↑ ${t('decisions.returnToRevealedCards')}`}
       </button>
     )
   }
@@ -248,7 +263,7 @@ export function RevealedCardsUI() {
                       pointerEvents: 'none',
                     }}
                   >
-                    {ownerIsYours ? 'You' : opponentLabel(cardOwnerIds?.[index])}
+                    {ownerIsYours ? t('common.you') : opponentLabel(cardOwnerIds?.[index])}
                   </span>
                 )}
                 <img
@@ -281,10 +296,10 @@ export function RevealedCardsUI() {
       {/* Action buttons */}
       <div className={styles.buttonRow}>
         <button onClick={() => setMinimized(true)} className={styles.viewBattlefieldButton}>
-          View Battlefield
+          {t('decisions.viewBattlefield')}
         </button>
         <button onClick={onDismiss} className={styles.okButton}>
-          OK
+          {t('common.ok')}
         </button>
       </div>
       {/* Revealed card previews are handled by the global CardPreview component in GameBoard. */}

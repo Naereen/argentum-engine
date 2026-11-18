@@ -4,9 +4,7 @@ import type { YesNoDecision, ClientGameState } from '@/types'
 import { AbilityText } from '../ui/ManaSymbols'
 import { DecisionContextCards, hasDecisionContextCards, resolveDecisionCards } from './DecisionContextCards'
 import styles from './DecisionUI.module.css'
-
-/** Tooltip on a "yes" the server marked impossible. */
-const NOT_POSSIBLE = 'Not possible right now'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Yes/No decision - make a binary choice.
@@ -31,6 +29,7 @@ export function YesNoDecisionUI({
   gameState: ClientGameState | null
   onMinimize?: () => void
 }) {
+  const { t } = useTranslation()
   const submitYesNoDecision = useGameStore((s) => s.submitYesNoDecision)
   // The server asks even when "yes" is impossible, so the question doesn't reveal hidden cards;
   // then "no" is the only answer and "yes" is shown disabled.
@@ -85,13 +84,13 @@ export function YesNoDecisionUI({
           {/* Two outcomes of equal standing (endure: counters or a Spirit) — neither is "decline". */}
           <div className={styles.peerOptions}>
             <PeerOption label={decision.yesText} detail={decision.yesDetail} onClick={handleYes} disabled={!yesAvailable} />
-            <span className={styles.peerOptionsOr} aria-hidden="true">or</span>
+            <span className={styles.peerOptionsOr} aria-hidden="true">{t('decisions.or')}</span>
             <PeerOption label={decision.noText} detail={decision.noDetail} onClick={handleNo} />
           </div>
           {onMinimize && (
             <div className={styles.buttonContainer}>
               <button onClick={onMinimize} className={styles.viewBattlefieldButton}>
-                View Battlefield
+                {t('decisions.viewBattlefield')}
               </button>
             </div>
           )}
@@ -101,10 +100,10 @@ export function YesNoDecisionUI({
         <div className={styles.buttonContainer}>
           {onMinimize && (
             <button onClick={onMinimize} className={styles.viewBattlefieldButton}>
-              View Battlefield
+              {t('decisions.viewBattlefield')}
             </button>
           )}
-          <button onClick={handleYes} className={styles.yesButton} disabled={!yesAvailable} title={yesAvailable ? undefined : NOT_POSSIBLE}>
+          <button onClick={handleYes} className={styles.yesButton} disabled={!yesAvailable} title={yesAvailable ? undefined : t('decisions.notPossible')}>
             <AbilityText text={decision.yesText} size={16} />
           </button>
           <button onClick={handleNo} className={styles.noButton}>
@@ -117,9 +116,11 @@ export function YesNoDecisionUI({
         <label className={`${styles.rememberAnswer} ${remember ? styles.rememberAnswerOn : ''}`}>
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
           <span>
-            Remember my answer — don’t ask again{decision.context.sourceName ? ` for ${decision.context.sourceName}` : ''}
+            {decision.context.sourceName
+              ? t('decisions.rememberAnswerFor', { sourceName: decision.context.sourceName })
+              : t('decisions.rememberAnswer')}
             <span className={styles.rememberAnswerHint}>
-              Every copy of this ability gets the same answer for the rest of the game. Undo it from Active yields.
+              {t('decisions.rememberAnswerHint')}
             </span>
           </span>
         </label>
@@ -129,8 +130,9 @@ export function YesNoDecisionUI({
 }
 
 function PeerOption({ label, detail, onClick, disabled = false }: { label: string; detail?: string | null | undefined; onClick: () => void; disabled?: boolean }) {
+  const { t } = useTranslation()
   return (
-    <button onClick={onClick} className={styles.peerOption} disabled={disabled} title={disabled ? NOT_POSSIBLE : undefined}>
+    <button onClick={onClick} className={styles.peerOption} disabled={disabled} title={disabled ? t('decisions.notPossible') : undefined}>
       <span className={styles.peerOptionLabel}>
         <AbilityText text={label} size={18} />
       </span>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import { usePlayer } from '@/store/selectors'
 import type { DecisionSelectionState } from '@/store/slices'
@@ -30,6 +31,7 @@ export function ManaSourceSelectionUI({
 }: {
   decision: SelectManaSourcesDecision
 }) {
+  const { t } = useTranslation()
   const startDecisionSelection = useGameStore((s) => s.startDecisionSelection)
   const decisionSelectionState = useGameStore((s) => s.decisionSelectionState)
   const cancelDecisionSelection = useGameStore((s) => s.cancelDecisionSelection)
@@ -130,12 +132,14 @@ export function ManaSourceSelectionUI({
     cancelDecisionSelection(decision.id)
   }
 
-  const payLabel = floatingCoversAll && selectedManaSources.length === 0 ? 'Pay' : `Pay (${selectedManaSources.length})`
+  const payLabel = floatingCoversAll && selectedManaSources.length === 0
+    ? t('decisions.pay')
+    : t('decisions.payCount', { count: selectedManaSources.length })
 
   return (
     <DraggableBanner className={styles.sideBannerSelection}>
       <div className={styles.bannerTitleSelection}>
-        {decision.canDecline ? 'Pay cost?' : 'Pay cost'}
+        {t(decision.canDecline ? 'decisions.payCostQuestion' : 'decisions.payCost')}
       </div>
       {decision.context.sourceName && (
         <div className={styles.hint}>
@@ -148,7 +152,11 @@ export function ManaSourceSelectionUI({
         {coverage.map((pip, i) => (
           <span
             key={i}
-            title={pip.floating ? 'Paid from your mana pool' : pip.pending ? 'Covered by a selected source' : 'Not yet covered'}
+            title={t(pip.floating
+              ? 'decisions.paidFromManaPool'
+              : pip.pending
+                ? 'decisions.coveredBySelectedSource'
+                : 'decisions.notYetCovered')}
             style={{
               display: 'inline-flex',
               borderRadius: '50%',
@@ -164,26 +172,26 @@ export function ManaSourceSelectionUI({
       </div>
 
       <div className={styles.hint}>
-        {isCostCovered ? 'Cost covered — press Pay.' : 'Click a highlighted source to tap it.'}
+        {t(isCostCovered ? 'decisions.costCoveredPressPay' : 'decisions.clickHighlightedSource')}
       </div>
       {/* Always visible: the escape hatch for costs the highlighted menu can't cover. */}
       <div className={styles.hint} style={{ opacity: 0.7, fontSize: 11 }}>
-        You can also click any permanent to use its mana ability.
+        {t('decisions.clickPermanentManaAbility')}
       </div>
       {waterbendPermanents.length > 0 && (
         <div className={styles.hint}>
           <AbilityText
-            text="Waterbend: tap artifacts/creatures you control to pay {1} each."
+            text={t('decisions.waterbendManaHint')}
             size={12}
           />
           {selectedWaterbend.length > 0 && (
-            <div>{selectedWaterbend.length} tapped for Waterbend</div>
+            <div>{t('decisions.waterbendTappedCount', { count: selectedWaterbend.length })}</div>
           )}
         </div>
       )}
       {sacrificedSources.length > 0 && (
         <div className={styles.effectHint}>
-          Will sacrifice: {sacrificedSources.map((s) => s.name).join(', ')}
+          {t('decisions.willSacrifice', { cardNames: sacrificedSources.map((s) => s.name).join(', ') })}
         </div>
       )}
 
@@ -193,7 +201,7 @@ export function ManaSourceSelectionUI({
             onClick={handleAutoPay}
             className={`${styles.confirmButton} ${styles.confirmButtonSmall}`}
           >
-            Auto Pay
+            {t('decisions.autoPay')}
           </button>
         )}
         <button
@@ -208,7 +216,7 @@ export function ManaSourceSelectionUI({
             onClick={handleDecline}
             className={`${styles.confirmButton} ${styles.confirmButtonSmall}`}
           >
-            Decline
+            {t('decisions.decline')}
           </button>
         )}
       </div>

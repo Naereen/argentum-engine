@@ -2363,7 +2363,7 @@ function ColorModeSegmented({
   return (
     <div
       role="group"
-      aria-label="Colour comparison mode"
+      aria-label={t('sealedDeck.colorComparisonMode')}
       style={{ display: 'inline-flex', gap: 0, border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: 4, overflow: 'hidden' }}
     >
       {options.map((opt) => {

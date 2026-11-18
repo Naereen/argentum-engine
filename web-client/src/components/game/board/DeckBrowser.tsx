@@ -20,6 +20,7 @@
  */
 import { useEffect, useState } from 'react'
 import type React from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore.ts'
 import { selectGameState } from '@/store/selectors.ts'
 import { useInteraction } from '@/hooks/useInteraction.ts'
@@ -53,6 +54,7 @@ export function DeckBrowser({
   outsidePlayable?: ReadonlySet<EntityId>
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const responsive = useResponsiveContext()
   const [minimized, setMinimized] = useState(false)
   // Default to the deck list when there is one: "what am I playing" is the common question, and
@@ -82,7 +84,7 @@ export function DeckBrowser({
   if (minimized) {
     return (
       <button onClick={() => setMinimized(false)} style={restoreButtonStyle(responsive.isMobile, responsive.fontSize.normal)}>
-        ↑ Return to Deck
+        ↑ {t('gameCore.returnToDeck')}
       </button>
     )
   }
@@ -95,24 +97,24 @@ export function DeckBrowser({
       <div style={styles.libraryBrowserContent} onClick={(e) => e.stopPropagation()}>
         <div style={styles.libraryBrowserHeader}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <h2 style={styles.libraryBrowserTitle}>{ownerLabel} Deck</h2>
+            <h2 style={styles.libraryBrowserTitle}>{ownerLabel}</h2>
             {showTabs && (
               <div style={tabStrip}>
                 <TabButton active={tab === 'deck'} onClick={() => setTab('deck')}>
-                  Deck list
+                  {t('gameCore.deckList')}
                 </TabButton>
                 <TabButton active={tab === 'order'} onClick={() => setTab('order')}>
-                  Library order ({slots.length})
+                  {t('gameCore.libraryOrder', { count: slots.length })}
                 </TabButton>
                 {hasOutside && (
                   <TabButton active={tab === 'outside'} onClick={() => setTab('outside')}>
-                    Outside the game ({outsideCards.length})
+                    {t('gameCore.outsideTheGameCount', { count: outsideCards.length })}
                   </TabButton>
                 )}
               </div>
             )}
           </div>
-          <button style={styles.libraryCloseButton} onClick={onClose}>
+          <button style={styles.libraryCloseButton} onClick={onClose} aria-label={t('common.close')}>
             ✕
           </button>
         </div>
@@ -127,10 +129,10 @@ export function DeckBrowser({
 
         <div style={{ display: 'flex', gap: 16 }}>
           <button onClick={() => setMinimized(true)} style={footerButton(responsive.isMobile, responsive.fontSize.normal, true)}>
-            View Battlefield
+            {t('decisions.viewBattlefield')}
           </button>
           <button onClick={onClose} style={footerButton(responsive.isMobile, responsive.fontSize.normal, false)}>
-            Close
+            {t('common.close')}
           </button>
         </div>
       </div>
@@ -145,6 +147,7 @@ export function DeckBrowser({
  * The summary line says "unseen" rather than "in library" for exactly that reason.
  */
 function DeckListTab({ deck, librarySize }: { deck: readonly ClientDeckCard[]; librarySize: number }) {
+  const { t } = useTranslation()
   const total = deck.reduce((sum, c) => sum + c.copies, 0)
   const remaining = deck.reduce((sum, c) => sum + c.remaining, 0)
   const cards: readonly DeckViewCard[] = deck.map((c) => ({
@@ -160,11 +163,15 @@ function DeckListTab({ deck, librarySize }: { deck: readonly ClientDeckCard[]; l
   return (
     <div style={deckTabBody}>
       <div style={summaryLine}>
-        <strong style={{ color: '#bfdbfe' }}>{remaining}</strong> of {total} cards unseen
+        <Trans
+          i18nKey="gameCore.cardsUnseen"
+          values={{ total, remaining }}
+          components={{ remaining: <strong style={{ color: '#bfdbfe' }} /> }}
+        />
         <span style={{ color: '#475569' }}> · </span>
-        {librarySize} in library
+        {t('gameCore.cardsInLibrary', { count: librarySize })}
       </div>
-      <DeckCardBody cards={cards} drawPoolSize={librarySize} emptyLabel="No deck recorded for this game." />
+      <DeckCardBody cards={cards} drawPoolSize={librarySize} emptyLabel={t('gameCore.noDeckRecorded')} />
     </div>
   )
 }
@@ -174,6 +181,7 @@ function DeckListTab({ deck, librarySize }: { deck: readonly ClientDeckCard[]; l
  * reveal, so a freshly shuffled library shows entirely face-down.
  */
 function LibraryOrderTab({ slots }: { slots: readonly (EntityId | null)[] }) {
+  const { t } = useTranslation()
   const hoverCard = useGameStore((state) => state.hoverCard)
   const cardsMap = useGameStore((state) => selectGameState(state)?.cards)
   const responsive = useResponsiveContext()
@@ -185,8 +193,8 @@ function LibraryOrderTab({ slots }: { slots: readonly (EntityId | null)[] }) {
   return (
     <>
       <span style={{ color: '#64748b', fontSize: 11, letterSpacing: 0.5 }}>
-        Reading order: top → bottom, left to right
-        {revealedCount > 0 ? ` · ${revealedCount} known` : ''}
+        {t('gameCore.libraryReadingOrder')}
+        {revealedCount > 0 ? ` · ${t('gameCore.knownCards', { count: revealedCount })}` : ''}
       </span>
       <div style={styles.libraryCardGrid}>
         {slots.map((id, index) => {
@@ -221,7 +229,7 @@ function LibraryOrderTab({ slots }: { slots: readonly (EntityId | null)[] }) {
               ) : (
                 <img
                   src={CARD_BACK_IMAGE_URL}
-                  alt="Card back"
+                  alt={t('gameCore.cardBack')}
                   style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }}
                 />
               )}
@@ -261,7 +269,7 @@ function LibraryOrderTab({ slots }: { slots: readonly (EntityId | null)[] }) {
                     pointerEvents: 'none',
                   }}
                 >
-                  {isTop ? 'Top · Next draw' : 'Bottom'}
+                  {isTop ? t('gameCore.topNextDraw') : t('gameCore.bottom')}
                 </div>
               )}
             </div>
@@ -293,6 +301,7 @@ function OutsideTheGameTab({ cards, playable, onPlay }: {
   playable: ReadonlySet<EntityId>
   onPlay: (cardId: EntityId) => void
 }) {
+  const { t } = useTranslation()
   const hoverCard = useGameStore((state) => state.hoverCard)
   const responsive = useResponsiveContext()
 
@@ -323,12 +332,11 @@ function OutsideTheGameTab({ cards, playable, onPlay }: {
       <span style={{ color: '#94a3b8', fontSize: 12, maxWidth: 560, textAlign: 'center', lineHeight: 1.5 }}>
         {anyPlayable ? (
           <span style={{ color: '#a5f3fc', fontWeight: 600 }}>
-            You may play the highlighted cards right now — click one to play it.{' '}
+            {t('gameCore.playHighlightedOutsideNow')}{' '}
           </span>
         ) : null}
-        Your sideboard — cards you own outside the game. Learn, wishes and similar effects can bring
-        one of these into the game; nothing else can touch them.
-        {lessons > 0 ? ` ${lessons} Lesson${lessons === 1 ? '' : 's'} for Learn.` : ''}
+        {t('gameCore.outsideGameDescription')}
+        {lessons > 0 ? ` ${t(lessons === 1 ? 'gameCore.lessonCount_one' : 'gameCore.lessonCount_other', { count: lessons })}` : ''}
       </span>
       <div style={styles.libraryCardGrid}>
         {tiles.map(({ card, copies, playableId }) => (
@@ -337,7 +345,7 @@ function OutsideTheGameTab({ cards, playable, onPlay }: {
             data-outside-card={card.name}
             data-playable={playableId != null ? 'true' : undefined}
             role={playableId != null ? 'button' : undefined}
-            title={playableId != null ? `Play ${card.name}` : undefined}
+            title={playableId != null ? t('decisions.playCard', { cardName: card.name }) : undefined}
             onClick={playableId != null ? () => onPlay(playableId) : undefined}
             style={{
               width: cardWidth,

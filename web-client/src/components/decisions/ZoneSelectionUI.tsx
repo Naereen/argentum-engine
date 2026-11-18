@@ -6,6 +6,7 @@ import type { SelectionTotalCap } from '@/store/slices/types'
 import { calculateFittingCardWidth, type ResponsiveSizes } from '@/hooks/useResponsive.ts'
 import { getCardImageUrl } from '@/utils/cardImages.ts'
 import { totalCapSum, wouldExceedTotalCaps } from '@/utils/targeting.ts'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Card info for zone selection - works with both visible cards and hidden cards.
@@ -101,15 +102,19 @@ export function ZoneSelectionUI({
   onConfirm,
   filterDescription,
   showFailToFind = false,
-  confirmText = 'Confirm Selection',
-  failToFindText = 'Fail to Find',
+  confirmText,
+  failToFindText,
   confirmRequiresSelection = false,
   sortByType = true,
   useGlobalHover = false,
   onCancel,
-  cancelText = 'Cancel',
+  cancelText,
   onViewBattlefield,
 }: ZoneSelectionUIProps) {
+  const { t } = useTranslation()
+  const resolvedConfirmText = confirmText ?? t('decisions.confirmSelection')
+  const resolvedFailToFindText = failToFindText ?? t('decisions.failToFind')
+  const resolvedCancelText = cancelText ?? t('common.cancel')
   const [selectedCards, setSelectedCards] = useState<EntityId[]>(() => [...initialSelection])
   const [hoveredCardId, setHoveredCardId] = useState<EntityId | null>(null)
   const [minimized, setMinimized] = useState(false)
@@ -226,7 +231,7 @@ export function ZoneSelectionUI({
           gap: 8,
         }}
       >
-        ↑ Return to {title}
+        ↑ {t('decisions.returnToTitle', { title })}
       </button>
     )
   }
@@ -298,7 +303,7 @@ export function ZoneSelectionUI({
         }}
       >
         <span>
-          Selected:{' '}
+          {t('decisions.selectedLabel')}:{' '}
           <span
             style={{
               color: canConfirm ? '#4ade80' : selectedCards.length > 0 ? '#fbbf24' : '#888',
@@ -312,7 +317,13 @@ export function ZoneSelectionUI({
         </span>
         {totalCaps.map((c) => (
           <span key={c.label}>
-            Total {c.label}:{' '}
+            {t('decisions.totalTargetCapLabel', {
+              label: c.label === 'power'
+                ? t('decisions.power')
+                : c.label === 'mana value'
+                  ? t('decisions.manaValue')
+                  : c.label,
+            })}{' '}
             <span style={{ fontWeight: 600 }}>
               {totalCapSum(c, selectedCards)}
             </span>
@@ -360,7 +371,7 @@ export function ZoneSelectionUI({
       {/* No cards message */}
       {sortedCards.length === 0 && (
         <p style={{ color: '#666', fontSize: responsive.fontSize.normal }}>
-          No cards available.
+          {t('decisions.noCardsAvailable')}
         </p>
       )}
 
@@ -386,7 +397,7 @@ export function ZoneSelectionUI({
             transition: 'all 0.15s',
           }}
         >
-          View Battlefield
+          {t('decisions.viewBattlefield')}
         </button>
 
         {/* Fail to Find button */}
@@ -412,7 +423,7 @@ export function ZoneSelectionUI({
               e.currentTarget.style.color = '#aaa'
             }}
           >
-            {failToFindText}
+            {resolvedFailToFindText}
           </button>
         )}
 
@@ -432,7 +443,9 @@ export function ZoneSelectionUI({
             transition: 'all 0.15s',
           }}
         >
-          {selectedCards.length === 0 && minSelections === 0 && !confirmRequiresSelection ? 'Decline' : confirmText}
+          {selectedCards.length === 0 && minSelections === 0 && !confirmRequiresSelection
+            ? t('decisions.decline')
+            : resolvedConfirmText}
         </button>
 
         {onCancel && (
@@ -458,7 +471,7 @@ export function ZoneSelectionUI({
               e.currentTarget.style.color = '#aaa'
             }}
           >
-            {cancelText}
+            {resolvedCancelText}
           </button>
         )}
       </div>

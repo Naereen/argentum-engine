@@ -10,6 +10,7 @@ import { getCardImageUrl } from '@/utils/cardImages.ts'
 import { Keyword } from '@/types/enums.ts'
 import { GameCard } from '@/components/game/card/GameCard.tsx'
 import { ResponsiveContext } from '@/components/game/board'
+import { useTranslation } from 'react-i18next'
 
 /**
  * The combat resolution board (CR 510 / 702.22). Shows only the damage the local player gets to
@@ -21,6 +22,7 @@ import { ResponsiveContext } from '@/components/game/board'
  * CR 510.1c / 702.19b legality is enforced on submit by the engine.
  */
 export function CombatResolutionBoard({ decision }: { decision: CombatResolutionDecision }) {
+  const { t } = useTranslation()
   const submit = useGameStore((s) => s.submitCombatResolutionDecision)
   const gameState = useGameStore((s) => s.gameState)
   const playerId = decision.playerId
@@ -59,8 +61,8 @@ export function CombatResolutionBoard({ decision }: { decision: CombatResolution
   // read it off the masked client state.
   const bandingLabel = (id: EntityId): string | null => {
     const card = gameState?.cards[id]
-    if (card?.keywords?.includes(Keyword.BANDING)) return 'banding'
-    return card?.bandsWithOther?.length ? 'bands with other' : null
+    if (card?.keywords?.includes(Keyword.BANDING)) return t('decisions.banding')
+    return card?.bandsWithOther?.length ? t('decisions.bandsWithOther') : null
   }
   const hasBanding = (id: EntityId): boolean => bandingLabel(id) != null
   // A source's edges are "banding-inverted" for this player when banding handed them the division:
@@ -126,7 +128,7 @@ export function CombatResolutionBoard({ decision }: { decision: CombatResolution
     if (b) return b.name
     const d = decision.defenders.find((x) => x.id === id)
     if (d) return d.name
-    return gameState?.cards[id]?.name ?? 'Unknown'
+    return gameState?.cards[id]?.name ?? t('common.unknownCard')
   }
   const cardImage = (id: EntityId): string | null | undefined => gameState?.cards[id]?.imageUri
   const isPlayerTarget = (id: EntityId): boolean =>
@@ -134,9 +136,9 @@ export function CombatResolutionBoard({ decision }: { decision: CombatResolution
 
   const sourceLabel = (id: EntityId): string => {
     const a = decision.attackers.find((x) => x.id === id)
-    if (a) return `${a.name}  ${a.power}/${a.toughness}`
+    if (a) return t('decisions.sourcePowerToughness', { name: a.name, power: a.power, toughness: a.toughness })
     const b = decision.blockers.find((x) => x.id === id)
-    if (b) return `${b.name}  ${b.power}/${b.toughness}`
+    if (b) return t('decisions.sourcePowerToughness', { name: b.name, power: b.power, toughness: b.toughness })
     return cardName(id)
   }
 
@@ -155,10 +157,10 @@ export function CombatResolutionBoard({ decision }: { decision: CombatResolution
           }}
         >
           <span style={{ color: '#888', fontSize: 26 }}>&#9823;</span>
-          <span style={{ color: 'white', fontSize: responsive.fontSize.small }}>{defender?.name ?? 'Player'}</span>
+          <span style={{ color: 'white', fontSize: responsive.fontSize.small }}>{defender?.name ?? t('decisions.player')}</span>
           {defender?.lifeOrLoyaltyOrDefense != null && (
             <span style={{ color: '#888', fontSize: responsive.fontSize.small }}>
-              Life: {defender.lifeOrLoyaltyOrDefense}
+              {t('decisions.lifeTotal', { count: defender.lifeOrLoyaltyOrDefense })}
             </span>
           )}
         </div>
@@ -192,10 +194,11 @@ export function CombatResolutionBoard({ decision }: { decision: CombatResolution
     )
   }
 
-  const stepBtn = (label: string, onClick: () => void, enabled: boolean, color: string) => (
+  const stepBtn = (label: string, ariaLabel: string, onClick: () => void, enabled: boolean, color: string) => (
     <button
       onClick={onClick}
       disabled={!enabled}
+      aria-label={ariaLabel}
       style={{
         width: 30, height: 30, borderRadius: 6, border: 'none',
         backgroundColor: enabled ? color : '#333', color: enabled ? 'white' : '#666',
@@ -224,7 +227,7 @@ export function CombatResolutionBoard({ decision }: { decision: CombatResolution
     const amount = amounts[edge.id] ?? 0
     const isDrain = edge.isTrampleDrain
     const atLethal = !isDrain && edge.lethal > 0 && amount >= edge.lethal
-    const arrow = isDrain ? 'trample →' : '→'
+    const arrow = isDrain ? t('decisions.trampleArrow') : '→'
     // Combined-damage hint: only meaningful when this creature is targeted by more than one of
     // the player's edges (otherwise the per-edge amount already is the total).
     const sharedTarget = !isDrain && targetEdgeCount(edge.targetId) > 1
@@ -245,24 +248,26 @@ export function CombatResolutionBoard({ decision }: { decision: CombatResolution
           </div>
           {!isDrain && (
             <span style={{ color: atLethal ? '#4ade80' : '#f59e0b', fontSize: responsive.fontSize.small }}>
-              lethal: {edge.lethal}{atLethal ? ' ✓' : ''}{edge.orderConstrained ? '' : ' (banding)'}
+              {t('decisions.lethalAmount', { count: edge.lethal })}{atLethal ? ' ✓' : ''}
+              {!edge.orderConstrained && ` (${t('decisions.banding')})`}
             </span>
           )}
           {sharedTarget && (
             <span style={{ color: combinedAtLethal ? '#4ade80' : '#f59e0b', fontSize: responsive.fontSize.small, fontWeight: 600 }}>
-              combined: {combined}{edge.lethal > 0 ? ` / ${edge.lethal}` : ''}{combinedAtLethal ? ' ✓' : ''}
+              {t('decisions.combinedDamage', { count: combined })}
+              {edge.lethal > 0 && ` / ${edge.lethal}`}{combinedAtLethal ? ' ✓' : ''}
             </span>
           )}
           {isDrain && (
-            <span style={{ color: '#60a5fa', fontSize: responsive.fontSize.small }}>overflow</span>
+            <span style={{ color: '#60a5fa', fontSize: responsive.fontSize.small }}>{t('decisions.overflow')}</span>
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
-          {stepBtn('-', () => adjust(edge, -1), amount > 0, '#dc2626')}
+          {stepBtn('-', t('decisions.decreaseDamageFor', { target: cardName(edge.targetId) }), () => adjust(edge, -1), amount > 0, '#dc2626')}
           <span style={{ color: 'white', fontSize: responsive.fontSize.large, fontWeight: 700, minWidth: 28, textAlign: 'center' }}>
             {amount}
           </span>
-          {stepBtn('+', () => adjust(edge, +1), amount < edge.maximum && sourceTotal(edge.sourceId) < sourcePower(edge.sourceId), '#16a34a')}
+          {stepBtn('+', t('decisions.increaseDamageFor', { target: cardName(edge.targetId) }), () => adjust(edge, +1), amount < edge.maximum && sourceTotal(edge.sourceId) < sourcePower(edge.sourceId), '#16a34a')}
         </div>
       </div>
     )
@@ -285,11 +290,11 @@ export function CombatResolutionBoard({ decision }: { decision: CombatResolution
           Assign Combat Damage
         </h2>
         <p style={{ color: '#aaa', margin: '6px 0 0', fontSize: responsive.fontSize.normal }}>
-          {decision.firstStrike ? 'First Strike Damage' : 'Combat Damage'}
+          {decision.firstStrike ? t('decisions.firstStrikeDamage') : t('decisions.combatDamage')}
         </p>
         {bandingActive && (
           <p style={{ color: '#a855f7', margin: '4px 0 0', fontSize: responsive.fontSize.small }}>
-            Banding (CR 702.22): damage division is inverted for some edges.
+            {t('decisions.bandingRuleHint')}
           </p>
         )}
       </div>
@@ -311,7 +316,7 @@ export function CombatResolutionBoard({ decision }: { decision: CombatResolution
               {hasBanding(sourceId) && bandingPill(sourceId)}
               {sourceBandingInverted(sourceId) && (
                 <span style={{ color: '#c084fc', fontSize: responsive.fontSize.small, maxWidth: cardW + 30, textAlign: 'center', lineHeight: 1.2 }}>
-                  Banding: you assign this creature's damage
+                  {t('decisions.bandingAssignHint')}
                 </span>
               )}
             </div>
@@ -332,7 +337,7 @@ export function CombatResolutionBoard({ decision }: { decision: CombatResolution
               cursor: 'pointer', fontWeight: 500,
             }}
           >
-            Reset
+            {t('decisions.reset')}
           </button>
         )}
         <button
@@ -343,7 +348,7 @@ export function CombatResolutionBoard({ decision }: { decision: CombatResolution
             cursor: 'pointer', fontWeight: 600,
           }}
         >
-          Confirm Damage
+          {t('decisions.confirmDamage')}
         </button>
       </div>
     </div>

@@ -148,12 +148,17 @@ const COPY_SOURCE_PATTERN = /becomes? a copy of|token that(?:'s| is) a copy of/
 /** "…to its owner's hand", "…to your hand" — word-bounded so "beforehand" can't trip it. */
 const TO_HAND_PATTERN = /\bhands?\b/
 
-/** What a pile-targeting requirement will do to the picked cards, in button and sentence form. */
+/** Semantic action recognized for a pile-targeting requirement. */
+export type PileActionKind =
+  | 'copy'
+  | 'putOntoBattlefield'
+  | 'shuffleIntoLibrary'
+  | 'exile'
+  | 'returnToHand'
+  | 'target'
+
 export interface PileAction {
-  /** Label for the confirm button on an optional pile target. */
-  confirmText: string
-  /** Verb phrase for the helper sentence: "Choose a card to <verb>." */
-  verb: string
+  kind: PileActionKind
 }
 
 /**
@@ -185,21 +190,21 @@ export function derivePileAction(effectHint: string | null | undefined): PileAct
   const hint = (effectHint?.toLowerCase() ?? '').replaceAll(LEAVES_BATTLEFIELD_BOILERPLATE, '')
 
   if (COPY_SOURCE_PATTERN.test(hint)) {
-    return { confirmText: 'Copy', verb: 'copy' }
+    return { kind: 'copy' }
   }
   if (hint.includes('battlefield')) {
-    return { confirmText: 'Put onto Battlefield', verb: 'put onto the battlefield' }
+    return { kind: 'putOntoBattlefield' }
   }
   if (hint.includes('shuffle') && hint.includes('library')) {
-    return { confirmText: 'Shuffle into Library', verb: "shuffle into their owner's library" }
+    return { kind: 'shuffleIntoLibrary' }
   }
   if (hint.includes('exile')) {
-    return { confirmText: 'Exile', verb: 'exile' }
+    return { kind: 'exile' }
   }
   if (TO_HAND_PATTERN.test(hint)) {
-    return { confirmText: 'Return to Hand', verb: 'return to your hand' }
+    return { kind: 'returnToHand' }
   }
-  return { confirmText: 'Confirm Target', verb: 'target' }
+  return { kind: 'target' }
 }
 
 /**

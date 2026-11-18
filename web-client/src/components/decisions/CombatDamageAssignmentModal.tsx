@@ -4,6 +4,7 @@ import type { AssignDamageDecision } from '@/types'
 import type { EntityId } from '@/types'
 import { useResponsive } from '@/hooks/useResponsive.ts'
 import { getCardImageUrl } from '@/utils/cardImages.ts'
+import { useTranslation } from 'react-i18next'
 
 interface TargetInfo {
   id: EntityId
@@ -19,6 +20,7 @@ interface TargetInfo {
  * Pre-filled with the default (optimal) damage distribution. Player can adjust with +/- buttons.
  */
 export function CombatDamageAssignmentModal({ decision }: { decision: AssignDamageDecision }) {
+  const { t } = useTranslation()
   const submitDamageAssignment = useGameStore((s) => s.submitDamageAssignmentDecision)
   const gameState = useGameStore((s) => s.gameState)
   const hoverCard = useGameStore((s) => s.hoverCard)
@@ -34,6 +36,7 @@ export function CombatDamageAssignmentModal({ decision }: { decision: AssignDama
     return (
       <button
         onClick={() => setMinimized(false)}
+        aria-label={t('decisions.returnToDamageAssignment')}
         style={{
           position: 'fixed',
           bottom: 70,
@@ -52,7 +55,7 @@ export function CombatDamageAssignmentModal({ decision }: { decision: AssignDama
           pointerEvents: 'auto',
         }}
       >
-        Return to Damage Assignment
+        {t('decisions.returnToDamageAssignment')}
       </button>
     )
   }
@@ -80,7 +83,7 @@ export function CombatDamageAssignmentModal({ decision }: { decision: AssignDama
 
     return {
       id: targetId,
-      name: card?.name ?? 'Unknown',
+      name: card?.name ?? t('common.unknownCard'),
       imageUri: card?.imageUri,
       toughness: card?.toughness,
       isPlayer: false,
@@ -127,7 +130,7 @@ export function CombatDamageAssignmentModal({ decision }: { decision: AssignDama
 
   // Get attacker info for header
   const attackerCard = gameState?.cards[decision.attackerId]
-  const attackerName = attackerCard?.name ?? 'Attacker'
+  const attackerName = attackerCard?.name ?? t('decisions.attacker')
 
   const cardWidth = responsive.isMobile ? 100 : 140
   const cardHeight = Math.round(cardWidth * 1.4)
@@ -161,7 +164,7 @@ export function CombatDamageAssignmentModal({ decision }: { decision: AssignDama
             fontWeight: 600,
           }}
         >
-          Assign Combat Damage
+          {t('decisions.assignCombatDamage')}
         </h2>
         <p
           style={{
@@ -170,12 +173,12 @@ export function CombatDamageAssignmentModal({ decision }: { decision: AssignDama
             fontSize: responsive.fontSize.normal,
           }}
         >
-          {attackerName} ({decision.availablePower} power)
+          {t('decisions.attackerPower', { attackerName, power: decision.availablePower })}
           {decision.hasTrample && (
-            <span style={{ color: '#f59e0b', marginLeft: 8 }}>Trample</span>
+            <span style={{ color: '#f59e0b', marginLeft: 8 }}>{t('decisions.trample')}</span>
           )}
           {decision.hasDeathtouch && (
-            <span style={{ color: '#a855f7', marginLeft: 8 }}>Deathtouch</span>
+            <span style={{ color: '#a855f7', marginLeft: 8 }}>{t('decisions.deathtouch')}</span>
           )}
         </p>
       </div>
@@ -197,10 +200,10 @@ export function CombatDamageAssignmentModal({ decision }: { decision: AssignDama
           }}
         >
           {remaining === 0 ? (
-            'All damage assigned'
+            t('decisions.allDamageAssigned')
           ) : (
             <>
-              Remaining: <span style={{ color: '#f87171' }}>{remaining}</span> damage
+              {t('decisions.remaining')}: <span style={{ color: '#f87171' }}>{remaining}</span> {t('decisions.damage')}
             </>
           )}
         </span>
@@ -253,7 +256,7 @@ export function CombatDamageAssignmentModal({ decision }: { decision: AssignDama
                     {target.name}
                   </span>
                   <span style={{ color: '#888', fontSize: responsive.fontSize.small }}>
-                    Life: {target.lifeTotal}
+                    {t('decisions.lifeTotal', { count: target.lifeTotal })}
                   </span>
 
                   {allocated > 0 && (
@@ -343,7 +346,7 @@ export function CombatDamageAssignmentModal({ decision }: { decision: AssignDama
                         letterSpacing: '0.5px',
                       }}
                     >
-                      Lethal
+                      {t('decisions.lethal')}
                     </div>
                   )}
                 </div>
@@ -374,7 +377,7 @@ export function CombatDamageAssignmentModal({ decision }: { decision: AssignDama
                       marginTop: 2,
                     }}
                   >
-                    {allocated} damage / {toughness} toughness
+                    {t('decisions.damageOverToughness', { damage: allocated, toughness })}
                   </span>
                 )}
               </div>
@@ -383,6 +386,7 @@ export function CombatDamageAssignmentModal({ decision }: { decision: AssignDama
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <button
                   onClick={() => handleDecrease(target.id)}
+                  aria-label={t('decisions.decreaseDamageFor', { target: target.name })}
                   disabled={allocated <= (decision.minimumAssignments[target.id] ?? 0)}
                   style={{
                     width: 36,
@@ -421,6 +425,7 @@ export function CombatDamageAssignmentModal({ decision }: { decision: AssignDama
 
                 <button
                   onClick={() => handleIncrease(target.id)}
+                  aria-label={t('decisions.increaseDamageFor', { target: target.name })}
                   disabled={remaining <= 0}
                   style={{
                     width: 36,
@@ -460,10 +465,11 @@ export function CombatDamageAssignmentModal({ decision }: { decision: AssignDama
             fontWeight: 500,
           }}
         >
-          Reset
+          {t('decisions.reset')}
         </button>
         <button
           onClick={() => setMinimized(true)}
+          aria-label={t('decisions.viewBattlefield')}
           style={{
             padding: responsive.isMobile ? '12px 24px' : '16px 32px',
             fontSize: responsive.fontSize.normal,
@@ -475,7 +481,7 @@ export function CombatDamageAssignmentModal({ decision }: { decision: AssignDama
             fontWeight: 600,
           }}
         >
-          View Battlefield
+          {t('decisions.viewBattlefield')}
         </button>
         <button
           onClick={handleConfirm}
@@ -492,7 +498,7 @@ export function CombatDamageAssignmentModal({ decision }: { decision: AssignDama
             transition: 'all 0.15s',
           }}
         >
-          Confirm Damage
+          {t('decisions.confirmDamage')}
         </button>
       </div>
     </div>

@@ -3,7 +3,7 @@ import { OtariaBoardButton, OtariaReserveButton } from './overlay/OtariaBoard'
 import { Fragment, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useGameStore } from '@/store/gameStore'
 import { useInteraction } from '@/hooks/useInteraction'
-import { useViewingPlayer, useOpponent, useOpponents, useViewedOpponent, useStackCards, selectPriorityMode, useGhostCards, useBattlefieldCards, selectTeamMap, useIdentityColor, useViewerTeamIndex, useIsAlly, identitySeatColor, selectViewingPlayerId, useEliminatedBottomSeatId, useViewerEliminated, useIsSharedLifeTeamGame, useTeamLabelFor, useTeammateNames, useTeamHasPriority, useIsMyTeamTurn, useIsSharedTurnTeamGame, turnQueueHintFor } from '@/store/selectors'
+import { useViewingPlayer, useOpponent, useOpponents, useViewedOpponent, useStackCards, selectPriorityMode, useGhostCards, useBattlefieldCards, selectTeamMap, useIdentityColor, useViewerTeamIndex, useIsAlly, identitySeatColor, selectViewingPlayerId, useEliminatedBottomSeatId, useViewerEliminated, useIsSharedLifeTeamGame, useTeamLabelFor, useTeammateNames, useTeamHasPriority, useIsMyTeamTurn, useIsSharedTurnTeamGame, turnQueueDistanceFor } from '@/store/selectors'
 import { useMultiplayerView, useCombatDefenderFocus } from '@/hooks/useMultiplayerView'
 import { OpponentRail, railReservedWidth, overviewSupported } from './OpponentRail'
 import { hand, getNextStep, actingPlayerFor } from '@/types'
@@ -799,9 +799,9 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
   // rail lists the table in turn order, but counting chips is the player's job today. Two-Headed
   // Giant takes one shared turn per team (CR 805.4), where a per-seat count would mislead, so none
   // there; Team vs. Team takes individual turns (CR 808.4) and keeps it.
-  const turnQueueHint = !isMulti || sharedTurnTeamGame || spectatorMode || isMyTurn
+  const turnQueueDistance = !isMulti || sharedTurnTeamGame || spectatorMode || isMyTurn
     ? undefined
-    : turnQueueHintFor(gameState.players, gameState.activePlayerId, viewingPlayer?.playerId)
+    : turnQueueDistanceFor(gameState.players, gameState.activePlayerId, viewingPlayer?.playerId)
   const isInCombatMode = spectatorMode ? false : (combatState !== null)
   const isInDistributeMode = !spectatorMode && distributeState !== null
   const distributeTotalAllocated = distributeState
@@ -1464,7 +1464,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
               : undefined
             }
             activePlayerLeft={activeSeatLeft}
-            turnQueueHint={turnQueueHint}
+            turnQueueDistance={turnQueueDistance}
             activeSide={
               spectatorMode
                 ? (gameState.activePlayerId === effectiveViewingPlayer?.playerId ? 'bottom' : 'top')

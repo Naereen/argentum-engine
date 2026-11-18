@@ -1,4 +1,5 @@
 import { useCard, useZoneCards } from '@/store/selectors.ts'
+import { useTranslation } from 'react-i18next'
 import { command } from '@/types'
 import type { ClientPlayer } from '@/types'
 import { useResponsiveContext } from './shared'
@@ -39,6 +40,7 @@ export function CommandZone({
    */
   compact?: boolean
 }) {
+  const { t } = useTranslation()
   const cards = useZoneCards(command(player.playerId))
   const companion = useCard(player.companionId ?? null)
   const responsive = useResponsiveContext()
@@ -96,13 +98,13 @@ export function CommandZone({
             />
           ))}
           <DungeonPanel player={player} compact={compact || responsive.isMobile} />
-          <span style={labelStyle}>Command</span>
+          <span style={labelStyle}>{t('gameCore.commandZoneLabel')}</span>
         </div>
       )}
       {companion && (
         <div
           data-zone={isOpponent ? 'opponent-companion' : 'player-companion'}
-          title="Companion — outside the game. Its owner may pay {3} to put it into their hand once, any time they could cast a sorcery."
+          title={t('gameCore.companionTooltip')}
           style={columnStyle}
         >
           <GameCard
@@ -111,7 +113,7 @@ export function CommandZone({
             overrideWidth={cardWidth}
             isOpponentCard={isOpponent}
           />
-          <span style={{ ...labelStyle, color: '#9ec9e8' }}>Companion</span>
+          <span style={{ ...labelStyle, color: '#9ec9e8' }}>{t('gameCore.companion')}</span>
         </div>
       )}
     </div>

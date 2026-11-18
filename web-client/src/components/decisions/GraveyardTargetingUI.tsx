@@ -9,6 +9,7 @@ import { getCardImageUrl } from '@/utils/cardImages.ts'
 import { derivePileAction, totalCapSum, totalCapsFor, wouldExceedTotalCaps } from '@/utils/targeting.ts'
 import type { SelectionTotalCap } from '@/store/slices/types'
 import styles from './DecisionUI.module.css'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Graveyard / exile pile targeting UI for **one** requirement of a ChooseTargetsDecision — uses the
@@ -54,6 +55,7 @@ export function GraveyardTargetingUI({
    */
   onViewBattlefield?: (carried: readonly EntityId[]) => void
 }) {
+  const { t } = useTranslation()
   const submitCancelDecision = useGameStore((s) => s.submitCancelDecision)
   const gameState = useGameStore((s) => s.gameState)
   const viewingPlayerId = gameState?.viewingPlayerId
@@ -106,13 +108,19 @@ export function GraveyardTargetingUI({
   // The list is homogenous-zone by construction (the caller's filter routes mixed-zone
   // sets elsewhere), so we read the first card's zone to pick wording for everything.
   const pileZoneType = graveyardCards[0]?.zone?.zoneType ?? ZoneType.GRAVEYARD
-  const pileNoun = pileZoneType === ZoneType.EXILE ? 'Exile' : pileZoneType === ZoneType.ANTE ? 'Ante' : 'Graveyard'
+  const pileNoun = pileZoneType === ZoneType.EXILE
+    ? t('decisions.zoneExile')
+    : pileZoneType === ZoneType.ANTE
+      ? t('decisions.zoneAnte')
+      : t('decisions.zoneGraveyard')
 
   // Get player names for tabs
   const getPlayerLabel = (ownerId: EntityId): string => {
-    if (ownerId === viewingPlayerId) return `Your ${pileNoun}`
+    if (ownerId === viewingPlayerId) return t('decisions.yourPile', { zone: pileNoun })
     const player = gameState?.players.find((p) => p.playerId === ownerId)
-    return player ? `${player.name}'s ${pileNoun}` : `Opponent's ${pileNoun}`
+    return player
+      ? t('decisions.playerPile', { playerName: player.name, zone: pileNoun })
+      : t('decisions.opponentPile', { zone: pileNoun })
   }
 
   const handleConfirm = (selectedCards: EntityId[]) => {
@@ -127,14 +135,20 @@ export function GraveyardTargetingUI({
   const maxTargets = targetReq?.maxTargets ?? 1
   const isOptionalTarget = minTargets === 0
   const isMultiTarget = maxTargets > 1
-  const sourceName = decision.context.sourceName ?? 'this ability'
+  const sourceName = decision.context.sourceName ?? t('decisions.thisAbility')
   // Targets chosen while casting belong to a spell, not a resolving trigger: "Cast X" / "Choose
   // None", where an optional trigger target reads "Resolve X" / "Decline Trigger".
   const isCasting = decision.context.phase === 'CASTING'
-  const declineLabel = isCasting ? 'Choose None' : 'Decline Trigger'
-  const baseTitle = isOptionalTarget ? `${isCasting ? 'Cast' : 'Resolve'} ${sourceName}` : `Choose from ${pileNoun}`
+  const declineLabel = isCasting ? t('decisions.chooseNone') : t('decisions.declineTrigger')
+  const baseTitle = isOptionalTarget
+    ? t(isCasting ? 'decisions.castSource' : 'decisions.resolveSource', { sourceName })
+    : t('decisions.chooseFromZone', { zone: pileNoun })
   const title = totalRequirements > 1
-    ? `${baseTitle} (${requirementIndex + 1}/${totalRequirements})`
+    ? t('decisions.requirementNumberedTitle', {
+        title: baseTitle,
+        current: requirementIndex + 1,
+        total: totalRequirements,
+      })
     : baseTitle
 
   // Derive the action wording from effectHint so the button/text matches the actual effect.
@@ -152,30 +166,37 @@ export function GraveyardTargetingUI({
   // fallback is neutral now and the copy shape has its own branch, but every unlisted effect is
   // still one unlucky substring away from the same class of lie. A server-supplied action verb per
   // requirement removes the guesswork rather than lengthening the keyword list.
-  const { confirmText: optionalConfirmText, verb: actionVerb } =
-    derivePileAction(decision.context.effectHint)
-
-  const numWord = (n: number): string =>
-    ({ 1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five' } as Record<number, string>)[n] ?? String(n)
-  const cardNoun = isMultiTarget ? 'cards' : 'a card'
+  const pileAction = derivePileAction(decision.context.effectHint)
+  const actionVerb = pileAction.kind === 'copy' ? t('decisions.pileVerbCopy')
+    : pileAction.kind === 'putOntoBattlefield' ? t('decisions.pileVerbPutOntoBattlefield')
+      : pileAction.kind === 'shuffleIntoLibrary' ? t('decisions.pileVerbShuffleIntoLibrary')
+        : pileAction.kind === 'exile' ? t('decisions.pileVerbExile')
+          : pileAction.kind === 'returnToHand' ? t('decisions.pileVerbReturnToHand')
+            : t('decisions.pileVerbTarget')
+  const optionalConfirmText = pileAction.kind === 'copy' ? t('decisions.pileConfirmCopy')
+    : pileAction.kind === 'putOntoBattlefield' ? t('decisions.pileConfirmPutOntoBattlefield')
+      : pileAction.kind === 'shuffleIntoLibrary' ? t('decisions.pileConfirmShuffleIntoLibrary')
+        : pileAction.kind === 'exile' ? t('decisions.pileConfirmExile')
+          : pileAction.kind === 'returnToHand' ? t('decisions.pileConfirmReturnToHand')
+            : t('decisions.confirmTarget')
   const countPhrase =
     minTargets === maxTargets
       ? isMultiTarget
-        ? `${numWord(maxTargets)} ${cardNoun}`
-        : cardNoun
+        ? t('decisions.cardCount', { count: maxTargets })
+        : t('decisions.aCard')
       : minTargets === 0
         ? isMultiTarget
-          ? `up to ${numWord(maxTargets)} ${cardNoun}`
-          : 'up to one card'
-        : `${numWord(minTargets)} to ${numWord(maxTargets)} cards`
+          ? t('decisions.upToCardCount', { count: maxTargets })
+          : t('decisions.upToOneCard')
+        : t('decisions.cardCountRange', { minimum: minTargets, maximum: maxTargets })
 
   const helperText = targetReq?.emptyChoiceLabel
-    ? 'Choose a new target, or keep the original target.'
+    ? t('decisions.chooseNewOrKeepTarget')
     : isOptionalTarget
-    ? `Optional: choose ${countPhrase} to ${actionVerb}, or decline.`
+    ? t('decisions.optionalChooseToAction', { countPhrase, action: actionVerb })
     : targetReq?.exclusiveGroups
-    ? `Choose ${countPhrase} to ${actionVerb}, one from each eligible ${pileNoun.toLowerCase()}.`
-    : `Choose ${countPhrase} to ${actionVerb}.`
+    ? t('decisions.chooseOneFromEachPile', { countPhrase, action: actionVerb, zone: pileNoun })
+    : t('decisions.chooseCountToAction', { countPhrase, action: actionVerb })
 
   // Lift selection state to persist across tab switches. Seeded from initialSelection so stepping
   // Back into this requirement keeps its confirmed picks — the parent remounts on requirement
@@ -200,7 +221,7 @@ export function GraveyardTargetingUI({
         totalCaps={totalCapsFor(targetReq)}
         responsive={responsive}
         onConfirm={handleConfirm}
-        confirmText={isOptionalTarget ? optionalConfirmText : 'Confirm Target'}
+        confirmText={isOptionalTarget ? optionalConfirmText : t('decisions.confirmTarget')}
         showFailToFind={isOptionalTarget || !!targetReq?.emptyChoiceLabel}
         failToFindText={targetReq?.emptyChoiceLabel ?? declineLabel}
         confirmRequiresSelection={isOptionalTarget || !!targetReq?.emptyChoiceLabel}
@@ -210,7 +231,7 @@ export function GraveyardTargetingUI({
         // The secondary button is "← Back" mid-walk (revise an earlier requirement) and
         // "Cancel" otherwise; a cancellable cast can still be cancelled from requirement 0.
         {...(onBack
-          ? { onCancel: onBack, cancelText: '← Back' }
+          ? { onCancel: onBack, cancelText: `← ${t('common.back')}` }
           : decision.canCancel
             ? { onCancel: () => submitCancelDecision(decision.id) }
             : {})}
@@ -225,7 +246,7 @@ export function GraveyardTargetingUI({
         className={styles.floatingReturnButton}
         onClick={() => setMinimized(false)}
       >
-        Return to Card Selection
+        {t('decisions.returnToCardSelection')}
       </button>
     )
   }
@@ -295,9 +316,10 @@ export function GraveyardTargetingUI({
         onConfirm={handleConfirm}
         onMinimize={() => setMinimized(true)}
         {...(onViewBattlefield ? { onViewBattlefield } : {})}
-        confirmText={isOptionalTarget ? optionalConfirmText : 'Confirm Target'}
+        confirmText={isOptionalTarget ? optionalConfirmText : t('decisions.confirmTarget')}
         declineText={targetReq?.emptyChoiceLabel ?? (isOptionalTarget ? declineLabel : undefined)}
         confirmRequiresSelection={isOptionalTarget || !!targetReq?.emptyChoiceLabel}
+        pileLabel={pileNoun}
         {...(onBack ? { onBack } : {})}
       />
     </div>
@@ -326,6 +348,7 @@ function GraveyardCardSelection({
   declineText,
   confirmRequiresSelection,
   onBack,
+  pileLabel,
 }: {
   cards: ZoneCardInfo[]
   selectedCards: EntityId[]
@@ -347,7 +370,9 @@ function GraveyardCardSelection({
   declineText?: string | undefined
   confirmRequiresSelection: boolean
   onBack?: () => void
+  pileLabel: string
 }) {
+  const { t } = useTranslation()
   const [hoveredCardId, setHoveredCardId] = useState<EntityId | null>(null)
   const hoverCard = useGameStore((s) => s.hoverCard)
 
@@ -434,7 +459,7 @@ function GraveyardCardSelection({
       {/* Selection counter */}
       <div className={styles.selectionCounter}>
         <span>
-          Selected:{' '}
+          {t('decisions.selectedLabel')}:{' '}
           <span className={`${styles.selectionCount} ${countClass}`}>
             {selectedCards.length}
           </span>
@@ -443,7 +468,13 @@ function GraveyardCardSelection({
         </span>
         {totalCaps.map((c) => (
           <span key={c.label}>
-            {' · '}Total {c.label}:{' '}
+            {' · '}{t('decisions.totalTargetCapLabel', {
+              label: c.label === 'power'
+                ? t('decisions.power')
+                : c.label === 'mana value'
+                  ? t('decisions.manaValue')
+                  : c.label,
+            })}{' '}
             <span className={styles.selectionCount}>{totalCapSum(c, selectedCards)}</span>
             {' / '}
             {c.cap}
@@ -476,7 +507,7 @@ function GraveyardCardSelection({
       {/* No cards message */}
       {sortedCards.length === 0 && (
         <p className={styles.noCardsMessage}>
-          No valid targets in this graveyard.
+          {t('decisions.noValidTargetsInZone', { zone: pileLabel })}
         </p>
       )}
 
@@ -487,21 +518,23 @@ function GraveyardCardSelection({
             onClick={onBack}
             className={styles.viewBattlefieldButton}
           >
-            ← Back
+            ← {t('common.back')}
           </button>
         )}
         <button
           onClick={() => (onViewBattlefield ? onViewBattlefield(selectedCards) : onMinimize())}
           className={styles.viewBattlefieldButton}
         >
-          View Battlefield
+          {t('decisions.viewBattlefield')}
         </button>
         <button
           onClick={handleConfirmClick}
           disabled={!canConfirm}
           className={styles.confirmButton}
         >
-          {selectedCards.length === 0 && minSelections === 0 && !confirmRequiresSelection ? 'Decline' : confirmText}
+          {selectedCards.length === 0 && minSelections === 0 && !confirmRequiresSelection
+            ? t('decisions.decline')
+            : confirmText}
         </button>
         {declineText && (
           <button

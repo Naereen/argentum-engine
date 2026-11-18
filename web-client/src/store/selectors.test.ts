@@ -12,7 +12,7 @@ vi.stubGlobal('localStorage', {
   removeItem: () => {},
 })
 
-const { cardIdForAction, isHighlightable, turnQueueHintFor, librarySlots } = await import('./selectors')
+const { cardIdForAction, isHighlightable, turnQueueDistanceFor, librarySlots } = await import('./selectors')
 const { entityId, library } = await import('../types')
 
 // --- Fixture builders -------------------------------------------------------
@@ -134,37 +134,37 @@ describe('isHighlightable', () => {
   })
 })
 
-describe('turnQueueHintFor', () => {
+describe('turnQueueDistanceFor', () => {
   const seat = (id: string, hasLost = false) => ({ playerId: entityId(id), hasLost }) as unknown as ClientPlayer
   const table = [seat('a'), seat('b'), seat('c'), seat('d')]
 
   it('counts living seats from the active player to the viewer', () => {
-    expect(turnQueueHintFor(table, entityId('a'), entityId('b'))).toBe("You're next")
-    expect(turnQueueHintFor(table, entityId('a'), entityId('c'))).toBe('You in 2')
-    expect(turnQueueHintFor(table, entityId('a'), entityId('d'))).toBe('You in 3')
+    expect(turnQueueDistanceFor(table, entityId('a'), entityId('b'))).toBe(1)
+    expect(turnQueueDistanceFor(table, entityId('a'), entityId('c'))).toBe(2)
+    expect(turnQueueDistanceFor(table, entityId('a'), entityId('d'))).toBe(3)
   })
 
   it('wraps around the end of the turn order', () => {
-    expect(turnQueueHintFor(table, entityId('d'), entityId('a'))).toBe("You're next")
-    expect(turnQueueHintFor(table, entityId('c'), entityId('b'))).toBe('You in 3')
+    expect(turnQueueDistanceFor(table, entityId('d'), entityId('a'))).toBe(1)
+    expect(turnQueueDistanceFor(table, entityId('c'), entityId('b'))).toBe(3)
   })
 
   it('skips eliminated seats', () => {
     const withTomb = [seat('a'), seat('b', true), seat('c'), seat('d')]
-    expect(turnQueueHintFor(withTomb, entityId('a'), entityId('c'))).toBe("You're next")
+    expect(turnQueueDistanceFor(withTomb, entityId('a'), entityId('c'))).toBe(1)
   })
 
   it('counts from an active player who left the game mid-turn (CR 800.4j)', () => {
     const activeGone = [seat('a', true), seat('b'), seat('c'), seat('d')]
-    expect(turnQueueHintFor(activeGone, entityId('a'), entityId('b'))).toBe("You're next")
-    expect(turnQueueHintFor(activeGone, entityId('a'), entityId('d'))).toBe('You in 3')
+    expect(turnQueueDistanceFor(activeGone, entityId('a'), entityId('b'))).toBe(1)
+    expect(turnQueueDistanceFor(activeGone, entityId('a'), entityId('d'))).toBe(3)
   })
 
   it('says nothing on your own turn, for an eliminated viewer, or for an unknown seat', () => {
-    expect(turnQueueHintFor(table, entityId('a'), entityId('a'))).toBeUndefined()
-    expect(turnQueueHintFor([seat('a'), seat('b', true), seat('c')], entityId('a'), entityId('b'))).toBeUndefined()
-    expect(turnQueueHintFor(table, entityId('a'), entityId('zz'))).toBeUndefined()
-    expect(turnQueueHintFor(table, null, entityId('b'))).toBeUndefined()
+    expect(turnQueueDistanceFor(table, entityId('a'), entityId('a'))).toBeUndefined()
+    expect(turnQueueDistanceFor([seat('a'), seat('b', true), seat('c')], entityId('a'), entityId('b'))).toBeUndefined()
+    expect(turnQueueDistanceFor(table, entityId('a'), entityId('zz'))).toBeUndefined()
+    expect(turnQueueDistanceFor(table, null, entityId('b'))).toBeUndefined()
   })
 })
 

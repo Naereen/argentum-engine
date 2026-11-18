@@ -291,12 +291,13 @@ function AnteBrowser({ cards, ownerLabel, onClose }: { cards: readonly ClientCar
  * day/night badge. Renders nothing in a game that isn't for ante.
  */
 export function AnteIndicator() {
+  const { t } = useTranslation()
   const playingForAnte = useGameStore((state) => selectGameState(state)?.playingForAnte ?? false)
   if (!playingForAnte) return null
   return (
     <div
       role="note"
-      title="This game is played for ante — the winner takes every card in the ante."
+      title={t('gameCore.anteDescription')}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -317,7 +318,7 @@ export function AnteIndicator() {
       }}
     >
       <AnteCoin size={10} />
-      <span>For ante</span>
+      <span>{t('gameCore.forAnte')}</span>
     </div>
   )
 }

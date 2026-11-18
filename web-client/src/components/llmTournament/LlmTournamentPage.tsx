@@ -3,6 +3,7 @@ import { DevPage } from '@/components/admin/DevPage'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { AvailableSet } from '@/types/messages'
 import { SetSelector } from '@/components/ui/SetSelector'
+import { useTranslation } from 'react-i18next'
 
 // ============================================================================
 // Types mirroring LlmTournamentController DTOs
@@ -108,6 +109,7 @@ const PRESET_MODELS = [
 // ============================================================================
 
 export function LlmTournamentPage() {
+  const { t } = useTranslation()
   const { id: routeId } = useParams<{ id?: string }>()
   const navigate = useNavigate()
   const [tournament, setTournament] = useState<TournamentView | null>(null)
@@ -170,7 +172,7 @@ export function LlmTournamentPage() {
   }
 
   return (
-    <DevPage section="Dev tools" title="LLM tournament" dev width="wide">
+    <DevPage section={t('developerTools.section')} title={t('llmTournament.title')} dev width="wide">
 
       {error && (
         <div style={styles.errorBar} onClick={() => setError(null)}>
@@ -184,10 +186,10 @@ export function LlmTournamentPage() {
 
       {tournament && !tournament.llmAvailable && (
         <div style={styles.warnBar}>
-          ⚠ No LLM API key configured on the server — deck building and in-game play fall back to the
-          built-in engine AI regardless of the LLM setting. Set <code>GAME_AI_API_KEY</code> (and an
-          OpenRouter <code>GAME_AI_BASE_URL</code>) in <code>.env</code> and start with{' '}
-          <code>just server</code> (a bare <code>./gradlew bootRun</code> doesn't load <code>.env</code>).
+          ⚠ {t('llmTournament.noApiKeyPrefix')} <code>GAME_AI_API_KEY</code> {t('llmTournament.noApiKeyAnd')}
+          {' '}<code>GAME_AI_BASE_URL</code>{' '}{t('llmTournament.noApiKeySuffix')}{' '}
+          <code>.env</code> {t('llmTournament.startWith')} <code>just server</code>
+          {' '}({t('llmTournament.gradleDoesNotLoadEnv')}).
         </div>
       )}
 
@@ -226,6 +228,7 @@ function SetupForm({
   onCreated: (t: TournamentView) => void
   onError: (e: string) => void
 }) {
+  const { t } = useTranslation()
   const [sets, setSets] = useState<AvailableSet[]>([])
   const [setCode, setSetCode] = useState('')
   const [modelsText, setModelsText] = useState(PRESET_MODELS.slice(0, 4).join('\n'))
@@ -242,7 +245,7 @@ function SetupForm({
         const def = s.filter((x) => !x.partial).sort((a, b) => (b.releaseDate ?? '').localeCompare(a.releaseDate ?? ''))[0]
         if (def && !setCode) setSetCode(def.code)
       })
-      .catch(() => onError('Failed to load sets — is the server running with dev endpoints enabled?'))
+      .catch(() => onError(t('llmTournament.loadSetsError')))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -257,11 +260,11 @@ function SetupForm({
 
   const create = async () => {
     if (models.length < 2) {
-      onError('Add at least 2 models')
+      onError(t('llmTournament.minimumModels'))
       return
     }
     if (!setCode) {
-      onError('Pick a set')
+      onError(t('llmTournament.pickSet'))
       return
     }
     setBusy(true)
@@ -273,7 +276,7 @@ function SetupForm({
       })
       const data = await res.json()
       if (res.ok) onCreated(data)
-      else onError(data.error || 'Failed to create tournament')
+      else onError(data.error || t('llmTournament.createFailed'))
     } catch (e) {
       onError(String(e))
     } finally {
@@ -283,9 +286,9 @@ function SetupForm({
 
   return (
     <div style={styles.card}>
-      <h2 style={styles.h2}>New tournament</h2>
+      <h2 style={styles.h2}>{t('llmTournament.newTournament')}</h2>
 
-      <label style={styles.label}>Models (one per line — they are seeded top to bottom)</label>
+      <label style={styles.label}>{t('llmTournament.modelsHint')}</label>
       <textarea
         value={modelsText}
         onChange={(e) => setModelsText(e.target.value)}
@@ -301,34 +304,34 @@ function SetupForm({
           </button>
         ))}
       </div>
-      <div style={styles.hint}>{models.length} model{models.length === 1 ? '' : 's'}</div>
+      <div style={styles.hint}>{t('llmTournament.modelCount', { count: models.length })}</div>
 
       <div style={styles.formRow}>
         <div style={{ flex: 1 }}>
-          <label style={styles.label}>Set</label>
+          <label style={styles.label}>{t('llmTournament.set')}</label>
           <SetSelector
             sets={sets}
             selectedCodes={setCode ? [setCode] : []}
             onToggleSet={(code) => setSetCode(code)}
             mode="single"
             align="start"
-            title="Choose a set"
-            emptyLabel="No set chosen yet"
+            title={t('llmTournament.chooseSet')}
+            emptyLabel={t('llmTournament.noSetChosen')}
           />
         </div>
         <div>
-          <label style={styles.label}>Deck building</label>
+          <label style={styles.label}>{t('llmTournament.deckBuilding')}</label>
           <div style={styles.radioRow}>
             <label style={styles.radioLabel}>
-              <input type="radio" checked={mode === 'draftsim'} onChange={() => setMode('draftsim')} /> Draftsim
+              <input type="radio" checked={mode === 'draftsim'} onChange={() => setMode('draftsim')} /> {t('llmTournament.draftsim')}
             </label>
             <label style={styles.radioLabel}>
-              <input type="radio" checked={mode === 'llm'} onChange={() => setMode('llm')} /> Each LLM builds
+              <input type="radio" checked={mode === 'llm'} onChange={() => setMode('llm')} /> {t('llmTournament.eachLlmBuilds')}
             </label>
           </div>
         </div>
         <div>
-          <label style={styles.label}>Best of</label>
+          <label style={styles.label}>{t('llmTournament.bestOf')}</label>
           <input
             type="number"
             min={1}
@@ -342,11 +345,11 @@ function SetupForm({
       </div>
 
       <button style={styles.primaryBtn} disabled={busy} onClick={create}>
-        {busy ? 'Creating…' : 'Create & build decks'}
+        {busy ? t('llmTournament.creating') : t('llmTournament.createAndBuildDecks')}
       </button>
       <p style={styles.smallNote}>
-        Sealed: each model opens its own 6-pack pool. Single-elimination knockout. Requires the server
-        running with <code>game.dev-endpoints.enabled=true</code> and an OpenRouter API key.
+        {t('llmTournament.setupDescriptionPrefix')} <code>game.dev-endpoints.enabled=true</code>{' '}
+        {t('llmTournament.setupDescriptionSuffix')}
       </p>
 
     </div>
@@ -374,28 +377,41 @@ function PacingBar({
   onSpeed: (ms: number) => void
   onNew: () => void
 }) {
+  const { t } = useTranslation()
   const status = tournament.status
   const building = status === 'BUILDING'
   const running = status === 'RUNNING'
   const complete = status === 'COMPLETE'
   const liveGameId = currentLiveGameId(tournament)
+  const statusLabel = status === 'BUILDING'
+    ? t('llmTournament.statusBuilding')
+    : status === 'RUNNING'
+      ? t('llmTournament.statusRunning')
+      : status === 'PAUSED'
+        ? t('llmTournament.statusPaused')
+        : status === 'COMPLETE'
+          ? t('llmTournament.statusComplete')
+          : status
+  const deckbuildMode = tournament.deckbuildMode === 'llm'
+    ? t('llmTournament.modeLlm')
+    : t('llmTournament.modeDraftsim')
 
   return (
     <div style={styles.pacingBar}>
       <div style={styles.statusGroup}>
-        <span style={{ ...styles.statusPill, ...statusPillColor(status) }}>{status}</span>
+        <span style={{ ...styles.statusPill, ...statusPillColor(status) }}>{statusLabel}</span>
         <span style={styles.metaText}>
-          {tournament.setCode} · {tournament.deckbuildMode} · Bo{tournament.bestOf}
+          {tournament.setCode} · {deckbuildMode} · {t('llmTournament.bestOfShort', { count: tournament.bestOf })}
         </span>
         {complete && tournament.championName && (
           <span style={styles.champion}>👑 {tournament.championName}</span>
         )}
         <span style={styles.costSummary} title={
-          `Games: ${fmtCost(tournament.gameCost)} (${fmtTokens(tournament.gameCost.totalTokens)} tok, ${tournament.gameCost.calls} calls)\n` +
-          `Deckbuild: ${fmtCost(tournament.deckbuildCost)} (${fmtTokens(tournament.deckbuildCost.totalTokens)} tok)`
+          t('llmTournament.gameCostTooltip', { cost: fmtCost(tournament.gameCost), tokens: fmtTokens(tournament.gameCost.totalTokens), calls: tournament.gameCost.calls }) +
+          '\n' + t('llmTournament.deckbuildCostTooltip', { cost: fmtCost(tournament.deckbuildCost), tokens: fmtTokens(tournament.deckbuildCost.totalTokens) })
         }>
-          💰 games {fmtCost(tournament.gameCost)}
-          {tournament.deckbuildCost.calls > 0 && <> · build {fmtCost(tournament.deckbuildCost)}</>}
+          💰 {t('llmTournament.gamesCost', { cost: fmtCost(tournament.gameCost) })}
+          {tournament.deckbuildCost.calls > 0 && <> · {t('llmTournament.buildCost', { cost: fmtCost(tournament.deckbuildCost) })}</>}
         </span>
       </div>
 
@@ -406,27 +422,27 @@ function PacingBar({
             target="_blank"
             rel="noreferrer"
             style={styles.watchLiveBtn}
-            title="Open the in-progress game in a new tab — updates to whichever game is live"
+            title={t('llmTournament.watchLiveTitle')}
           >
-            👁 Watch live game
+            👁 {t('llmTournament.watchLiveGame')}
           </a>
         )}
         {!running && !complete && (
           <button style={styles.ctrlBtn} disabled={building} onClick={status === 'PAUSED' ? onResume : onStart}>
-            ▶ {status === 'PAUSED' ? 'Resume' : 'Start'}
+            ▶ {status === 'PAUSED' ? t('llmTournament.resume') : t('llmTournament.start')}
           </button>
         )}
         {running && (
           <button style={styles.ctrlBtn} onClick={onPause}>
-            ⏸ Pause
+            ⏸ {t('llmTournament.pause')}
           </button>
         )}
         <button style={styles.ctrlBtn} disabled={building || running || complete} onClick={onStep}>
-          ⏭ Step game
+          ⏭ {t('llmTournament.stepGame')}
         </button>
 
         <div style={styles.speedGroup}>
-          <span style={styles.metaText}>Speed</span>
+          <span style={styles.metaText}>{t('llmTournament.speed')}</span>
           <input
             type="range"
             min={0}
@@ -440,7 +456,7 @@ function PacingBar({
         </div>
 
         <button style={styles.secondaryBtn} onClick={onNew}>
-          + New
+          + {t('llmTournament.new')}
         </button>
       </div>
     </div>
@@ -451,15 +467,8 @@ function PacingBar({
 // Build progress
 // ============================================================================
 
-const BUILD_STAGE_LABEL: Record<string, string> = {
-  PENDING: 'queued',
-  BUILDING_POOL: 'opening packs…',
-  BUILDING_DECK: 'building deck…',
-  READY: 'ready',
-  FAILED: 'failed',
-}
-
 function BuildProgress({ tournament }: { tournament: TournamentView }) {
+  const { t } = useTranslation()
   const total = tournament.participants.length
   const ready = tournament.participants.filter((p) => p.buildStatus === 'READY').length
   const failed = tournament.participants.filter((p) => p.buildStatus === 'FAILED').length
@@ -469,9 +478,12 @@ function BuildProgress({ tournament }: { tournament: TournamentView }) {
     <div style={styles.buildCard}>
       <div style={styles.buildHeader}>
         <span style={styles.buildTitle}>
-          {inProgress ? 'Models are building decks…' : 'Building pools & decks…'}
+          {inProgress ? t('llmTournament.modelsBuildingDecks') : t('llmTournament.buildingPoolsAndDecks')}
         </span>
-        <span style={styles.metaText}>{ready}/{total} ready{failed > 0 ? ` · ${failed} failed` : ''}</span>
+        <span style={styles.metaText}>
+          {t('llmTournament.readyCount', { count: ready, total })}
+          {failed > 0 && ` · ${t('llmTournament.failedCount', { count: failed })}`}
+        </span>
       </div>
       <div style={styles.progressTrack}>
         <div style={{ ...styles.progressFill, width: `${pct}%` }} />
@@ -486,7 +498,12 @@ function BuildProgress({ tournament }: { tournament: TournamentView }) {
                 {p.displayName}
               </span>
               <span style={{ ...styles.miniPill, ...buildStatusColor(p.buildStatus) }}>
-                {BUILD_STAGE_LABEL[p.buildStatus] ?? p.buildStatus}
+                {p.buildStatus === 'PENDING' ? t('llmTournament.buildQueued')
+                  : p.buildStatus === 'BUILDING_POOL' ? t('llmTournament.openingPacks')
+                    : p.buildStatus === 'BUILDING_DECK' ? t('llmTournament.buildingDeck')
+                      : p.buildStatus === 'READY' ? t('llmTournament.ready')
+                        : p.buildStatus === 'FAILED' ? t('llmTournament.failed')
+                          : p.buildStatus}
               </span>
             </div>
           )
@@ -502,13 +519,22 @@ function BuildProgress({ tournament }: { tournament: TournamentView }) {
 // ============================================================================
 
 function Bracket({ tournament }: { tournament: TournamentView }) {
+  const { t } = useTranslation()
   if (tournament.rounds.length === 0) return null
   return (
     <div style={styles.bracketScroll}>
       <div style={styles.bracket}>
         {tournament.rounds.map((round) => (
           <div key={round.roundNumber} style={styles.roundCol}>
-            <div style={styles.roundTitle}>{roundLabel(round, tournament.rounds.length)}</div>
+            <div style={styles.roundTitle}>
+              {tournament.rounds.length - round.roundNumber === 0
+                ? t('llmTournament.final')
+                : tournament.rounds.length - round.roundNumber === 1
+                  ? t('llmTournament.semifinals')
+                  : tournament.rounds.length - round.roundNumber === 2
+                    ? t('llmTournament.quarterfinals')
+                    : t('llmTournament.round', { round: round.roundNumber })}
+            </div>
             <div style={styles.matchStack}>
               {round.matches.map((m) => (
                 <MatchCard key={m.id} match={m} />
@@ -522,6 +548,11 @@ function Bracket({ tournament }: { tournament: TournamentView }) {
 }
 
 function MatchCard({ match }: { match: MatchView }) {
+  const { t } = useTranslation()
+  const matchStatus = match.status === 'live' ? t('llmTournament.matchLive')
+    : match.status === 'done' ? t('llmTournament.matchDone')
+      : match.status === 'bye' ? t('llmTournament.matchBye')
+        : t('llmTournament.matchScheduled')
   return (
     <div style={{ ...styles.matchCard, ...(match.status === 'live' ? styles.matchLive : {}) }}>
       <SeatRow
@@ -539,7 +570,7 @@ function MatchCard({ match }: { match: MatchView }) {
       />
       <div style={styles.matchFooter}>
         <span style={{ ...styles.miniPill, ...statusPillColor(matchStatusToStatus(match.status)) }}>
-          {match.status}
+          {matchStatus}
         </span>
         <span style={styles.matchLinks}>
           {match.status === 'live' && match.currentGameSessionId && (
@@ -549,7 +580,7 @@ function MatchCard({ match }: { match: MatchView }) {
               rel="noreferrer"
               style={styles.watchLink}
             >
-              👁 Watch
+              👁 {t('llmTournament.watch')}
             </a>
           )}
           {match.finishedGames.map((g, i) => (
@@ -559,7 +590,7 @@ function MatchCard({ match }: { match: MatchView }) {
               target="_blank"
               rel="noreferrer"
               style={styles.replayLink}
-              title={`Game ${i + 1}: ${fmtCost(g.cost)} · ${fmtTokens(g.cost.totalTokens)} tokens`}
+              title={t('llmTournament.gameCostTitle', { game: i + 1, cost: fmtCost(g.cost), tokens: fmtTokens(g.cost.totalTokens) })}
             >
               ▷ G{i + 1}
             </a>
@@ -568,7 +599,7 @@ function MatchCard({ match }: { match: MatchView }) {
       </div>
       {match.cost.calls > 0 && (
         <div style={styles.matchCostRow}>
-          💰 {fmtCost(match.cost)} · {fmtTokens(match.cost.totalTokens)} tok
+          💰 {t('llmTournament.costAndTokens', { cost: fmtCost(match.cost), tokens: fmtTokens(match.cost.totalTokens) })}
         </div>
       )}
     </div>
@@ -586,10 +617,11 @@ function SeatRow({
   wins: number
   winner: boolean
 }) {
+  const { t } = useTranslation()
   return (
     <div style={{ ...styles.seatRow, ...(winner ? styles.seatWinner : {}) }}>
       <div style={styles.seatInfo}>
-        <div style={styles.seatName}>{name ?? <span style={styles.bye}>— bye —</span>}</div>
+        <div style={styles.seatName}>{name ?? <span style={styles.bye}>— {t('llmTournament.bye')} —</span>}</div>
         {model && <div style={styles.seatModel}>{model}</div>}
       </div>
       <div style={styles.seatWins}>{name ? wins : ''}</div>
@@ -602,22 +634,23 @@ function SeatRow({
 // ============================================================================
 
 function ParticipantList({ tournament }: { tournament: TournamentView }) {
+  const { t } = useTranslation()
   const [deckOf, setDeckOf] = useState<ParticipantView | null>(null)
   // Keep the open deck modal in sync as polling refreshes the tournament object.
   const liveDeckOf = deckOf ? tournament.participants.find((p) => p.id === deckOf.id) ?? deckOf : null
 
   return (
     <div style={styles.card}>
-      <h2 style={styles.h2}>Participants</h2>
+      <h2 style={styles.h2}>{t('llmTournament.participants')}</h2>
       <table style={styles.table}>
         <thead>
           <tr>
-            <th style={styles.th}>Seed</th>
-            <th style={styles.th}>Name</th>
-            <th style={styles.th}>Model</th>
-            <th style={styles.th}>Deck</th>
-            <th style={styles.th}>Build</th>
-            <th style={styles.th}>Build cost</th>
+            <th style={styles.th}>{t('llmTournament.seed')}</th>
+            <th style={styles.th}>{t('llmTournament.name')}</th>
+            <th style={styles.th}>{t('llmTournament.model')}</th>
+            <th style={styles.th}>{t('llmTournament.deck')}</th>
+            <th style={styles.th}>{t('llmTournament.build')}</th>
+            <th style={styles.th}>{t('llmTournament.buildCostLabel')}</th>
           </tr>
         </thead>
         <tbody>
@@ -629,15 +662,22 @@ function ParticipantList({ tournament }: { tournament: TournamentView }) {
               <td style={styles.td}>
                 {p.deckSize > 0 ? (
                   <button style={styles.linkButton} onClick={() => setDeckOf(p)}>
-                    {p.deckSize} cards ▸
+                    {t('llmTournament.cardsCount', { count: p.deckSize })} ▸
                   </button>
                 ) : '—'}
               </td>
               <td style={styles.td}>
-                <span style={{ ...styles.miniPill, ...buildStatusColor(p.buildStatus) }}>{p.buildStatus}</span>
+                <span style={{ ...styles.miniPill, ...buildStatusColor(p.buildStatus) }}>
+                  {p.buildStatus === 'READY' ? t('llmTournament.ready')
+                    : p.buildStatus === 'FAILED' ? t('llmTournament.failed')
+                      : p.buildStatus === 'PENDING' ? t('llmTournament.buildQueued')
+                        : p.buildStatus === 'BUILDING_POOL' ? t('llmTournament.openingPacks')
+                          : p.buildStatus === 'BUILDING_DECK' ? t('llmTournament.buildingDeck')
+                            : p.buildStatus}
+                </span>
               </td>
               <td style={styles.td}>
-                {p.buildCost ? `${fmtCost(p.buildCost)} (${fmtTokens(p.buildCost.totalTokens)} tok)` : '—'}
+                {p.buildCost ? t('llmTournament.costAndTokens', { cost: fmtCost(p.buildCost), tokens: fmtTokens(p.buildCost.totalTokens) }) : '—'}
               </td>
             </tr>
           ))}
@@ -651,6 +691,7 @@ function ParticipantList({ tournament }: { tournament: TournamentView }) {
 const BASIC_LANDS = new Set(['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'])
 
 function DeckModal({ participant, onClose }: { participant: ParticipantView; onClose: () => void }) {
+  const { t } = useTranslation()
   const entries = Object.entries(participant.deck)
   const sortFn = (a: [string, number], b: [string, number]) => b[1] - a[1] || a[0].localeCompare(b[0])
   const spells = entries.filter(([name]) => !BASIC_LANDS.has(name)).sort(sortFn)
@@ -679,11 +720,11 @@ function DeckModal({ participant, onClose }: { participant: ParticipantView; onC
             <div style={styles.modalTitle}>{participant.displayName}</div>
             <div style={styles.seatModel}>{participant.modelId} · {participant.deckSize} cards</div>
           </div>
-          <button style={styles.modalClose} onClick={onClose}>×</button>
+          <button style={styles.modalClose} onClick={onClose} aria-label={t('llmTournament.close')}>×</button>
         </div>
         <div style={styles.deckBody}>
-          {renderGroup(`Spells (${spellCount})`, spells)}
-          {renderGroup(`Lands (${landCount})`, lands)}
+          {renderGroup(t('llmTournament.spellsCount', { count: spellCount }), spells)}
+          {renderGroup(t('llmTournament.landsCount', { count: landCount }), lands)}
         </div>
       </div>
     </div>
@@ -705,14 +746,6 @@ function matchStatusToStatus(s: string): string {
     default:
       return 'PAUSED'
   }
-}
-
-function roundLabel(round: RoundView, totalRounds: number): string {
-  const fromEnd = totalRounds - round.roundNumber
-  if (fromEnd === 0) return 'Final'
-  if (fromEnd === 1) return 'Semifinals'
-  if (fromEnd === 2) return 'Quarterfinals'
-  return `Round ${round.roundNumber}`
 }
 
 function statusPillColor(status: string): React.CSSProperties {

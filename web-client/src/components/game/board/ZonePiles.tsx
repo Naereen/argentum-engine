@@ -33,22 +33,6 @@ const OPPONENT_TOP_RESERVED = 52
 const MIN_PILE_WIDTH = 24
 
 /**
- * Native tooltip for the Deck pile. When the top card is face up, lead with its name — that's
- * the reason the pile looks different, and it doubles as the accessible label for the image.
- */
-function deckPileTitle(
-  canBrowseDeck: boolean,
-  isOwnDeck: boolean,
-  topCard: ClientCard | null,
-  outsideCount: number,
-): string | undefined {
-  if (!canBrowseDeck) return topCard ? `Top card: ${topCard.name}` : undefined
-  const outside = outsideCount > 0 ? `, ${outsideCount} outside the game` : ''
-  const browse = isOwnDeck ? `Your deck list, library${outside} (D)` : 'Library'
-  return topCard ? `Top card: ${topCard.name} · ${browse}` : browse
-}
-
-/**
  * Deck, graveyard, exile — and, when present, a dedicated Plotted pile — display.
  *
  * `reserveConcedeRoom` keeps the top pile clear of the absolutely-positioned Concede button.
@@ -219,6 +203,17 @@ export function ZonePile({
   const isOwnDeck = ownDeck.length > 0 || outsideCards.length > 0
   const canBrowseDeck = player.librarySize > 0 || isOwnDeck
   const showsTopLibraryCard = player.librarySize > 0 && topLibraryCard !== null
+  const deckTitle = !canBrowseDeck
+    ? topLibraryCard ? t('gameCore.topCard', { cardName: topLibraryCard.name }) : undefined
+    : isOwnDeck
+      ? t('gameCore.yourDeckListLibrary', {
+          outside: outsideCards.length > 0 ? `, ${t('gameCore.outsideGameCount', { count: outsideCards.length })}` : '',
+          shortcut: 'D',
+        })
+      : t('gameCore.deck')
+  const deckTooltip = showsTopLibraryCard
+    ? t('gameCore.topCardAndBrowse', { cardName: topLibraryCard.name, browse: deckTitle })
+    : deckTitle
 
   // `D` opens your own deck — the shortcut lives here rather than in a global handler because
   // exactly one ZonePile on the table is the viewer's, and `ownDeck` is how we know which.
@@ -244,8 +239,8 @@ export function ZonePile({
           data-zone={isOpponent ? 'opponent-library' : 'player-library'}
           data-zone-owner={player.playerId}
           title={outsidePlayableCount > 0
-            ? `You may play cards from outside the game — open to choose (D)`
-            : deckPileTitle(canBrowseDeck, isOwnDeck, showsTopLibraryCard ? topLibraryCard : null, outsideCards.length)}
+            ? t('gameCore.playOutsideNow', { shortcut: 'D' })
+            : deckTooltip}
           style={{
             ...styles.deckPile,
             ...pileStyle,
@@ -268,7 +263,7 @@ export function ZonePile({
             ) : (
               <img
                 src={CARD_BACK_IMAGE_URL}
-                alt="Library"
+                alt={t('gameCore.deck')}
                 style={styles.pileImage}
               />
             )
@@ -518,7 +513,9 @@ export function ZonePile({
       {browsingLibrary && createPortal(
         <Suspense fallback={null}>
           <DeckBrowser
-            ownerLabel={isOpponent ? `${player.name}'s` : 'Your'}
+            ownerLabel={isOpponent
+              ? t('gameCore.playerDeckTitle', { playerName: player.name })
+              : t('gameCore.yourDeckTitle')}
             slots={librarySlotIds}
             deck={ownDeck}
             outsideCards={outsideCards}
@@ -541,6 +538,7 @@ function GraveyardBrowser({ cards, targets, ownerLabel, onClose }: {
   ownerLabel: string
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const hoverCard = useGameStore((state) => state.hoverCard)
   const responsive = useResponsiveContext()
   const [minimized, setMinimized] = useState(false)
@@ -587,7 +585,7 @@ function GraveyardBrowser({ cards, targets, ownerLabel, onClose }: {
           gap: 8,
         }}
       >
-        ↑ Return to Graveyard
+        ↑ {t('gameCore.returnToZone', { zone: t('gameCore.graveyard') })}
       </button>
     )
   }
@@ -597,7 +595,7 @@ function GraveyardBrowser({ cards, targets, ownerLabel, onClose }: {
       <div style={styles.graveyardBrowserContent} onClick={(e) => e.stopPropagation()}>
         <div style={styles.graveyardBrowserHeader}>
           <h2 style={styles.graveyardBrowserTitle}>{ownerLabel} ({cards.length})</h2>
-          <button style={styles.graveyardCloseButton} onClick={onClose}>✕</button>
+          <button style={styles.graveyardCloseButton} onClick={onClose} aria-label={t('common.close')}>✕</button>
         </div>
         <div style={styles.graveyardCardGrid}>
           {cards.map((card) => {
@@ -671,6 +669,7 @@ function GraveyardBrowser({ cards, targets, ownerLabel, onClose }: {
  * Full-screen overlay for browsing exile cards.
  */
 function ExileBrowser({ cards, ownerLabel, onClose }: { cards: readonly ClientCard[], ownerLabel: string, onClose: () => void }) {
+  const { t } = useTranslation()
   const hoverCard = useGameStore((state) => state.hoverCard)
   const responsive = useResponsiveContext()
   const [minimized, setMinimized] = useState(false)
@@ -736,10 +735,10 @@ function ExileBrowser({ cards, ownerLabel, onClose }: { cards: readonly ClientCa
           <h2 style={styles.exileBrowserTitle}>
             {ownerLabel} ({cards.length})
             {plottedCount > 0 && (
-              <span style={styles.exilePlottedCount}> · {plottedCount} plotted</span>
+              <span style={styles.exilePlottedCount}> · {t('gameCore.plottedCount', { count: plottedCount })}</span>
             )}
           </h2>
-          <button style={styles.exileCloseButton} onClick={onClose}>✕</button>
+          <button style={styles.exileCloseButton} onClick={onClose} aria-label={t('common.close')}>✕</button>
         </div>
         <div style={styles.exileCardGrid}>
           {orderedCards.map((card) => (
@@ -763,7 +762,7 @@ function ExileBrowser({ cards, ownerLabel, onClose }: { cards: readonly ClientCa
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 onError={(e) => handleImageError(e, card.name, 'normal')}
               />
-              {card.isPlotted && <div style={styles.plottedGridBadge}>Plotted</div>}
+              {card.isPlotted && <div style={styles.plottedGridBadge}>{t('gameCore.plotted')}</div>}
               {getStashCounters(card) > 0 && (
                 <div style={styles.stashGridBadge}>
                   <i className={`ms ms-${counterManaClass.STASH}`} /> {getStashCounters(card)}
@@ -812,7 +811,7 @@ function ExileBrowser({ cards, ownerLabel, onClose }: { cards: readonly ClientCa
               cursor: 'pointer',
             }}
           >
-            Close
+            {t('common.close')}
           </button>
         </div>
       </div>
@@ -834,6 +833,7 @@ function PlottedBrowser({
   ownerLabel: string
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const hoverCard = useGameStore((state) => state.hoverCard)
   const responsive = useResponsiveContext()
   const [minimized, setMinimized] = useState(false)
@@ -879,7 +879,7 @@ function PlottedBrowser({
           gap: 8,
         }}
       >
-        ↑ Return to Plotted
+        ↑ {t('gameCore.returnToZone', { zone: t('gameCore.plotted') })}
       </button>
     )
   }
@@ -894,7 +894,7 @@ function PlottedBrowser({
               Castable for free on a later turn (CR 718)
             </span>
           </div>
-          <button style={styles.plottedCloseButton} onClick={onClose}>✕</button>
+          <button style={styles.plottedCloseButton} onClick={onClose} aria-label={t('common.close')}>✕</button>
         </div>
         <div style={styles.exileCardGrid}>
           {cards.map((card) => (
@@ -918,7 +918,7 @@ function PlottedBrowser({
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 onError={(e) => handleImageError(e, card.name, 'normal')}
               />
-              <div style={styles.plottedGridBadge}>Plotted</div>
+              <div style={styles.plottedGridBadge}>{t('gameCore.plotted')}</div>
             </div>
           ))}
         </div>
@@ -972,6 +972,7 @@ function ParadigmBrowser({
   ownerLabel: string
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const hoverCard = useGameStore((state) => state.hoverCard)
   const responsive = useResponsiveContext()
   const [minimized, setMinimized] = useState(false)
@@ -1017,7 +1018,7 @@ function ParadigmBrowser({
           gap: 8,
         }}
       >
-        ↑ Return to Paradigm
+        ↑ {t('gameCore.returnToZone', { zone: t('gameCore.paradigm') })}
       </button>
     )
   }
@@ -1032,7 +1033,7 @@ function ParadigmBrowser({
               Casts a free copy of itself each precombat main phase (Paradigm)
             </span>
           </div>
-          <button style={styles.paradigmCloseButton} onClick={onClose}>✕</button>
+          <button style={styles.paradigmCloseButton} onClick={onClose} aria-label={t('common.close')}>✕</button>
         </div>
         <div style={styles.exileCardGrid}>
           {cards.map((card) => (
@@ -1056,7 +1057,7 @@ function ParadigmBrowser({
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 onError={(e) => handleImageError(e, card.name, 'normal')}
               />
-              <div style={styles.paradigmGridBadge}>Paradigm</div>
+              <div style={styles.paradigmGridBadge}>{t('gameCore.paradigm')}</div>
             </div>
           ))}
         </div>
@@ -1111,6 +1112,7 @@ function SuspendedBrowser({
   ownerLabel: string
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const hoverCard = useGameStore((state) => state.hoverCard)
   const responsive = useResponsiveContext()
   const [minimized, setMinimized] = useState(false)
@@ -1156,7 +1158,7 @@ function SuspendedBrowser({
           gap: 8,
         }}
       >
-        ↑ Return to Suspended
+        ↑ {t('gameCore.returnToZone', { zone: t('gameCore.suspended') })}
       </button>
     )
   }
@@ -1171,7 +1173,7 @@ function SuspendedBrowser({
               Removes a time counter each upkeep; cast for free when the last one is gone (Suspend)
             </span>
           </div>
-          <button style={styles.suspendedCloseButton} onClick={onClose}>✕</button>
+          <button style={styles.suspendedCloseButton} onClick={onClose} aria-label={t('common.close')}>✕</button>
         </div>
         <div style={styles.exileCardGrid}>
           {cards.map((card) => (
@@ -1195,7 +1197,7 @@ function SuspendedBrowser({
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 onError={(e) => handleImageError(e, card.name, 'normal')}
               />
-              <div style={styles.suspendedGridBadge}>Suspended</div>
+              <div style={styles.suspendedGridBadge}>{t('gameCore.suspended')}</div>
               {/* Same time-counter badge Impending permanents show on the battlefield —
                   icon + remaining count, so the countdown reads identically everywhere. */}
               {getTimeCounters(card) > 0 && (

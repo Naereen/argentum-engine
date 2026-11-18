@@ -1,23 +1,27 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
+import { I18nextProvider } from 'react-i18next'
+import i18n from '@/i18n'
 import { Phase, Step } from '@/types'
 import type { ClientOtariaTurn } from '@/types'
 import { StepStrip } from './StepStrip'
 
 function strip(step: Step, otariaTurn?: ClientOtariaTurn) {
   return renderToStaticMarkup(
-    <StepStrip
-      phase={Phase.BEGINNING}
-      step={step}
-      roundNumber={1}
-      isActivePlayer
-      hasPriority
-      priorityMode="ownTurn"
-      activeSide="bottom"
-      stopOverrides={{ myTurnStops: [], opponentTurnStops: [] }}
-      onToggleStop={() => {}}
-      otariaTurn={otariaTurn}
-    />,
+    <I18nextProvider i18n={i18n}>
+      <StepStrip
+        phase={Phase.BEGINNING}
+        step={step}
+        roundNumber={1}
+        isActivePlayer
+        hasPriority
+        priorityMode="ownTurn"
+        activeSide="bottom"
+        stopOverrides={{ myTurnStops: [], opponentTurnStops: [] }}
+        onToggleStop={() => {}}
+        otariaTurn={otariaTurn}
+      />
+    </I18nextProvider>,
   )
 }
 

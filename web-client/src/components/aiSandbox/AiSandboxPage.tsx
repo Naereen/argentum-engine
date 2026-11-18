@@ -15,6 +15,7 @@ import { DevPage } from '@/components/admin/DevPage'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { AvailableSet } from '@/types/messages'
 import { SetPickerModal } from '@/components/ui/SetPickerModal'
+import { useTranslation } from 'react-i18next'
 
 const API = '/api/dev/ai-tournament'
 
@@ -63,6 +64,7 @@ function watchGame(gameSessionId: string) {
 }
 
 export function AiSandboxPage() {
+  const { t } = useTranslation()
   const { lobbyId: routeLobbyId } = useParams<{ lobbyId?: string }>()
   const navigate = useNavigate()
   const [status, setStatus] = useState<SandboxStatus | null>(null)
@@ -114,7 +116,7 @@ export function AiSandboxPage() {
   }, [autoWatch, status])
 
   return (
-    <DevPage section="Dev tools" title="AI sandbox" dev width="normal">
+    <DevPage section={t('developerTools.section')} title={t('aiSandbox.title')} dev width="normal">
 
       {error && (
         <div style={styles.errorBar} onClick={() => setError(null)}>
@@ -159,6 +161,7 @@ function SetupForm({
   onCreated: (lobbyId: string) => void
   onError: (e: string) => void
 }) {
+  const { t } = useTranslation()
   const [sets, setSets] = useState<AvailableSet[]>([])
   const [setCodes, setSetCodes] = useState<string[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -179,7 +182,7 @@ function SetupForm({
           .sort((a, b) => (b.releaseDate ?? '').localeCompare(a.releaseDate ?? ''))[0]
         if (def) setSetCodes([def.code])
       })
-      .catch(() => onError('Failed to load sets — is the server running with dev endpoints enabled?'))
+      .catch(() => onError(t('aiSandbox.loadSetsError')))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -189,7 +192,7 @@ function SetupForm({
 
   const create = async () => {
     if (setCodes.length === 0) {
-      onError('Pick at least one set')
+      onError(t('aiSandbox.pickAtLeastOneSet'))
       return
     }
     setBusy(true)
@@ -206,7 +209,7 @@ function SetupForm({
       })
       const data = await res.json() as { lobbyId: string; message: string }
       if (res.ok && data.lobbyId) onCreated(data.lobbyId)
-      else onError(data.message || 'Failed to create the AI lobby')
+      else onError(data.message || t('aiSandbox.createFailed'))
     } catch (e) {
       onError(String(e))
     } finally {
@@ -216,17 +219,17 @@ function SetupForm({
 
   return (
     <div style={styles.card}>
-      <h2 style={styles.h2}>New AI-only lobby</h2>
+      <h2 style={styles.h2}>{t('aiSandbox.newLobby')}</h2>
 
       <div style={styles.formRow}>
         <div style={{ flex: 1 }}>
-          <label style={styles.label}>Sets (sealed pool)</label>
+          <label style={styles.label}>{t('aiSandbox.setsSealedPool')}</label>
           <button type="button" style={styles.setButton} onClick={() => setPickerOpen(true)}>
-            {selectedNames || 'Choose sets…'}
+            {selectedNames || t('aiSandbox.chooseSets')}
           </button>
         </div>
         <div>
-          <label style={styles.label}>AI players</label>
+          <label style={styles.label}>{t('aiSandbox.aiPlayers')}</label>
           <input
             type="number"
             min={2}
@@ -237,7 +240,7 @@ function SetupForm({
           />
         </div>
         <div>
-          <label style={styles.label}>Games per pairing</label>
+          <label style={styles.label}>{t('aiSandbox.gamesPerPairing')}</label>
           <input
             type="number"
             min={1}
@@ -249,29 +252,28 @@ function SetupForm({
         </div>
       </div>
 
-      <label style={styles.label}>Deck building</label>
+      <label style={styles.label}>{t('aiSandbox.deckBuilding')}</label>
       <div style={styles.radioRow}>
         <label style={styles.radioLabel}>
           <input type="radio" checked={deckbuild === 'draftsim'} onChange={() => setDeckbuild('draftsim')} />
-          Draftsim (fast)
+          {t('aiSandbox.draftsimFast')}
         </label>
         <label style={styles.radioLabel}>
           <input type="radio" checked={deckbuild === 'llm'} onChange={() => setDeckbuild('llm')} />
-          Server default (LLM if configured)
+          {t('aiSandbox.serverDefault')}
         </label>
       </div>
 
       <div style={{ marginTop: 18 }}>
         <button style={styles.primaryBtn} disabled={busy} onClick={create}>
-          {busy ? 'Creating…' : 'Create & watch'}
+          {busy ? t('aiSandbox.creating') : t('aiSandbox.createAndWatch')}
         </button>
       </div>
 
       <p style={styles.smallNote}>
-        Every seat is a bot playing with whatever AI the server is configured for
-        (<code>game.ai.mode</code> — <code>engine</code> by default). Each opens its own 6-pack
-        sealed pool, builds a deck, and plays a round robin unattended. Requires the server running
-        with <code>game.dev-endpoints.enabled=true</code>.
+        {t('aiSandbox.descriptionBeforeConfig')}{' '}
+        (<code>game.ai.mode</code> — <code>engine</code> {t('aiSandbox.default')}).{' '}
+        {t('aiSandbox.descriptionAfterConfig')} <code>game.dev-endpoints.enabled=true</code>.
       </p>
 
       {pickerOpen && (
@@ -279,7 +281,7 @@ function SetupForm({
           sets={sets}
           selectedCodes={setCodes}
           mode="multi"
-          title="Choose sets"
+          title={t('aiSandbox.chooseSets')}
           onToggleSet={(code) =>
             setSetCodes((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]))
           }
@@ -294,13 +296,6 @@ function SetupForm({
 // Status panel
 // ============================================================================
 
-const STATE_LABELS: Record<string, string> = {
-  WAITING_FOR_PLAYERS: 'Seating bots',
-  DECK_BUILDING: 'Building decks',
-  TOURNAMENT_ACTIVE: 'Playing',
-  TOURNAMENT_COMPLETE: 'Finished',
-}
-
 function StatusPanel({
   status,
   autoWatch,
@@ -312,7 +307,17 @@ function StatusPanel({
   onToggleAutoWatch: (v: boolean) => void
   onNew: () => void
 }) {
-  const label = STATE_LABELS[status.state] ?? status.state
+  const { t } = useTranslation()
+  const stateLabel = (state: string) => {
+    switch (state) {
+      case 'WAITING_FOR_PLAYERS': return t('aiSandbox.statusSeatingBots')
+      case 'DECK_BUILDING': return t('aiSandbox.statusBuildingDecks')
+      case 'TOURNAMENT_ACTIVE': return t('aiSandbox.statusPlaying')
+      case 'TOURNAMENT_COMPLETE': return t('aiSandbox.statusFinished')
+      default: return state
+    }
+  }
+  const label = stateLabel(status.state)
   const building = status.state === 'DECK_BUILDING'
 
   return (
@@ -321,28 +326,28 @@ function StatusPanel({
         <div style={styles.statusGroup}>
           <span style={{ ...styles.statusPill, ...statePillColor(status.state) }}>{label}</span>
           <span style={styles.metaText}>
-            {status.playerNames.length} bots
-            {status.totalRounds > 0 && <> · round {status.round}/{status.totalRounds}</>}
-            {building && <> · {status.decksSubmitted}/{status.playerNames.length} decks built</>}
+            {t('aiSandbox.botCount', { count: status.playerNames.length })}
+            {status.totalRounds > 0 && <> · {t('aiSandbox.roundProgress', { round: status.round, total: status.totalRounds })}</>}
+            {building && <> · {t('aiSandbox.decksBuilt', { built: status.decksSubmitted, total: status.playerNames.length })}</>}
           </span>
         </div>
         <div style={styles.controlsGroup}>
-          <label style={styles.radioLabel} title="Jump straight into a game the moment one starts">
+          <label style={styles.radioLabel} title={t('aiSandbox.autoWatchTitle')}>
             <input type="checkbox" checked={autoWatch} onChange={(e) => onToggleAutoWatch(e.target.checked)} />
-            Auto-watch
+            {t('aiSandbox.autoWatch')}
           </label>
-          <a href={`/tournament/${status.lobbyId}`} style={styles.ctrlBtn}>Standings</a>
-          <button style={styles.secondaryBtn} onClick={onNew}>New lobby</button>
+          <a href={`/tournament/${status.lobbyId}`} style={styles.ctrlBtn}>{t('aiSandbox.standings')}</a>
+          <button style={styles.secondaryBtn} onClick={onNew}>{t('aiSandbox.newLobby')}</button>
         </div>
       </div>
 
       <div style={styles.card}>
-        <h2 style={styles.h2}>Live games</h2>
+        <h2 style={styles.h2}>{t('aiSandbox.liveGames')}</h2>
         {status.liveGames.length === 0 ? (
           <p style={styles.hint}>
             {status.complete
-              ? 'Every match is done — open Standings for the results, or start a new lobby.'
-              : 'No game running yet. The bots are still getting to the table; this refreshes itself.'}
+              ? t('aiSandbox.allMatchesDone')
+              : t('aiSandbox.noGamesYet')}
           </p>
         ) : (
           status.liveGames.map((game) => (
@@ -350,11 +355,11 @@ function StatusPanel({
               <div>
                 <div style={styles.gameNames}>{game.player1Name} vs {game.player2Name}</div>
                 <div style={styles.hint}>
-                  Turn {game.turnNumber} · {game.player1Life} / {game.player2Life} life
+                  {t('aiSandbox.gameStatus', { turn: game.turnNumber, player1Life: game.player1Life, player2Life: game.player2Life })}
                 </div>
               </div>
               <button style={styles.watchBtn} onClick={() => watchGame(game.gameSessionId)}>
-                Watch
+                {t('aiSandbox.watch')}
               </button>
             </div>
           ))
@@ -362,7 +367,7 @@ function StatusPanel({
       </div>
 
       <div style={styles.card}>
-        <h2 style={styles.h2}>Table</h2>
+        <h2 style={styles.h2}>{t('aiSandbox.table')}</h2>
         <div style={styles.botList}>
           {status.playerNames.map((name) => (
             <span key={name} style={styles.botChip}>{name}</span>

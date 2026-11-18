@@ -208,37 +208,31 @@ describe('partitionTargetsByZone', () => {
 describe('derivePileAction', () => {
   it('labels an exile effect', () => {
     expect(derivePileAction('Exile target card from a graveyard')).toEqual({
-      confirmText: 'Exile',
-      verb: 'exile',
+      kind: 'exile',
     })
   })
 
   it('labels a reanimation effect', () => {
     expect(derivePileAction('Put target creature card from a graveyard onto the battlefield')).toEqual({
-      confirmText: 'Put onto Battlefield',
-      verb: 'put onto the battlefield',
+      kind: 'putOntoBattlefield',
     })
   })
 
   it('labels a shuffle-into-library effect', () => {
     expect(derivePileAction('Shuffle target card from a graveyard into its owner\'s library')).toEqual({
-      confirmText: 'Shuffle into Library',
-      verb: "shuffle into their owner's library",
+      kind: 'shuffleIntoLibrary',
     })
   })
 
   it('labels a return-to-hand effect', () => {
     expect(derivePileAction('Return target creature card from your graveyard to your hand')).toEqual({
-      confirmText: 'Return to Hand',
-      verb: 'return to your hand',
+      kind: 'returnToHand',
     })
   })
 
   it('labels a return-to-hand effect worded "to its owner\'s hand"', () => {
     // MoveToZoneEffect(destination = HAND) renders exactly this.
-    expect(derivePileAction("Return target card in a graveyard to its owner's hand").verb).toBe(
-      'return to your hand',
-    )
+    expect(derivePileAction("Return target card in a graveyard to its owner's hand").kind).toBe('returnToHand')
   })
 
   it('labels a copy effect as copy, not reanimation (Taskmaster, Mercenary Mimic)', () => {
@@ -250,19 +244,19 @@ describe('derivePileAction', () => {
       'This creature becomes a copy of up to one target creature on the battlefield or creature ' +
       "card in a graveyard until your next turn, except its name is Taskmaster, Mercenary Mimic"
 
-    expect(derivePileAction(hint)).toEqual({ confirmText: 'Copy', verb: 'copy' })
+    expect(derivePileAction(hint)).toEqual({ kind: 'copy' })
   })
 
   it('labels a token-copy effect as copy — the picked card never moves either', () => {
     expect(
       derivePileAction("Create a token that's a copy of target creature card in a graveyard"),
-    ).toEqual({ confirmText: 'Copy', verb: 'copy' })
+    ).toEqual({ kind: 'copy' })
   })
 
   it('falls back to a neutral verb for an unrecognised effect — never "return to hand"', () => {
     // The load-bearing assertion of this whole suite: an unknown effect must not claim an action.
     // A wrong verb is a false statement about what the game is about to do.
-    const neutral = { confirmText: 'Confirm Target', verb: 'target' }
+    const neutral = { kind: 'target' }
 
     expect(derivePileAction('Target creature card in a graveyard perpetually gets +1/+1')).toEqual(
       neutral,
@@ -271,33 +265,29 @@ describe('derivePileAction', () => {
   })
 
   it('falls back to the neutral verb for a missing or empty hint', () => {
-    expect(derivePileAction(undefined)).toEqual({ confirmText: 'Confirm Target', verb: 'target' })
-    expect(derivePileAction(null).confirmText).toBe('Confirm Target')
-    expect(derivePileAction('').confirmText).toBe('Confirm Target')
+    expect(derivePileAction(undefined)).toEqual({ kind: 'target' })
+    expect(derivePileAction(null).kind).toBe('target')
+    expect(derivePileAction('').kind).toBe('target')
   })
 
   it('pins the branch order for hints carrying more than one keyword', () => {
     // copy > battlefield — see the Taskmaster case above.
     // battlefield > exile — the blink case below: the destination wins over the means.
-    expect(derivePileAction('Exile it, then put it onto the battlefield').confirmText).toBe(
-      'Put onto Battlefield',
-    )
+    expect(derivePileAction('Exile it, then put it onto the battlefield').kind).toBe('putOntoBattlefield')
     // shuffle+library > exile — a mill-back that also mentions exile still shuffles.
     expect(
       derivePileAction('Exile nothing; shuffle target card in a graveyard into its library')
-        .confirmText,
-    ).toBe('Shuffle into Library')
+        .kind,
+    ).toBe('shuffleIntoLibrary')
     // exile > hand — "cards from your hand or graveyard" names the hand as a *source*.
     expect(
       derivePileAction('Exile permanents you control or cards from your hand or graveyard')
-        .confirmText,
-    ).toBe('Exile')
+        .kind,
+    ).toBe('exile')
   })
 
   it('does not read a stray word containing "hand" as a return-to-hand effect', () => {
-    expect(derivePileAction('Choose beforehand which card is handled').confirmText).toBe(
-      'Confirm Target',
-    )
+    expect(derivePileAction('Choose beforehand which card is handled').kind).toBe('target')
   })
 
   it('reads The Spot, Living Portal as exile, not reanimation', () => {
@@ -309,12 +299,12 @@ describe('derivePileAction', () => {
       'Exile up to one target nonland permanent card from a graveyard until this permanent ' +
       'leaves the battlefield'
 
-    expect(derivePileAction(hint)).toEqual({ confirmText: 'Exile', verb: 'exile' })
+    expect(derivePileAction(hint)).toEqual({ kind: 'exile' })
   })
 
   it('still reads a blink as reanimation despite the leaves-the-battlefield clause', () => {
     const hint = 'Exile target creature, then return it to the battlefield when this leaves the battlefield'
 
-    expect(derivePileAction(hint).confirmText).toBe('Put onto Battlefield')
+    expect(derivePileAction(hint).kind).toBe('putOntoBattlefield')
   })
 })

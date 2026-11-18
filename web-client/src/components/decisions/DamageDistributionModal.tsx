@@ -4,6 +4,7 @@ import type { EntityId } from '@/types'
 import { useResponsive } from '@/hooks/useResponsive.ts'
 import { getCardImageUrl } from '@/utils/cardImages.ts'
 import { getPTColor } from '../game/board/shared'
+import { useTranslation } from 'react-i18next'
 
 interface TargetCardInfo {
   id: EntityId
@@ -27,6 +28,7 @@ interface TargetCardInfo {
  * This is shown AFTER target selection, BEFORE the spell is cast.
  */
 export function DamageDistributionModal() {
+  const { t } = useTranslation()
   const damageDistributionState = useGameStore((s) => s.damageDistributionState)
   const updateDamageDistribution = useGameStore((s) => s.updateDamageDistribution)
   const interactionEpoch = useGameStore((state) => state.interactionEpoch)
@@ -41,7 +43,10 @@ export function DamageDistributionModal() {
 
   // A counter division names its unit ("+1/+1 counter"); damage is the default.
   const counterUnit = damageDistributionState.unit
-  const unitLabel = (n: number) => (counterUnit ? `${counterUnit}${n === 1 ? '' : 's'}` : 'damage')
+  const localizedCounterUnit = counterUnit === '+1/+1 counter' ? t('decisions.plusOneCounter') : counterUnit
+  const unitLabel = (n: number) => counterUnit
+    ? t(n === 1 ? 'decisions.counterUnitSingular' : 'decisions.counterUnitPlural', { unit: localizedCounterUnit })
+    : t('decisions.damage')
 
   if (minimized) {
     return (
@@ -65,14 +70,16 @@ export function DamageDistributionModal() {
           pointerEvents: 'auto',
         }}
       >
-        {counterUnit ? 'Return to Counter Distribution' : 'Return to Damage Distribution'}
+        {counterUnit ? t('decisions.returnToCounterDistribution') : t('decisions.returnToDamageDistribution')}
       </button>
     )
   }
 
   const { cardName, targetIds, totalDamage, minPerTarget, distribution } = damageDistributionState
   // An activated ability (Chandra, Flameshaper's −4; Huatli, Warrior Poet's −X) is activated, not cast.
-  const confirmLabel = damageDistributionState.action.type === 'ActivateAbility' ? 'Activate' : 'Cast Spell'
+  const confirmLabel = damageDistributionState.action.type === 'ActivateAbility'
+    ? t('decisions.activate')
+    : t('decisions.castSpell')
 
   // Calculate remaining amount to distribute
   const totalAllocated = Object.values(distribution).reduce((sum, val) => sum + val, 0)
@@ -98,7 +105,7 @@ export function DamageDistributionModal() {
     const card = gameState?.cards[targetId]
     return {
       id: targetId,
-      name: card?.name ?? 'Unknown',
+      name: card?.name ?? t('common.unknownCard'),
       imageUri: card?.imageUri,
       power: card?.power,
       toughness: card?.toughness,
@@ -170,8 +177,8 @@ export function DamageDistributionModal() {
           }}
         >
           {counterUnit
-            ? `Distribute ${totalDamage} ${unitLabel(totalDamage)} among ${targetIds.length} targets`
-            : `Divide ${totalDamage} damage among ${targetIds.length} targets`}
+            ? t('decisions.distributeAmongTargets', { amount: totalDamage, unit: unitLabel(totalDamage), count: targetIds.length })
+              : t('decisions.divideDamageAmongTargets', { amount: totalDamage, count: targetIds.length })}
         </p>
       </div>
 
@@ -192,10 +199,10 @@ export function DamageDistributionModal() {
           }}
         >
           {remaining === 0 ? (
-            counterUnit ? 'All counters allocated' : 'All damage allocated'
+            counterUnit ? t('decisions.allCountersAllocated') : t('decisions.allDamageAllocated')
           ) : (
             <>
-              Remaining: <span style={{ color: '#f87171' }}>{remaining}</span> {unitLabel(remaining)}
+              {t('decisions.remaining')}: <span style={{ color: '#f87171' }}>{remaining}</span> {unitLabel(remaining)}
             </>
           )}
         </span>
@@ -263,7 +270,7 @@ export function DamageDistributionModal() {
                       {card.name}
                     </span>
                     <span style={{ color: '#888', fontSize: responsive.fontSize.small }}>
-                      Life: {card.lifeTotal}
+                      {t('decisions.lifeTotal', { count: card.lifeTotal })}
                     </span>
                   </div>
                 ) : (
@@ -318,7 +325,7 @@ export function DamageDistributionModal() {
                       letterSpacing: '0.5px',
                     }}
                   >
-                    Lethal
+                    {t('decisions.lethal')}
                   </div>
                 )}
 
@@ -381,7 +388,7 @@ export function DamageDistributionModal() {
                       marginTop: 2,
                     }}
                   >
-                    {allocated} damage / {remainingToughness} toughness
+                    {t('decisions.damageOverToughness', { damage: allocated, toughness: remainingToughness })}
                   </span>
                 )}
               </div>
@@ -396,6 +403,7 @@ export function DamageDistributionModal() {
               >
                 <button
                   onClick={() => handleDecrease(card.id)}
+                  aria-label={t('decisions.decreaseDamageFor', { target: card.name })}
                   disabled={allocated <= minPerTarget}
                   style={{
                     width: 36,
@@ -429,6 +437,7 @@ export function DamageDistributionModal() {
 
                 <button
                   onClick={() => handleIncrease(card.id)}
+                  aria-label={t('decisions.increaseDamageFor', { target: card.name })}
                   disabled={remaining <= 0}
                   style={{
                     width: 36,
@@ -468,10 +477,11 @@ export function DamageDistributionModal() {
             fontWeight: 500,
           }}
         >
-          Cancel
+          {t('common.cancel')}
         </button>
         <button
           onClick={() => setMinimized(true)}
+          aria-label={t('decisions.viewBattlefield')}
           style={{
             padding: responsive.isMobile ? '12px 24px' : '16px 32px',
             fontSize: responsive.fontSize.normal,
@@ -483,7 +493,7 @@ export function DamageDistributionModal() {
             fontWeight: 600,
           }}
         >
-          View Battlefield
+          {t('decisions.viewBattlefield')}
         </button>
         <button
           onClick={() => confirmDamageDistribution(interactionEpoch)}
