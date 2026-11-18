@@ -1043,6 +1043,15 @@ data class GameState(
             }
         }
 
+    /** Seats and encounter sides eligible to receive priority within the active player's influence. */
+    val otariaPriorityParticipants: List<EntityId>
+        get() {
+            if (otaria == null) return priorityParticipants
+            return priorityParticipants.filter {
+                com.wingedsheep.engine.otaria.OtariaRange.isInPriorityInfluence(this, it)
+            }
+        }
+
     /**
      * [activePlayers] rotated into **APNAP order** (CR 101.4): the active player first, then the
      * remaining players in turn order starting from the one after them. This is the order in which
@@ -1839,7 +1848,9 @@ data class GameState(
      * left the game (CR 800.4a) never receive priority, so they are excluded — checking
      * against the full [turnOrder] would deadlock a multiplayer game once a player leaves.
      */
-    fun allPlayersPassed(): Boolean = priorityPassedBy.containsAll(priorityParticipants)
+    fun allPlayersPassed(): Boolean = priorityPassedBy.containsAll(
+        if (otaria != null) otariaPriorityParticipants else priorityParticipants
+    )
 
     /**
      * Check if the engine is paused awaiting a decision.
@@ -1958,8 +1969,8 @@ data class GameState(
      * reaches here when [allPlayersPassed] is false, so a seat that still owes a pass exists.
      */
     fun nextUnpassedPriorityAfter(afterPlayer: EntityId): EntityId {
-        if (otaria?.encounters?.isNotEmpty() == true) {
-            val participants = priorityParticipants
+        if (otaria != null) {
+            val participants = otariaPriorityParticipants
             val start = participants.indexOf(afterPlayer)
             for (step in 1..participants.size) {
                 val candidate = participants[((start + step) % participants.size + participants.size) % participants.size]

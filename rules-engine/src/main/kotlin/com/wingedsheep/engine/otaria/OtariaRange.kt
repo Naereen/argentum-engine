@@ -19,6 +19,20 @@ import com.wingedsheep.sdk.scripting.targets.TargetRequirement
 internal object OtariaRange {
     private const val OPPONENT_REACH = 2L
 
+    private const val PRIORITY_INFLUENCE_REACH = 2L
+
+    /** Whether [participant] is within the active player's Otaria range of influence. */
+    fun isInPriorityInfluence(state: GameState, participant: EntityId): Boolean {
+        val mode = state.otaria ?: return true
+        val source = mode.players[state.activePlayerId]?.position
+            ?: mode.encounters[state.activePlayerId]?.position
+            ?: return false
+        val destination = mode.players[participant]?.position
+            ?: mode.encounters[participant]?.position
+            ?: return false
+        return OtariaBoard.distance(source, destination) <= PRIORITY_INFLUENCE_REACH
+    }
+
     fun betweenControllers(state: GameState, sourceController: EntityId?, targetController: EntityId?): Boolean {
         val mode = state.otaria ?: return true
         val source = mode.players[sourceController]?.position ?: mode.encounters[sourceController]?.position ?: return false

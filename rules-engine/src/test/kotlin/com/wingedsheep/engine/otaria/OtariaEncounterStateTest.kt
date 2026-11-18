@@ -123,6 +123,27 @@ class OtariaEncounterStateTest : FunSpec({
         afterEncounter.state.activePlayers shouldBe players
     }
 
+    test("priority skips seats and encounters outside the active player's influence") {
+        val initial = state()
+        val mode = requireNotNull(initial.otaria)
+        val far = OtariaPosition(10, 11)
+        (OtariaBoard.distance(mode.players.getValue(explorer).position, far) <= 2L) shouldBe false
+        val withFarSeat = initial.copy(otaria = mode.copy(
+            players = mode.players + (players[2] to mode.players.getValue(players[2]).copy(position = far)),
+        ))
+        withFarSeat.priorityParticipants shouldBe listOf(explorer, actor, players[1], players[2])
+        withFarSeat.otariaPriorityParticipants shouldBe listOf(explorer, actor, players[1])
+
+        val passedExplorer = withFarSeat.withPriorityPassed(explorer)
+        passedExplorer.nextPriorityAfterPass(explorer) shouldBe actor
+        val passedEncounter = passedExplorer.withPriorityPassed(actor)
+        passedEncounter.nextPriorityAfterPass(actor) shouldBe players[1]
+
+        val allInRangePassed = passedEncounter
+            .withPriorityPassed(players[1])
+        allInRangePassed.allPlayersPassed() shouldBe true
+    }
+
     test("an encounter's triggers are retained in active-player order") {
         val current = state()
         val evaluator = PredicateEvaluator(registry)
