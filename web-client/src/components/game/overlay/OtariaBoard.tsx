@@ -4,6 +4,7 @@ import { Color } from '@/types'
 import type { ClientGameState, ClientOtariaReserveCard, ClientOtariaState, EntityId, OtariaLocation, OtariaPosition } from '@/types'
 import styles from './OtariaBoard.module.css'
 import { useTranslation } from 'react-i18next'
+import { DeckCardBody } from '@/components/deck/GameDeckView'
 
 const terrainColors: Record<Color, string> = {
   [Color.WHITE]: '#d8c99e',
@@ -17,16 +18,38 @@ const terrainOrder = [Color.GREEN, Color.RED, Color.BLACK, Color.BLUE, Color.WHI
 
 function ReserveCards({ cards }: { cards: readonly ClientOtariaReserveCard[] }) {
   const { t } = useTranslation()
+  const deckCards = cards.reduce<Array<{
+    cardName: string
+    copies: number
+    cmc: number
+    cardTypes: string[]
+    colors: string[]
+    imageUri: string | null
+  }>>((result, card) => {
+    const existing = result.find((candidate) => candidate.cardName === card.name)
+    if (existing) {
+      existing.copies += 1
+      return result
+    }
+    const cardTypes = card.cardTypes ?? (() => {
+      const upper = card.typeLine.toUpperCase()
+      return ['CREATURE', 'PLANESWALKER', 'INSTANT', 'SORCERY', 'ARTIFACT', 'ENCHANTMENT', 'LAND']
+        .filter((type) => upper.includes(type))
+    })()
+    result.push({
+      cardName: card.name,
+      copies: 1,
+      cmc: card.cmc ?? 0,
+      cardTypes: [...cardTypes],
+      colors: [...(card.colors ?? [])],
+      imageUri: card.imageUri ?? null,
+    })
+    return result
+  }, [])
   return (
     <>
       {cards.length === 0 && <p className={styles.muted}>{t('otaria.noCardsReserve')}</p>}
-      {cards.map((card) => (
-        <details key={card.id} className={styles.reserveCard}>
-          <summary><span>{card.name}</span><span>{card.manaCost}</span></summary>
-          <p className={styles.muted}>{card.typeLine}</p>
-          {card.oracleText && <p>{card.oracleText}</p>}
-        </details>
-      ))}
+      {cards.length > 0 && <DeckCardBody cards={deckCards} emptyLabel={t('otaria.noCardsReserve')} />}
     </>
   )
 }

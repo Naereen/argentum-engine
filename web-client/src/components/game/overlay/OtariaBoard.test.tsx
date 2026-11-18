@@ -179,6 +179,8 @@ describe('Otaria board', () => {
     expect(html).toContain('1 / 4')
     expect(html).toContain('Your private reserve')
     expect(html).toContain('Mirari')
+    expect(html).toContain('Artifacts')
+    expect(html).toContain('CMC 5: 1')
     expect(html).toContain('Cabal City')
     expect(html).toContain('scrap: ')
     expect(html).toContain('Face-down creature')

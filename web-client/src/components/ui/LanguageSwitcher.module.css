@@ -13,9 +13,16 @@
 
 .fixed {
   position: fixed;
-  top: 64px;
-  right: 12px;
+  top: 12px;
+  right: 104px;
   z-index: 1500;
+}
+
+@media (max-width: 639px) {
+  .fixed {
+    top: 8px;
+    right: 96px;
+  }
 }
 
 .label {

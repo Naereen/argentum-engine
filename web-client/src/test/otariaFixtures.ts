@@ -18,7 +18,16 @@ export function otariaBoard(): ClientOtariaState {
         playerId: otariaViewer, startingLocation: 'KROSIAN_FOREST', position: { column: 6, row: 5 },
         reserveCount: 1,
         privateData: {
-          reserve: [{ id: entityId('secret-mirari'), name: 'Mirari', manaCost: '{5}', typeLine: 'Legendary Artifact', oracleText: 'An artifact.' }],
+          reserve: [{
+            id: entityId('secret-mirari'),
+            name: 'Mirari',
+            manaCost: '{5}',
+            typeLine: 'Legendary Artifact',
+            oracleText: 'An artifact.',
+            cmc: 5,
+            cardTypes: ['ARTIFACT'],
+            colors: [],
+          }],
           locationCards: ['CABAL_CITY'],
           treasureTokens: { SCRAP: 1 },
         },

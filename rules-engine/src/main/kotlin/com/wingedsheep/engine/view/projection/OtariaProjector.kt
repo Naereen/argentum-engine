@@ -43,6 +43,9 @@ internal class OtariaProjector(private val cardRegistry: CardRegistry) {
                             typeLine = card.typeLine.toString(),
                             oracleText = card.oracleText,
                             imageUri = card.imageUri,
+                            cmc = card.manaCost.cmc,
+                            cardTypes = card.typeLine.cardTypes.map { it.name },
+                            colors = card.colors.map { it.name },
                         )
                     },
                     locationCards = player.locationCards,

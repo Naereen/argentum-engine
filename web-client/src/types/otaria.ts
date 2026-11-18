@@ -29,6 +29,9 @@ export interface ClientOtariaReserveCard {
   readonly typeLine: string
   readonly oracleText: string
   readonly imageUri?: string | null
+  readonly cmc?: number
+  readonly cardTypes?: readonly string[]
+  readonly colors?: readonly string[]
 }
 
 export interface ClientOtariaPlayer {

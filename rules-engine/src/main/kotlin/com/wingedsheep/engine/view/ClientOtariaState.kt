@@ -78,6 +78,9 @@ data class ClientOtariaReserveCard(
     val typeLine: String,
     val oracleText: String,
     val imageUri: String? = null,
+    val cmc: Int,
+    val cardTypes: List<String>,
+    val colors: List<String>,
 )
 
 @Serializable
