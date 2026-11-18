@@ -1966,7 +1966,27 @@
     "matchScore": "Match {{yourWins}}–{{opponentWins}} · Game {{nextGame}} next",
     "matchDrawn": "Match drawn",
     "matchWon": "You won the match",
-    "matchLost": "You lost the match"
+    "matchLost": "You lost the match",
+    "matchResult": "{{result}} {{yourWins}}–{{opponentWins}}",
+    "reason": {
+      "effectMadeDraw": "An effect made the game a draw. Nobody won.",
+      "bothPlayersLost": "Both players lost simultaneously.",
+      "remainingPlayersLost": "The remaining players lost simultaneously.",
+      "mirari": "Mirari was revealed at its matching location.",
+      "lastPlayerStanding": "You are the last player standing.",
+      "lastTeamStanding": "Your team is the last one standing.",
+      "opponentLifeZero": "Your opponent's life total reached zero.",
+      "opponentDeckOut": "Your opponent had no cards left to draw.",
+      "opponentConceded": "Your opponent conceded the game.",
+      "opponentPoisoned": "Your opponent received ten poison counters.",
+      "opponentDisconnected": "Your opponent disconnected.",
+      "yourLifeZero": "Your life total reached zero.",
+      "yourDeckOut": "You had no cards left to draw.",
+      "youConceded": "You conceded the game.",
+      "youPoisoned": "You received ten poison counters.",
+      "youDisconnected": "You disconnected from the game.",
+      "ended": "The game has ended."
+    }
   },
   "mulligan": {
     "returnToCardSelection": "Return to card selection",

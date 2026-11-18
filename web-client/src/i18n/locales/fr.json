@@ -1966,7 +1966,27 @@
     "matchScore": "Match {{yourWins}}–{{opponentWins}} · prochaine partie : {{nextGame}}",
     "matchDrawn": "Match nul",
     "matchWon": "Vous avez gagné le match",
-    "matchLost": "Vous avez perdu le match"
+    "matchLost": "Vous avez perdu le match",
+    "matchResult": "{{result}} {{yourWins}}–{{opponentWins}}",
+    "reason": {
+      "effectMadeDraw": "Un effet a provoqué une égalité. Personne n'a gagné.",
+      "bothPlayersLost": "Les deux joueurs ont perdu simultanément.",
+      "remainingPlayersLost": "Les joueurs restants ont perdu simultanément.",
+      "mirari": "Le Mirari a été révélé à l'emplacement correspondant.",
+      "lastPlayerStanding": "Vous êtes le dernier joueur en lice.",
+      "lastTeamStanding": "Votre équipe est la dernière en lice.",
+      "opponentLifeZero": "Le total de points de vie de votre adversaire est tombé à zéro.",
+      "opponentDeckOut": "Votre adversaire n'avait plus de carte à piocher.",
+      "opponentConceded": "Votre adversaire a concédé la partie.",
+      "opponentPoisoned": "Votre adversaire a reçu dix marqueurs « poison ».",
+      "opponentDisconnected": "Votre adversaire s'est déconnecté.",
+      "yourLifeZero": "Votre total de points de vie est tombé à zéro.",
+      "yourDeckOut": "Vous n'aviez plus de carte à piocher.",
+      "youConceded": "Vous avez concédé la partie.",
+      "youPoisoned": "Vous avez reçu dix marqueurs « poison ».",
+      "youDisconnected": "Vous vous êtes déconnecté de la partie.",
+      "ended": "La partie est terminée."
+    }
   },
   "mulligan": {
     "returnToCardSelection": "Revenir au choix des cartes",

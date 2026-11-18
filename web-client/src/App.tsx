@@ -27,6 +27,8 @@ import { AnteResultPanel } from './components/ante/AnteResultPanel'
 import { trackPageView } from './utils/analytics'
 import { randomBackground } from './utils/background'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { useGameStore } from './store/gameStore'
 import { useConnectName } from './store/useConnectName'
 import { useRematch } from '@/components/lobby/useRematch'
@@ -510,6 +512,7 @@ export default function App() {
  * Game over and error overlays.
  */
 function GameOverlay() {
+  const { t } = useTranslation()
   const gameOverState = useGameStore((state) => state.gameOverState)
   const lastError = useGameStore((state) => state.lastError)
   const clearError = useGameStore((state) => state.clearError)
@@ -530,7 +533,7 @@ function GameOverlay() {
   // A tournament best-of-three: where the match stands after this game.
   const betweenGames = useGameStore((state) => state.tournamentState?.betweenGames ?? null)
   const lastMatchScore = useGameStore((state) => state.tournamentState?.lastMatchScore ?? null)
-  const matchStanding = describeMatchStanding(betweenGames, lastMatchScore)
+  const matchStanding = describeMatchStanding(betweenGames, lastMatchScore, t)
   const submitMatchDeck = useGameStore((state) => state.submitMatchDeck)
   // Ready for the next game with the deck that just played. Leaving the board first lands on the
   // sideboarding screen in its waiting state, where Keep editing still takes the Ready back.
@@ -546,9 +549,9 @@ function GameOverlay() {
 
   if (gameOverState) {
     // Use custom message if provided, otherwise fall back to standard reason
-    const reasonText = gameOverState.message || formatGameOverReason(gameOverState.reason, gameOverState.result, table)
+    const reasonText = gameOverState.message || formatGameOverReason(gameOverState.reason, gameOverState.result, table, t)
     const title =
-      gameOverState.result === 'win' ? 'Victory!' : gameOverState.result === 'draw' ? 'Draw' : 'Defeat'
+      gameOverState.result === 'win' ? t('game.victory') : gameOverState.result === 'draw' ? t('game.draw') : t('game.defeat')
     const showReplay = gameOverState.gameId != null
     const watchReplay = () => {
       returnToMenu()
@@ -559,7 +562,7 @@ function GameOverlay() {
     return (
       <div className={`${overlay.scrim} ${overlay.scrimResult}`} role="dialog" aria-modal="true" aria-labelledby="game-over-title">
         <div className={overlay.card} data-result={gameOverState.result}>
-          <p className={overlay.eyebrow}>Game over</p>
+          <p className={overlay.eyebrow}>{t('game.gameOver')}</p>
           <h1 id="game-over-title" className={overlay.title}>{title}</h1>
           <p className={overlay.reason}>{reasonText}</p>
           {matchStanding && <p className={overlay.matchLine} data-testid="game-over-match">{matchStanding}</p>}
@@ -583,34 +586,34 @@ function GameOverlay() {
               <NextGameActions snapshot={betweenGames} onReady={readyWithSameDeck} />
             ) : postGame ? null : rematch ? (
               <button type="button" onClick={rematch.play} className={overlay.primary} data-testid="game-over-play-again">
-                Play Again
+                {t('game.playAgain')}
               </button>
             ) : (
               <button type="button" onClick={returnToMenu} className={overlay.primary}>
-                Return to Menu
+                {t('game.returnToMenu')}
               </button>
             )}
             <div className={overlay.secondaryRow}>
               {betweenGames?.canSideboard && !betweenGames.youAreReady && (
                 <button type="button" onClick={returnToMenu} className={overlay.secondary} data-testid="game-over-sideboard">
-                  Sideboard first
+                  {t('game.sideboardFirst')}
                 </button>
               )}
               {/* Eliminated from a multiplayer game that plays on: offer to stay and
                   spectate the rest of it (board overview, action UI hidden). */}
               {gameOverState.eliminated && (
                 <button type="button" onClick={enterEliminatedSpectate} className={overlay.secondary}>
-                  Keep Watching
+                  {t('game.keepWatching')}
                 </button>
               )}
               {(rematch || postGame) && (
                 <button type="button" onClick={returnToMenu} className={overlay.secondary}>
-                  Return to Menu
+                  {t('game.returnToMenu')}
                 </button>
               )}
               {showReplay && (
                 <button type="button" onClick={watchReplay} className={overlay.secondary}>
-                  Watch Replay
+                  {t('game.watchReplay')}
                 </button>
               )}
             </div>
@@ -624,7 +627,7 @@ function GameOverlay() {
     return (
       <div className={overlay.toast} role="alert">
         <span>{lastError.message}</span>
-        <button type="button" onClick={clearError} className={overlay.toastClose} aria-label="Dismiss">
+        <button type="button" onClick={clearError} className={overlay.toastClose} aria-label={t('common.dismiss')}>
           ×
         </button>
       </div>
@@ -642,21 +645,35 @@ function GameOverlay() {
 function describeMatchStanding(
   between: BetweenGamesMessage | null,
   last: LastMatchScore | null,
+  t: TFunction,
 ): string | null {
-  if (between) return `Match ${between.yourGameWins}–${between.opponentGameWins} · Game ${between.nextGameNumber} next`
+  if (between) return t('game.matchScore', {
+    yourWins: between.yourGameWins,
+    opponentWins: between.opponentGameWins,
+    nextGame: between.nextGameNumber,
+  })
   if (!last) return null
-  const verdict = last.result === 'DRAW' ? 'Match drawn' : last.result === 'WIN' ? 'You won the match' : 'You lost the match'
-  return `${verdict} ${last.yourGameWins}–${last.opponentGameWins}`
+  const result = last.result === 'DRAW'
+    ? t('game.matchDrawn')
+    : last.result === 'WIN'
+      ? t('game.matchWon')
+      : t('game.matchLost')
+  return t('game.matchResult', {
+    result,
+    yourWins: last.yourGameWins,
+    opponentWins: last.opponentGameWins,
+  })
 }
 
 function WaitingForMulliganOverlay() {
+  const { t } = useTranslation()
   return (
     <div className={`${overlay.scrim} ${overlay.scrimFixed}`}>
       <StandaloneConcedeButton />
       <div className={overlay.card}>
         <div className={overlay.spinner} aria-hidden />
-        <h2 className={overlay.waitTitle}>Waiting for your opponent</h2>
-        <p className={overlay.waitText}>They're choosing their opening hand.</p>
+        <h2 className={overlay.waitTitle}>{t('game.waitingForOpponent')}</h2>
+        <p className={overlay.waitText}>{t('game.choosingOpeningHand')}</p>
       </div>
     </div>
   )
