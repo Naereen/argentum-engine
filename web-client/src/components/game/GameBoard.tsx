@@ -811,6 +811,57 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
   const distributeRemaining = distributeState ? distributeState.totalAmount - distributeTotalAllocated : 0
   const isInCounterDistMode = !spectatorMode && counterDistributionState !== null
   const isInManaSelectionMode = !spectatorMode && manaSelectionState !== null
+  const passEnabled = canAct && !isHijacked && !isInCombatMode && !isInDistributeMode &&
+    !isInCounterDistMode && !isInManaSelectionMode && !delveSelectionState &&
+    !tapForPowerSelectionState && !targetingState && !pipelineState
+
+  const submitPassPriority = useCallback(() => {
+    if (!passEnabled) return
+    const fallbackPlayerId = viewingPlayer?.playerId ?? gameState.priorityPlayerId
+    if (!fallbackPlayerId) return
+    submitAction(offeredPassAction ?? {
+      type: 'PassPriority',
+      // In hotseat, pass for whichever seat currently holds priority. During a
+      // Mindslaver-style hijack, pass for the controlled opponent (whose priority
+      // window this is), not our own seat.
+      playerId: hotseat
+        ? (gameState.priorityPlayerId ?? fallbackPlayerId)
+        : (youAreHijacking != null && gameState.priorityPlayerId === youAreHijacking
+          ? youAreHijacking
+          : fallbackPlayerId),
+    }, interactionEpoch)
+  }, [
+    passEnabled,
+    submitAction,
+    offeredPassAction,
+    interactionEpoch,
+    hotseat,
+    gameState.priorityPlayerId,
+    viewingPlayer?.playerId,
+    youAreHijacking,
+    playerId,
+  ])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.repeat || event.altKey || event.ctrlKey ||
+        event.metaKey || event.shiftKey || (event.key !== ' ' && event.code !== 'Space')) return
+
+      const target = event.target
+      if (target instanceof HTMLElement) {
+        const interactive = target.closest(
+          'input, textarea, select, button, a, [role="button"], [role="textbox"], [contenteditable="true"]',
+        )
+        if (interactive || target.isContentEditable) return
+      }
+
+      event.preventDefault()
+      submitPassPriority()
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [submitPassPriority])
 
   // Attack restriction ("can only attack left/right", 2HG, …): during declare-attackers,
   // some living non-ally opponent is not a legal attack target. Drives the explainer
@@ -1788,7 +1839,6 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
           pass button and the icon row above it end up exactly the same width; the row's intrinsic
           width wins whenever the priority-mode label ("Full Control") makes it the wider of the two. */}
       {!spectatorMode && !isEliminatedSpectator && viewingPlayer && !isInManaSelectionMode && !isInCounterDistMode && !isInDistributeMode && (() => {
-        const passEnabled = canAct && !isHijacked && !isInCombatMode && !isInDistributeMode && !isInCounterDistMode && !isInManaSelectionMode && !delveSelectionState && !tapForPowerSelectionState && !targetingState && !pipelineState
         return (
           <div style={{
             position: 'fixed',
@@ -1893,19 +1943,9 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
             <button
               data-learn="pass"
               disabled={!passEnabled}
-              onClick={() => {
-                submitAction(offeredPassAction ?? {
-                  type: 'PassPriority',
-                  // In hotseat, pass for whichever seat currently holds priority. During a
-                  // Mindslaver-style hijack, pass for the controlled opponent (whose priority
-                  // window this is), not our own seat.
-                  playerId: hotseat
-                    ? (gameState.priorityPlayerId ?? viewingPlayer.playerId)
-                    : (youAreHijacking != null && gameState.priorityPlayerId === youAreHijacking
-                      ? youAreHijacking
-                      : viewingPlayer.playerId),
-                }, interactionEpoch)
-              }}
+              aria-keyshortcuts="Space"
+              title={`${getPassButtonLabel()} (Space)`}
+              onClick={submitPassPriority}
               style={{
                 ...styles.floatingBarButton,
                 ...(passEnabled ? getPassButtonStyle() : {}),
