@@ -1,6 +1,7 @@
 package com.wingedsheep.gameserver.otaria
 
 import com.wingedsheep.engine.registry.CardRegistry
+import com.wingedsheep.engine.registry.PrintingRegistry
 import com.wingedsheep.engine.state.ZoneKey
 import com.wingedsheep.engine.state.components.identity.LifeTotalComponent
 import com.wingedsheep.gameserver.ai.AiGameManager
@@ -47,6 +48,7 @@ class OtariaPlaytestTest(
     @param:Autowired private val sessions: SessionRegistry,
     @param:Autowired private val ai: AiGameManager,
     @param:Autowired private val playtest: OtariaPlaytestService,
+    @param:Autowired private val printings: PrintingRegistry,
     @param:LocalServerPort private val port: Int,
 ) : FunSpec({
     val http = HttpClient.newHttpClient()
@@ -83,7 +85,7 @@ class OtariaPlaytestTest(
     }
 
     test("random selection is seeded, color constrained and covers every category including Other") {
-        val packs = OtariaStartingPacks(cards)
+        val packs = OtariaStartingPacks(cards, printings)
         val first = Random(21)
         val second = Random(21)
         List(100) { packs.choose(null, null, first).id } shouldBe
@@ -100,20 +102,30 @@ class OtariaPlaytestTest(
     }
 
     test("every exact booster initializes with its published card multiset and the declared starting lands") {
+        val packs = OtariaStartingPacks(cards, printings)
         for (deck in playtest.options().decks) {
             val result = playtest.initialize(OtariaPlaytestRequest(boosterId = deck.id, seed = 41))
             val id = result.playerIds.first()
             val battlefield = result.state.getZone(ZoneKey(id, Zone.BATTLEFIELD))
             battlefield.map { result.state.getEntity(it)?.get<CardComponent>()?.name } shouldBe deck.startingLands
-            val all = listOf(Zone.HAND, Zone.LIBRARY, Zone.BATTLEFIELD)
+            val components = listOf(Zone.HAND, Zone.LIBRARY, Zone.BATTLEFIELD)
                 .flatMap { result.state.getZone(ZoneKey(id, it)) }
-                .map { requireNotNull(result.state.getEntity(it)?.get<CardComponent>()).name }
-                .groupingBy { it }.eachCount()
+                .map { requireNotNull(result.state.getEntity(it)?.get<CardComponent>()) }
             val expected = deck.cards.toMutableMap()
             if (deck.startingLandSource == OtariaStartingLandSource.SEPARATE_STOCK) {
                 deck.startingLands.forEach { expected[it] = (expected[it] ?: 0) + 1 }
             }
-            withClue(deck.id) { all shouldBe expected }
+            withClue(deck.id) {
+                components.map { it.name }.groupingBy { it }.eachCount() shouldBe expected
+                val pack = packs.decks.single { it.id == deck.id }
+                for (entry in (pack.cardEntries + pack.startingLandEntries).filter { it.printing != null }) {
+                    val printing = printings.getPrinting(requireNotNull(entry.printing))
+                    withClue("${deck.id}: ${entry.name}") {
+                        printing?.setCode shouldBe deck.setCode
+                        components.any { it.name == entry.name && it.imageUri == printing?.imageUri } shouldBe true
+                    }
+                }
+            }
         }
     }
 
