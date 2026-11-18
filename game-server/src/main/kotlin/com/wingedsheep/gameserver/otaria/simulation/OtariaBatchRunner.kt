@@ -119,7 +119,7 @@ class OtariaBatchRunner(
         progress(config, "Match $label starting: seed=$seed, players=${config.players}")
         try {
             val random = Random(seed)
-            val packs = OtariaStartingPacks(cards)
+            val packs = OtariaStartingPacks(cards, printings)
             val selections = (0 until config.players).map { index ->
                 val setup = config.seats.getOrNull(index) ?: OtariaSimulationSeat()
                 require(setup.cards == null || setup.boosterId == null) { "Choose cards or boosterId, not both" }
@@ -132,8 +132,14 @@ class OtariaBatchRunner(
                 val source = pack?.startingLandSource ?: OtariaStartingLandSource.valueOf(setup.startingLandSource)
                 val id = EntityId("otaria-ai-${index + 1}")
                 OtariaStartingPlayer(
-                    PlayerConfig("Otaria AI ${index + 1}", Deck(names), playerId = id),
-                    lands.map { CardEntry(it) }, kind, source,
+                    PlayerConfig(
+                        "Otaria AI ${index + 1}",
+                        Deck(names, cardEntries = pack?.cardEntries ?: names.map { CardEntry(it) }),
+                        playerId = id,
+                    ),
+                    if (pack != null) pack.startingLandEntries else lands.map { CardEntry(it) },
+                    kind,
+                    source,
                 ) to pack?.id
             }
             val services = EngineServices(cards, printings)

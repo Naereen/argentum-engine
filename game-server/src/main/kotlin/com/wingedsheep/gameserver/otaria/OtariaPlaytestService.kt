@@ -91,7 +91,7 @@ class OtariaPlaytestService(
     private val ai: AiGameManager,
     private val sessions: ScenarioSessionFactory,
 ) {
-    private val startingPacks by lazy { OtariaStartingPacks(cards) }
+    private val startingPacks by lazy { OtariaStartingPacks(cards, printings) }
     private val lobbies = ConcurrentHashMap<String, OtariaLobby>()
 
     private data class OtariaLobby(
@@ -267,10 +267,13 @@ class OtariaPlaytestService(
             OtariaStartingPlayer(
                 PlayerConfig(
                     name = if (index == 0) name else "Otaria AI $index",
-                    deck = Deck(deck.cards.flatMap { (card, count) -> List(count) { card } }),
+                    deck = Deck(
+                        deck.cards.flatMap { (card, count) -> List(count) { card } },
+                        cardEntries = deck.cardEntries,
+                    ),
                     playerId = com.wingedsheep.sdk.model.EntityId("otaria-${UUID.randomUUID()}"),
                 ),
-                startingBasicLands = deck.startingLands.map { CardEntry(it) },
+                startingBasicLands = deck.startingLandEntries,
                 deckKind = OtariaStartingDeckKind.JUMPSTART,
                 startingLandSource = deck.startingLandSource,
             )
@@ -289,10 +292,13 @@ class OtariaPlaytestService(
             OtariaStartingPlayer(
                 PlayerConfig(
                     name = member?.name ?: "Otaria AI ${index + 1}",
-                    deck = Deck(deck.cards.flatMap { (card, count) -> List(count) { card } }),
+                    deck = Deck(
+                        deck.cards.flatMap { (card, count) -> List(count) { card } },
+                        cardEntries = deck.cardEntries,
+                    ),
                     playerId = EntityId("otaria-${UUID.randomUUID()}"),
                 ),
-                startingBasicLands = deck.startingLands.map { CardEntry(it) },
+                startingBasicLands = deck.startingLandEntries,
                 deckKind = OtariaStartingDeckKind.JUMPSTART,
                 startingLandSource = deck.startingLandSource,
             )

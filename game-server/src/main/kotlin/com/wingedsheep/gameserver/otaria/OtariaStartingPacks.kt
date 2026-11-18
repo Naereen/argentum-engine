@@ -2,7 +2,10 @@ package com.wingedsheep.gameserver.otaria
 
 import com.wingedsheep.engine.otaria.OtariaStartingLandSource
 import com.wingedsheep.engine.registry.CardRegistry
+import com.wingedsheep.engine.registry.PrintingRegistry
 import com.wingedsheep.gameserver.jumpstart.JumpstartPacks
+import com.wingedsheep.sdk.model.CardEntry
+import com.wingedsheep.sdk.model.Printing
 import kotlin.random.Random
 
 enum class OtariaStartingColor {
@@ -15,12 +18,17 @@ data class OtariaPlaytestDeck(
     val theme: String,
     val color: OtariaStartingColor,
     val cards: Map<String, Int>,
+    val cardEntries: List<CardEntry>,
     val startingLands: List<String>,
+    val startingLandEntries: List<CardEntry>,
     val startingLandSource: OtariaStartingLandSource,
 )
 
 /** Reuses the published paper packs, never the exploration supplies or generated substitutes. */
-internal class OtariaStartingPacks(cards: CardRegistry) {
+internal class OtariaStartingPacks(
+    cards: CardRegistry,
+    private val printings: PrintingRegistry? = null,
+) {
     val decks = listOf("J22", "J25").flatMap { set ->
         JumpstartPacks.listsFor(set).map { (variant, names) ->
             val definitions = names.map(cards::requireCard)
@@ -37,17 +45,27 @@ internal class OtariaStartingPacks(cards: CardRegistry) {
                 (if (distinct.size >= 2) distinct else basics).take(2).map { it.name }
             }
             check(startingLands.size == 2) { "$set $variant needs two starting basic lands" }
+            val cardEntries = names.map { name -> CardEntry(name, matchingPrinting(set, name)?.ref) }
+            val startingLandEntries = startingLands.map { name -> CardEntry(name, matchingPrinting(set, name)?.ref) }
             OtariaPlaytestDeck(
                 id = "$set:$variant",
                 setCode = set,
                 theme = variant.substringBefore(" ("),
                 color = color,
                 cards = names.groupingBy { it }.eachCount(),
+                cardEntries = cardEntries,
                 startingLands = startingLands,
+                startingLandEntries = startingLandEntries,
                 startingLandSource = if (separateStock) OtariaStartingLandSource.SEPARATE_STOCK else OtariaStartingLandSource.DECK,
             )
         }
     }
+
+    private fun matchingPrinting(setCode: String, name: String): Printing? =
+        printings?.printingsOf(name)
+            ?.filter { it.setCode.equals(setCode, ignoreCase = true) }
+            ?.sortedWith(compareBy<Printing> { it.isAlternateFrame }.thenBy { it.collectorNumber })
+            ?.firstOrNull()
 
     fun choose(color: OtariaStartingColor?, id: String?, random: Random): OtariaPlaytestDeck {
         if (id != null) {
