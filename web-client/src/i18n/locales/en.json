@@ -2898,7 +2898,45 @@
     "zoom": "Zoom in",
     "fullMap": "Full map",
     "noDestination": "No destination selected",
-    "confirmMove": "Confirm move"
+    "confirmMove": "Confirm move",
+    "turnActionPrompt": "Choose your action for this turn",
+    "turnActionLabels": {
+      "move": "Move",
+      "explore": "Explore",
+      "prepare": "Prepare",
+      "combat": "Combat"
+    },
+    "turnActionDescriptions": {
+      "move": "Move one or two spaces after your main phase.",
+      "explore": "Explore your terrain or a starred location.",
+      "prepare": "Add reserve cards to your library before drawing.",
+      "combat": "Draw, then take a combat phase."
+    },
+    "exploreChoicePrompt": "Choose what to explore",
+    "exploreChoiceLabels": {
+      "starredTakeLand": "Starred location - take a basic land",
+      "starredNoLand": "Starred location - no basic land",
+      "terrain": "{{terrain}} terrain - {{landChoice}}",
+      "takeLand": "take a basic land",
+      "noLand": "no basic land"
+    },
+    "chooseDestination": "Choose a destination",
+    "destinationLabel": "Column {{column}}, row {{row}}: {{destination}}",
+    "unknownDestination": "Unknown destination",
+    "treasureTokens": {
+      "SCRAP": "Scrap",
+      "ROCK": "Rock"
+    },
+    "couldNotLoadOtaria": "Could not load Otaria.",
+    "couldNotLoadLobby": "Could not load this Otaria lobby.",
+    "couldNotRefreshLobby": "Could not refresh the Otaria lobby.",
+    "couldNotStartOtaria": "Could not start Otaria.",
+    "couldNotJoinLobby": "Could not join this Otaria lobby.",
+    "couldNotUpdateReady": "Could not update your ready status.",
+    "couldNotStartLobby": "Could not start the Otaria game.",
+    "missingMembershipToken": "The server did not return your lobby membership token.",
+    "missingAllAiTable": "The server did not return an all-AI table. Check the server log before trying again.",
+    "missingHumanSeat": "The server did not return a human seat. Check the server log before trying again."
   },
   "cubeUi": {
     "editor": "Cube editor",

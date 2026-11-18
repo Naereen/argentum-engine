@@ -182,7 +182,7 @@ describe('Otaria board', () => {
     expect(html).toContain('Artifacts')
     expect(html).toContain('CMC 5: 1')
     expect(html).toContain('Cabal City')
-    expect(html).toContain('scrap: ')
+    expect(html).toContain('Scrap: ')
     expect(html).toContain('Face-down creature')
     expect(html).toContain('href="/help/playing#otaria-map"')
     expect(html).toContain('href="/otaria"')

@@ -2638,7 +2638,7 @@
     "aiPlayInstead": "Jouer à la place",
     "autoTapLands": "Engagement automatique des terrains",
     "manualManaTapping": "Engagement manuel du mana",
-    "pass": "Passer",
+    "pass": "Céder",
     "resolve": "Résoudre",
     "endTurn": "Fin du tour",
     "toStep": "Vers {{step}}",
@@ -2898,7 +2898,45 @@
     "zoom": "Zoom avant",
     "fullMap": "Carte complète",
     "noDestination": "Aucune destination sélectionnée",
-    "confirmMove": "Confirmer le déplacement"
+    "confirmMove": "Confirmer le déplacement",
+    "turnActionPrompt": "Choisissez votre action pour ce tour",
+    "turnActionLabels": {
+      "move": "Déplacement",
+      "explore": "Explorer",
+      "prepare": "Préparer",
+      "combat": "Combat"
+    },
+    "turnActionDescriptions": {
+      "move": "Déplacez-vous d'une ou deux cases après votre phase principale.",
+      "explore": "Explorez votre terrain ou un lieu marqué d'une étoile.",
+      "prepare": "Ajoutez des cartes de la réserve à votre bibliothèque avant de piocher.",
+      "combat": "Piochez, puis passez dans une phase de combat."
+    },
+    "exploreChoicePrompt": "Choisissez quoi explorer",
+    "exploreChoiceLabels": {
+      "starredTakeLand": "Lieu marqué d'une étoile - prendre un terrain de base",
+      "starredNoLand": "Lieu marqué d'une étoile - aucun terrain de base",
+      "terrain": "Terrain {{terrain}} - {{landChoice}}",
+      "takeLand": "prendre un terrain de base",
+      "noLand": "aucun terrain de base"
+    },
+    "chooseDestination": "Choisissez une destination",
+    "destinationLabel": "Colonne {{column}}, rangée {{row}} : {{destination}}",
+    "unknownDestination": "Destination inconnue",
+    "treasureTokens": {
+      "SCRAP": "Débris",
+      "ROCK": "Pierre"
+    },
+    "couldNotLoadOtaria": "Impossible de charger Otaria.",
+    "couldNotLoadLobby": "Impossible de charger ce salon Otaria.",
+    "couldNotRefreshLobby": "Impossible d'actualiser le salon Otaria.",
+    "couldNotStartOtaria": "Impossible de démarrer Otaria.",
+    "couldNotJoinLobby": "Impossible de rejoindre ce salon Otaria.",
+    "couldNotUpdateReady": "Impossible de mettre à jour votre état prêt.",
+    "couldNotStartLobby": "Impossible de démarrer la partie Otaria.",
+    "missingMembershipToken": "Le serveur n'a pas renvoyé votre jeton d'appartenance au salon.",
+    "missingAllAiTable": "Le serveur n'a pas renvoyé de table entièrement contrôlée par l'IA. Consultez le journal du serveur avant de réessayer.",
+    "missingHumanSeat": "Le serveur n'a pas renvoyé de place humaine. Consultez le journal du serveur avant de réessayer."
   },
   "cubeUi": {
     "editor": "Éditeur de cube",

@@ -21,7 +21,7 @@ export function ChooseOptionDecisionUI({
 }: {
   decision: ChooseOptionDecision
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   // Prefill the search box from defaultSearch only for long lists (e.g. ~280 creature types),
   // where narrowing is essential. Short lists (color words / land types) stay fully visible so
   // the player sees every option — defaultSearch still pre-selects one via initialIndex below.
@@ -64,6 +64,54 @@ export function ChooseOptionDecisionUI({
   const sourceCardName = decision.context.sourceName ?? sourceCard?.name
   const sourceCardImageUrl = sourceCard ? getCardImageUrl(sourceCard.name, sourceCard.imageUri) : undefined
 
+  const otariaTurnChoice = decision.prompt === 'Choose your action for this turn'
+    && decision.options.length === 4
+    && decision.options.every((option, index) => ['Move', 'Explore', 'Prepare', 'Combat'][index] === option)
+  const otariaExploreChoice = decision.prompt === 'Choose what to explore'
+  const prompt = otariaTurnChoice
+    ? t('otaria.turnActionPrompt')
+    : otariaExploreChoice
+      ? t('otaria.exploreChoicePrompt')
+      : decision.prompt
+  const localizedLabels = otariaTurnChoice
+    ? [
+        t('otaria.turnActionLabels.move'),
+        t('otaria.turnActionLabels.explore'),
+        t('otaria.turnActionLabels.prepare'),
+        t('otaria.turnActionLabels.combat'),
+      ]
+    : otariaExploreChoice
+      ? decision.options.map((option) => {
+          if (option === 'Starred location - take a basic land') {
+            return t('otaria.exploreChoiceLabels.starredTakeLand')
+          }
+          if (option === 'Starred location - no basic land') {
+            return t('otaria.exploreChoiceLabels.starredNoLand')
+          }
+          const terrainMatch = /^(.+) terrain - (take a basic land|no basic land)$/.exec(option)
+          if (terrainMatch) {
+            const colorKey = (terrainMatch[1] ?? '').toUpperCase()
+            const translatedTerrain = t(`otaria.colorList.${colorKey as 'WHITE' | 'BLUE' | 'BLACK' | 'RED' | 'GREEN'}`)
+            const terrain = i18n.language.startsWith('fr')
+              ? translatedTerrain.charAt(0).toLocaleLowerCase() + translatedTerrain.slice(1)
+              : translatedTerrain
+            const landChoice = terrainMatch[2] === 'take a basic land'
+              ? t('otaria.exploreChoiceLabels.takeLand')
+              : t('otaria.exploreChoiceLabels.noLand')
+            return t('otaria.exploreChoiceLabels.terrain', { terrain, landChoice })
+          }
+          return option
+        })
+    : decision.options
+  const localizedDescriptions = otariaTurnChoice
+    ? [
+        t('otaria.turnActionDescriptions.move'),
+        t('otaria.turnActionDescriptions.explore'),
+        t('otaria.turnActionDescriptions.prepare'),
+        t('otaria.turnActionDescriptions.combat'),
+      ]
+    : decision.optionMetadata?.map((metadata) => metadata.description)
+
   const hasCardIds = !!decision.optionCardIds
   // A "tiled" choice has per-option metadata with at least one icon. This is the
   // visual fork in the road for card-defined mode choices (e.g. Sieges).
@@ -73,7 +121,7 @@ export function ChooseOptionDecisionUI({
     && decision.optionMetadata!.some((m) => !!optionIcon(m.iconKey))
 
   const filteredOptions = useMemo(() => {
-    const mapped = decision.options.map((opt, i) => {
+    const mapped = localizedLabels.map((opt, i) => {
       const cardCount = decision.optionCardIds?.[i]?.length
       const label = cardCount != null ? `${opt} (${cardCount})` : opt
       return { label, index: i }
@@ -81,7 +129,7 @@ export function ChooseOptionDecisionUI({
     if (!filter) return mapped
     const lower = filter.toLowerCase()
     return mapped.filter((opt) => opt.label.toLowerCase().includes(lower))
-  }, [decision.options, decision.optionCardIds, filter])
+  }, [localizedLabels, decision.optionCardIds, filter])
 
   // Get card previews for the selected option
   const previewCards = useMemo(() => {
@@ -109,7 +157,7 @@ export function ChooseOptionDecisionUI({
         className={styles.floatingReturnButton}
         onClick={() => setMinimized(false)}
       >
-        Return to {decision.prompt}
+        {t('decisions.returnToPrompt', { prompt })}
       </button>
     )
   }
@@ -128,7 +176,7 @@ export function ChooseOptionDecisionUI({
       )}
 
       <h2 className={styles.title}>
-        {decision.prompt}
+        {prompt}
       </h2>
 
       {sourceCardName && (
@@ -153,7 +201,7 @@ export function ChooseOptionDecisionUI({
       {/* Visual tile layout for card-defined mode choices that supply icons. */}
       {useTiledLayout ? (
         <div className={styles.optionTiles}>
-          {decision.options.map((label, idx) => {
+          {localizedLabels.map((label, idx) => {
             const meta = decision.optionMetadata![idx]
             const iconUrl = optionIcon(meta?.iconKey)
             const isSelected = selectedIndex === idx
@@ -167,8 +215,10 @@ export function ChooseOptionDecisionUI({
                   <img src={iconUrl} alt="" className={styles.optionTileIcon} />
                 )}
                 <span className={styles.optionTileLabel}>{label}</span>
-                {meta?.description && (
-                  <span className={styles.optionTileDescription}>{meta.description}</span>
+                {(localizedDescriptions?.[idx] ?? meta?.description) && (
+                  <span className={styles.optionTileDescription}>
+                    {localizedDescriptions?.[idx] ?? meta?.description}
+                  </span>
                 )}
               </button>
             )
@@ -177,7 +227,7 @@ export function ChooseOptionDecisionUI({
       ) : (
         <div className={styles.optionList}>
           {filteredOptions.map((opt) => {
-            const description = decision.optionMetadata?.[opt.index]?.description
+            const description = localizedDescriptions?.[opt.index] ?? decision.optionMetadata?.[opt.index]?.description
             return (
               <button
                 key={opt.index}
@@ -242,14 +292,14 @@ export function ChooseOptionDecisionUI({
           onClick={() => setMinimized(true)}
           className={styles.viewBattlefieldButton}
         >
-          View Battlefield
+          {t('decisions.viewBattlefield')}
         </button>
         {decision.canCancel && (
           <button
             onClick={() => submitCancelDecision(decision.id)}
             className={styles.confirmButton}
           >
-            Cancel
+            {t('common.cancel')}
           </button>
         )}
         <button
@@ -257,7 +307,7 @@ export function ChooseOptionDecisionUI({
           disabled={selectedIndex === null}
           className={styles.confirmButton}
         >
-          Confirm
+          {t('common.confirm')}
         </button>
       </div>
     </div>

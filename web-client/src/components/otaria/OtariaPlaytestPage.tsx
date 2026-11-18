@@ -116,7 +116,7 @@ export function OtariaPlaytestPage() {
         const data = await readOtariaResponse(response) as OtariaPlaytestOptions
         if (!controller.signal.aborted) setOptions(data)
       } catch (cause) {
-        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Could not load Otaria.')
+        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : t('otaria.couldNotLoadOtaria'))
       } finally {
         if (!controller.signal.aborted) setLoading(false)
       }
@@ -144,7 +144,7 @@ export function OtariaPlaytestPage() {
         }
       })
       .catch((cause) => {
-        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Could not load this Otaria lobby.')
+        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : t('otaria.couldNotLoadLobby'))
       })
     return () => controller.abort()
   }, [inviteLobbyId, lobby])
@@ -171,7 +171,7 @@ export function OtariaPlaytestPage() {
           redirectWhenStarted(updated)
         }
       } catch (cause) {
-        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Could not refresh the Otaria lobby.')
+        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : t('otaria.couldNotRefreshLobby'))
       }
     }
     void refresh()
@@ -205,7 +205,7 @@ export function OtariaPlaytestPage() {
       const result = await readOtariaResponse(response)
       if (online) {
         const session = result as OtariaLobby
-        if (!session.memberToken) throw new Error('The server did not return your lobby membership token.')
+        if (!session.memberToken) throw new Error(t('otaria.missingMembershipToken'))
         sessionStorage.setItem(`otaria-lobby-${session.lobbyId}`, session.memberToken)
         setLobby(session)
         setInvitePreview(null)
@@ -218,18 +218,18 @@ export function OtariaPlaytestPage() {
       const session = result as ScenarioCreateResponse
       if (fullAi) {
         if (!session.sessionId || session.player1.token !== '(AI)' || session.player2.token !== '(AI)') {
-          throw new Error('The server did not return an all-AI table. Check the server log before trying again.')
+          throw new Error(t('otaria.missingAllAiTable'))
         }
         window.location.assign(`/?spectate=${encodeURIComponent(session.sessionId)}`)
         return
       }
       if (!session.player1.token || session.player1.token === '(AI)') {
-        throw new Error('The server did not return a human seat. Check the server log before trying again.')
+        throw new Error(t('otaria.missingHumanSeat'))
       }
       localStorage.setItem('argentum-player-name', name.trim())
       window.location.assign(`/?token=${encodeURIComponent(session.player1.token)}`)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not start Otaria.')
+      setError(cause instanceof Error ? cause.message : t('otaria.couldNotStartOtaria'))
       launching.current = false
       setStarting(false)
     }
@@ -249,14 +249,14 @@ export function OtariaPlaytestPage() {
         }),
       })
       const joined = await readOtariaResponse(response) as OtariaLobby
-      if (!joined.memberToken) throw new Error('The server did not return your lobby membership token.')
+      if (!joined.memberToken) throw new Error(t('otaria.missingMembershipToken'))
       sessionStorage.setItem(`otaria-lobby-${joined.lobbyId}`, joined.memberToken)
       setLobby(joined)
       setInvitePreview(null)
       launching.current = false
       setStarting(false)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not join this Otaria lobby.')
+      setError(cause instanceof Error ? cause.message : t('otaria.couldNotJoinLobby'))
       launching.current = false
       setStarting(false)
     }
@@ -273,7 +273,7 @@ export function OtariaPlaytestPage() {
       setLobby(await readOtariaResponse(response) as OtariaLobby)
       setError(null)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not update your ready status.')
+      setError(cause instanceof Error ? cause.message : t('otaria.couldNotUpdateReady'))
     }
   }
 
@@ -290,7 +290,7 @@ export function OtariaPlaytestPage() {
       setLobby(started)
       redirectWhenStarted(started)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not start the Otaria game.')
+      setError(cause instanceof Error ? cause.message : t('otaria.couldNotStartLobby'))
       setStarting(false)
     }
   }

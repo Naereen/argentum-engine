@@ -48,7 +48,25 @@ export function OtariaMovementDecisionUI({
   const [zoomed, setZoomed] = useState(false)
   const submitOptionDecision = useGameStore((state) => state.submitOptionDecision)
   const panel = useRef<HTMLDivElement>(null)
-  const selected = choices.find((choice) => choice.index === selectedIndex)
+  const localizedChoices = choices.map((choice) => {
+    const tile = board.tiles.find((candidate) =>
+      candidate.position.column === choice.position.column && candidate.position.row === choice.position.row)
+    let destination = t('otaria.unknownDestination')
+    if (tile?.location) {
+      destination = t(`otaria.locationNames.${tile.location}`)
+    } else if (tile) {
+      destination = t(`otaria.colorList.${tile.color}`)
+    }
+    return {
+      ...choice,
+      label: t('otaria.destinationLabel', {
+        column: choice.position.column + 1,
+        row: choice.position.row + 1,
+        destination,
+      }),
+    }
+  })
+  const selected = localizedChoices.find((choice) => choice.index === selectedIndex)
 
   useEffect(() => {
     const previouslyFocused = document.activeElement
@@ -81,7 +99,9 @@ export function OtariaMovementDecisionUI({
           }
         }}
       >
-        <h2 id="otaria-movement-title">{decision.prompt}</h2>
+        <h2 id="otaria-movement-title">{decision.prompt === 'Choose a destination'
+          ? t('otaria.chooseDestination')
+          : decision.prompt}</h2>
         <p>{t('otaria.movementPrompt')}</p>
         <div className={movementStyles.viewControls} role="group" aria-label={t('otaria.mapView')}>
           <button type="button" aria-pressed={zoomed} onClick={() => setZoomed(true)}>{t('otaria.zoom')}</button>
@@ -91,7 +111,7 @@ export function OtariaMovementDecisionUI({
           <OtariaMap
             gameState={gameState}
             board={board}
-            choices={choices}
+            choices={localizedChoices}
             zoomed={zoomed}
             selectedIndex={selectedIndex}
             onChoose={setSelectedIndex}

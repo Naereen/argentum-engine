@@ -470,7 +470,11 @@ export function OtariaBoardContents({ gameState, board }: { gameState: ClientGam
                   </p>
                   <p className={styles.muted}>{t('otaria.participants', { names: encounter.participants.map((id) => seatName(gameState, id)).join(', ') })}</p>
                   {encounter.initiative && (
-                    <p className={styles.muted}>Initiative: {t(encounter.initiative === 'EXPLORER' ? 'otaria.initiativeExplorer' : 'otaria.initiativeEncounter')}.</p>
+                    <p className={styles.muted}>{t('otaria.initiative', {
+                      side: t(encounter.initiative === 'EXPLORER'
+                        ? 'otaria.initiativeExplorer'
+                        : 'otaria.initiativeEncounter'),
+                    })}</p>
                   )}
                 </li>
               ))}
@@ -507,7 +511,7 @@ export function OtariaBoardContents({ gameState, board }: { gameState: ClientGam
                 <p><strong>{t('otaria.locationCards')}</strong> {privateData.locationCards.map((location) => t(`otaria.locationNames.${location}`)).join(', ')}</p>
               )}
               {Object.entries(privateData.treasureTokens).map(([kind, count]) => (
-                <p key={kind}>{kind.toLowerCase()}: {count}</p>
+                <p key={kind}>{t(`otaria.treasureTokens.${kind as 'SCRAP' | 'ROCK'}`)}: {count}</p>
               ))}
             </section>
           )
