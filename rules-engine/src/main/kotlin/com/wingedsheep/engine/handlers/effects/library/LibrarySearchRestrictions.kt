@@ -42,7 +42,8 @@ object LibrarySearchRestrictions {
                 val covers = when (prohibition.affected) {
                     is Player.Each -> true
                     is Player.You -> searcherId == sourceController
-                    is Player.EachOpponent -> state.isOpponentOf(searcherId, sourceController)
+                    is Player.EachOpponent -> com.wingedsheep.engine.otaria.OtariaRange
+                        .isOpponentInReach(state, sourceController, searcherId)
                     else -> false
                 }
                 if (!covers) continue

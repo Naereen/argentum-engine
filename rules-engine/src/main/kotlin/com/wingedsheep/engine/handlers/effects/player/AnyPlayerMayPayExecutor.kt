@@ -72,7 +72,8 @@ class AnyPlayerMayPayExecutor(
             Player.Each, Player.ActivePlayerFirst -> apnapOrder
             Player.EachStartingWithYou -> state.turnOrderStartingWith(context.controllerId)
             Player.EachStartingWithNextOpponent -> state.turnOrderStartingWithNextOpponent(context.controllerId)
-            Player.EachOpponent -> state.getOpponents(context.controllerId).toSet()
+            Player.EachOpponent -> com.wingedsheep.engine.otaria.OtariaRange
+                .opponentsInReach(state, context.controllerId).toSet()
                 .let { opponents -> apnapOrder.filter { it in opponents } }
             Player.EachOtherPlayer -> apnapOrder.filter { it != context.controllerId }
             Player.You -> apnapOrder.filter { it == context.controllerId }

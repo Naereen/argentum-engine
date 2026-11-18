@@ -694,7 +694,8 @@ class GatherCardsExecutor(
         is Player.Each, is Player.ActivePlayerFirst -> state.turnOrder
         is Player.EachStartingWithYou -> state.turnOrderStartingWith(context.controllerId)
         is Player.EachStartingWithNextOpponent -> state.turnOrderStartingWithNextOpponent(context.controllerId)
-        is Player.EachOpponent -> state.turnOrder.filter { it != context.controllerId }
+        is Player.EachOpponent -> com.wingedsheep.engine.otaria.OtariaRange
+            .opponentsInReach(state, context.controllerId)
         is Player.EachOtherPlayer -> state.getOtherPlayers(context.controllerId)
         // "Up to one target player" with no player chosen names nobody (Endurance) — never fall
         // back to the controller, whose own zone the effect would otherwise sweep.

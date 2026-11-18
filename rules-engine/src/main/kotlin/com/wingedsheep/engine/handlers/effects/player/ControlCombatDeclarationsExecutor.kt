@@ -31,7 +31,8 @@ class ControlCombatDeclarationsExecutor : EffectExecutor<ControlCombatDeclaratio
         val ticked = state.tick()
         val controller = context.controllerId
         val declaringPlayers = when (effect.declaringPlayers) {
-            Player.EachOpponent -> ticked.getOpponents(controller)
+            Player.EachOpponent -> com.wingedsheep.engine.otaria.OtariaRange
+                .opponentsInReach(ticked, controller)
             Player.EachOtherPlayer -> ticked.getOtherPlayers(controller)
             Player.You -> listOf(controller)
             Player.Each -> ticked.activePlayers

@@ -476,7 +476,8 @@ class ReflexiveTriggerEffectExecutor(
         is com.wingedsheep.sdk.scripting.references.Player.EachStartingWithNextOpponent ->
             state.turnOrderStartingWithNextOpponent(context.controllerId)
         is com.wingedsheep.sdk.scripting.references.Player.EachOpponent ->
-            state.turnOrder.filter { it != context.controllerId }
+            com.wingedsheep.engine.otaria.OtariaRange
+                .opponentsInReach(state, context.controllerId)
         is com.wingedsheep.sdk.scripting.references.Player.EachOtherPlayer ->
             state.getOtherPlayers(context.controllerId)
         else -> TargetResolutionUtils.resolvePlayerRef(player, context, state)?.let { listOf(it) }

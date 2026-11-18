@@ -39,7 +39,7 @@ object LibrarySearchControl {
             if (!container.has<ControlsOpponentsLibrarySearchesComponent>()) continue
             if (projected.hasLostAllAbilities(entityId)) continue
             val controller = projected.getController(entityId) ?: continue
-            if (!state.isOpponentOf(searcherId, controller)) continue
+            if (!com.wingedsheep.engine.otaria.OtariaRange.isOpponentInReach(state, controller, searcherId)) continue
             val timestamp = container.get<BattlefieldEntryTimestampComponent>()?.timestamp ?: 0L
             // Ties (no entry stamp) fall back to battlefield order, which is entry order.
             if (best == null || timestamp >= bestTimestamp) {

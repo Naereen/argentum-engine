@@ -105,7 +105,8 @@ class ExileLibraryUntilManaValueExecutor(private val zones: ZoneTransitionServic
             Player.EachStartingWithYou -> state.turnOrderStartingWith(context.controllerId)
             Player.EachStartingWithNextOpponent -> state.turnOrderStartingWithNextOpponent(context.controllerId)
             Player.You -> listOf(context.controllerId)
-            Player.EachOpponent -> state.getOpponents(context.controllerId)
+            Player.EachOpponent -> com.wingedsheep.engine.otaria.OtariaRange
+                .opponentsInReach(state, context.controllerId)
             Player.EachOtherPlayer -> state.getOtherPlayers(context.controllerId)
             Player.TargetOpponent -> listOfNotNull(
                 TargetResolutionUtils.resolvePlayerRef(player, context, state)
@@ -120,7 +121,8 @@ class ExileLibraryUntilManaValueExecutor(private val zones: ZoneTransitionServic
                 listOf(TargetResolutionUtils.run { it.toEntityId() })
             } ?: emptyList()
             Player.TriggeringPlayer -> listOfNotNull(context.triggeringEntityId)
-            else -> state.getOpponents(context.controllerId)
+            else -> com.wingedsheep.engine.otaria.OtariaRange
+                .opponentsInReach(state, context.controllerId)
         }
     }
 }

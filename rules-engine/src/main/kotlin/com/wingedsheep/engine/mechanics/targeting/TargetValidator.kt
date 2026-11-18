@@ -490,7 +490,10 @@ class TargetValidator(
             is TargetOther -> validateSingleTarget(state, target, requirement.baseRequirement, casterId, sourceColors, sourceSubtypes, sourceId, xValue, allTargets, targetingSourceType, namedTargets)
         }
         if (error != null) return error
-        if (!com.wingedsheep.engine.otaria.OtariaRange.contains(state, casterId, target.toEntityId())) {
+        if (!com.wingedsheep.engine.otaria.OtariaRange.containsForTarget(
+                state, casterId, target.toEntityId(), requirement
+            )
+        ) {
             return "Target is outside Otaria range"
         }
 

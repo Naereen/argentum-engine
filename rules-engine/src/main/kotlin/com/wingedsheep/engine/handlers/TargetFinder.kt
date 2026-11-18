@@ -153,7 +153,9 @@ class TargetFinder(
             }
         }
         val inRange = if (state.otaria == null) candidates
-        else candidates.filter { com.wingedsheep.engine.otaria.OtariaRange.contains(state, controllerId, it) }
+        else candidates.filter {
+            com.wingedsheep.engine.otaria.OtariaRange.containsForTarget(state, controllerId, it, requirement)
+        }
         if (ignoreTargetingRestrictions) return inRange
         val projected = state.projectedState
         val sourceColors = sourceId?.takeIf { state.hasEntity(it) }?.let { id ->

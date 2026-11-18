@@ -104,7 +104,9 @@ internal class ResolutionTargetValidator(
 
         val individuallyLegal = targets.indices.filter { index ->
             val target = targets[index]
-            com.wingedsheep.engine.otaria.OtariaRange.contains(state, controllerId, target.toEntityId()) &&
+            com.wingedsheep.engine.otaria.OtariaRange.containsForTarget(
+                state, controllerId, target.toEntityId(), targetRequirements.getOrNull(index)
+            ) &&
                 anyTargetStillMatches(state, projected, index, target, targetRequirements, predicateContext) &&
                 when (target) {
                     is ChosenTarget.Player ->

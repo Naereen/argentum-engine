@@ -125,7 +125,8 @@ object EntryRiderReplacements {
     private fun matchesPutter(state: GameState, putter: Player, putterId: EntityId, sourceControllerId: EntityId): Boolean =
         when (putter) {
             Player.You -> putterId == sourceControllerId
-            Player.EachOpponent -> state.isOpponentOf(putterId, sourceControllerId)
+            Player.EachOpponent -> com.wingedsheep.engine.otaria.OtariaRange
+                .isOpponentInReach(state, sourceControllerId, putterId)
             Player.Each, Player.Any -> true
             else -> false
         }

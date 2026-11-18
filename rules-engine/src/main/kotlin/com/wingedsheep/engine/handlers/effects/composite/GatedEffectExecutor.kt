@@ -201,7 +201,8 @@ class GatedEffectExecutor(
                     LibrarySearchRestrictions.searchedLibraryOwners(leadingSearch.source) { player ->
                         when (player) {
                             is Player.Each -> state.turnOrder
-                            is Player.EachOpponent -> state.getOpponents(context.controllerId)
+                            is Player.EachOpponent -> com.wingedsheep.engine.otaria.OtariaRange
+                                .opponentsInReach(state, context.controllerId)
                             else -> TargetResolutionUtils.resolvePlayerRef(player, context, state)?.let { listOf(it) }
                         }
                     }

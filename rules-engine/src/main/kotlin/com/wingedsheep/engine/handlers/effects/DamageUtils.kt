@@ -1450,7 +1450,9 @@ object DamageUtils {
                 Player.Each, Player.Any -> true
                 Player.You -> controllerId in prohibitedSeats
                 Player.EachOpponent, Player.AnOpponent, Player.TargetOpponent ->
-                    prohibitedSeats.any { state.isOpponentOf(it, controllerId) }
+                    prohibitedSeats.any {
+                        com.wingedsheep.engine.otaria.OtariaRange.isOpponentInReach(state, controllerId, it)
+                    }
                 Player.EnchantedPlayer -> state.getEntity(active.sourceId)
                     ?.get<com.wingedsheep.engine.state.components.battlefield.AttachedToComponent>()
                     ?.targetId in prohibitedSeats
@@ -3084,7 +3086,8 @@ object DamageUtils {
             val playerMatches = when (pattern.player) {
                 Player.Each, Player.Any -> true
                 Player.You -> state.teamLifeOwnerOf(active.controllerId) == lifeOwner
-                Player.EachOpponent -> state.isOpponentOf(playerId, active.controllerId)
+                Player.EachOpponent -> com.wingedsheep.engine.otaria.OtariaRange
+                    .isOpponentInReach(state, active.controllerId, playerId)
                 else -> false
             }
             if (!playerMatches) continue
@@ -3180,7 +3183,8 @@ object DamageUtils {
                 Player.You -> losingPlayerId == sourceControllerId ||
                     (youIncludesSharedLife && state.teamLifeOwnerOf(losingPlayerId) == state.teamLifeOwnerOf(sourceControllerId))
                 // Not `!= sourceControllerId`: a teammate is not an opponent (CR 102.3).
-                Player.EachOpponent -> state.isOpponentOf(losingPlayerId, sourceControllerId)
+                Player.EachOpponent -> com.wingedsheep.engine.otaria.OtariaRange
+                    .isOpponentInReach(state, sourceControllerId, losingPlayerId)
                 else -> false
             }
             if (!playerMatches) continue

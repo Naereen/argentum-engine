@@ -6,6 +6,7 @@ import com.wingedsheep.engine.event.GrantedStaticAbility
 import com.wingedsheep.engine.handlers.EffectContext
 import com.wingedsheep.engine.handlers.PredicateContext
 import com.wingedsheep.engine.handlers.TargetingSourceType
+import com.wingedsheep.engine.handlers.effects.TargetResolutionUtils
 import com.wingedsheep.engine.handlers.effects.BattlefieldFilterUtils
 import com.wingedsheep.engine.legalactions.utils.TargetEnumerationUtils
 import com.wingedsheep.engine.mechanics.combat.CombatDefenders
@@ -54,6 +55,9 @@ import com.wingedsheep.sdk.scripting.Duration
 import com.wingedsheep.sdk.scripting.filters.unified.GroupFilter
 import com.wingedsheep.sdk.scripting.filters.unified.TargetFilter
 import com.wingedsheep.sdk.scripting.targets.TargetObject
+import com.wingedsheep.sdk.scripting.effects.DealDamageEffect
+import com.wingedsheep.sdk.scripting.references.Player
+import com.wingedsheep.sdk.scripting.targets.EffectTarget
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldContain
@@ -152,6 +156,71 @@ class OtariaRangeTest : FunSpec({
             casterId = active,
             targetingSourceType = TargetingSourceType.SPELL,
         ) shouldBe "Target is outside Otaria range"
+    }
+
+    test("opponent targets and each-opponent effects reach opponents up to two hexes away") {
+        val initial = game()
+        val mode = requireNotNull(initial.otaria)
+        val state = initial.copy(
+            otaria = mode.copy(
+                players = mode.players +
+                    (near to mode.players.getValue(near).copy(position = OtariaPosition(6, 7))) +
+                    (far to mode.players.getValue(far).copy(position = OtariaPosition(6, 8))),
+            ),
+        )
+
+        services.targetFinder.findLegalTargets(state, Targets.Opponent, active)
+            .shouldContainExactlyInAnyOrder(near)
+        services.targetFinder.findLegalTargets(state, Targets.OpponentOrPlaneswalker, active)
+            .shouldContainExactlyInAnyOrder(near)
+        TargetEnumerationUtils(services.predicateEvaluator)
+            .findValidTargets(state, active, Targets.Opponent)
+            .shouldContainExactlyInAnyOrder(near)
+        TargetEnumerationUtils(services.predicateEvaluator)
+            .findValidTargets(state, active, Targets.OpponentOrPlaneswalker)
+            .shouldContainExactlyInAnyOrder(near)
+        services.targetValidator.validateTargets(
+            state = state,
+            targets = listOf(ChosenTarget.Player(near)),
+            requirements = listOf(Targets.Opponent),
+            casterId = active,
+            targetingSourceType = TargetingSourceType.SPELL,
+        ) shouldBe null
+        services.targetValidator.validateTargets(
+            state = state,
+            targets = listOf(ChosenTarget.Player(far)),
+            requirements = listOf(Targets.Opponent),
+            casterId = active,
+            targetingSourceType = TargetingSourceType.SPELL,
+        ) shouldBe "Target is outside Otaria range"
+        val opponentTarget = ChosenTarget.Player(near)
+        ResolutionTargetValidator(services.predicateEvaluator).validateTargets(
+            state = state,
+            targets = listOf(opponentTarget),
+            controllerId = active,
+            targetRequirements = listOf(Targets.Opponent),
+            targetingSourceType = TargetingSourceType.SPELL,
+        ) shouldBe listOf(opponentTarget)
+        ResolutionTargetValidator(services.predicateEvaluator).validateTargets(
+            state = state,
+            targets = listOf(ChosenTarget.Player(far)),
+            controllerId = active,
+            targetRequirements = listOf(Targets.Opponent),
+            targetingSourceType = TargetingSourceType.SPELL,
+        ) shouldBe emptyList()
+
+        val context = EffectContext(sourceId = null, controllerId = active)
+        TargetResolutionUtils.resolvePlayerTargets(
+            EffectTarget.PlayerRef(Player.EachOpponent), state, context,
+        ).shouldContainExactlyInAnyOrder(near)
+
+        val damage = services.effectExecutorRegistry.execute(
+            state,
+            DealDamageEffect(1, EffectTarget.PlayerRef(Player.EachOpponent)),
+            context,
+        )
+        damage.state.getEntity(near)?.get<LifeTotalComponent>()?.life shouldBe 14
+        damage.state.getEntity(far)?.get<LifeTotalComponent>()?.life shouldBe 15
     }
 
     test("legendary encounter creatures substitute for player and opponent targets") {

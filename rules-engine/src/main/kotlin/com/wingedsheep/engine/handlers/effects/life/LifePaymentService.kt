@@ -107,7 +107,8 @@ object LifePaymentService {
                     Player.Each, Player.Any -> true
                     Player.You -> payerId == sourceControllerId
                     // Not `!= sourceControllerId`: a teammate is not an opponent (CR 102.3).
-                    Player.EachOpponent -> state.isOpponentOf(payerId, sourceControllerId)
+                    Player.EachOpponent -> com.wingedsheep.engine.otaria.OtariaRange
+                        .isOpponentInReach(state, sourceControllerId, payerId)
                     else -> false
                 }
                 if (applies) return true

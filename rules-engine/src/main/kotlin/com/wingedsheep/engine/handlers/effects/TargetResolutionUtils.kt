@@ -188,7 +188,8 @@ object TargetResolutionUtils {
     private fun ringBearer(player: Player, context: EffectContext, state: GameState): EntityId? {
         val ownerId = when (player) {
             Player.AnOpponent, Player.EachOpponent, Player.TargetOpponent, Player.TargetPlayer ->
-                state.getOpponents(context.controllerId).firstOrNull()
+                com.wingedsheep.engine.otaria.OtariaRange
+                    .opponentsInReach(state, context.controllerId).firstOrNull()
             else -> context.controllerId
         } ?: return null
         return state.getBattlefield().firstOrNull { id ->
@@ -371,7 +372,8 @@ object TargetResolutionUtils {
             Player.TriggeringPlayer -> context.triggeringPlayerId ?: context.triggeringEntityId
             Player.ActivePlayer -> state.activePlayerId
             Player.Candidate -> context.candidatePlayerId
-            Player.AnOpponent -> state.getOpponents(context.controllerId).firstOrNull()
+            Player.AnOpponent -> com.wingedsheep.engine.otaria.OtariaRange
+                .opponentsInReach(state, context.controllerId).firstOrNull()
             Player.DefendingPlayer -> resolveDefendingPlayer(context, state)
             Player.ChosenOpponent -> context.chosenOpponent(state)
             Player.ChosenPlayer -> context.chosenPlayer(state)
@@ -664,7 +666,8 @@ object TargetResolutionUtils {
                 Player.ActivePlayerFirst -> state.apnapOrder
                 Player.EachStartingWithYou -> state.turnOrderStartingWith(context.controllerId)
                 Player.EachStartingWithNextOpponent -> state.turnOrderStartingWithNextOpponent(context.controllerId)
-                Player.EachOpponent -> state.getOpponents(context.controllerId)
+                Player.EachOpponent -> com.wingedsheep.engine.otaria.OtariaRange
+                    .opponentsInReach(state, context.controllerId)
                 Player.EachOtherPlayer -> state.getOtherPlayers(context.controllerId)
                 else -> resolvePlayerRef(effectTarget.player, context, state)
                     ?.let { listOf(it) } ?: emptyList()

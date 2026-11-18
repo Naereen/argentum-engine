@@ -272,7 +272,8 @@ object KeywordActionReplacements {
     ): Boolean = when (player) {
         Player.You -> playerId == sourceControllerId
         Player.Each, Player.Any -> true
-        Player.EachOpponent, Player.AnOpponent -> state.isOpponentOf(playerId, sourceControllerId)
+        Player.EachOpponent, Player.AnOpponent -> com.wingedsheep.engine.otaria.OtariaRange
+            .isOpponentInReach(state, sourceControllerId, playerId)
         // Fail closed: no other player reference has a meaning for "would <act>".
         else -> false
     }

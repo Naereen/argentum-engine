@@ -115,7 +115,8 @@ object PermanentEntryReplacements {
         state: GameState,
         viewerId: EntityId,
     ): Pair<GameState, List<GameEvent>> {
-        val opponentId = state.getOpponents(viewerId).firstOrNull() ?: return state to emptyList()
+        val opponentId = com.wingedsheep.engine.otaria.OtariaRange
+            .opponentsInReach(state, viewerId).firstOrNull() ?: return state to emptyList()
         val handCards = state.getHand(opponentId)
         val observers = setOf(state.actorFor(viewerId)) - viewerId
         val newState = com.wingedsheep.engine.handlers.effects.library.LibraryRevealUtils.markRevealed(
@@ -140,7 +141,8 @@ object PermanentEntryReplacements {
         val pool = registry.cardNamesIn(choice.cardNamePool)
         return when (choice.cardNameSource) {
             CardNameSource.ANY_CARD -> pool.toList()
-            CardNameSource.OPPONENTS_REVEALED_HANDS -> state.getOpponents(controllerId)
+            CardNameSource.OPPONENTS_REVEALED_HANDS -> com.wingedsheep.engine.otaria.OtariaRange
+                .opponentsInReach(state, controllerId)
                 .flatMap { state.getHand(it) }
                 .mapNotNull { state.getEntity(it)?.get<CardComponent>()?.name }
                 .filter { it in pool }
@@ -164,7 +166,8 @@ object PermanentEntryReplacements {
         choice.cardNameSource == CardNameSource.OPPONENTS_REVEALED_HANDS -> {
             var newState = state
             val events = mutableListOf<GameEvent>()
-            for (opponentId in state.getOpponents(controllerId)) {
+            for (opponentId in com.wingedsheep.engine.otaria.OtariaRange
+                .opponentsInReach(state, controllerId)) {
                 val hand = state.getHand(opponentId)
                 if (hand.isEmpty()) continue
                 newState = com.wingedsheep.engine.handlers.effects.library.LibraryRevealUtils
@@ -191,7 +194,8 @@ object PermanentEntryReplacements {
     /** True when [choice] revealed hands but left nothing to name, so it asks only to acknowledge. */
     fun revealedNothingToName(state: GameState, controllerId: EntityId, choice: EntersWithChoice): Boolean =
         choice.cardNameSource == CardNameSource.OPPONENTS_REVEALED_HANDS &&
-            state.getOpponents(controllerId).any { state.getHand(it).isNotEmpty() }
+            com.wingedsheep.engine.otaria.OtariaRange
+                .opponentsInReach(state, controllerId).any { state.getHand(it).isNotEmpty() }
 
     /**
      * The single [OnEnterRun] a card definition contributes, or `null` if it has none.
@@ -627,7 +631,8 @@ object PermanentEntryReplacements {
         // Drawn on entry, not asked (see EntersWithReplacements.applyFromDefinition).
         if (choice.atRandom) return null
         val chooserId = when (choice.chooser) {
-            Player.AnOpponent -> state.getOpponents(controllerId).firstOrNull() ?: controllerId
+            Player.AnOpponent -> com.wingedsheep.engine.otaria.OtariaRange
+                .opponentsInReach(state, controllerId).firstOrNull() ?: controllerId
             else -> controllerId
         }
         val name = cardComponent.name

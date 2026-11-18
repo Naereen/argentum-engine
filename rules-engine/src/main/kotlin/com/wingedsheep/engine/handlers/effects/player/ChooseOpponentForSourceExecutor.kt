@@ -39,7 +39,8 @@ class ChooseOpponentForSourceExecutor : EffectExecutor<ChooseOpponentForSourceEf
         val sourceId = context.sourceId ?: return EffectResult.success(state)
         val source = state.getEntity(sourceId)
 
-        val opponents = state.getOpponents(context.controllerId)
+        val opponents = com.wingedsheep.engine.otaria.OtariaRange
+            .opponentsInReach(state, context.controllerId)
         if (opponents.isEmpty()) return EffectResult.success(state)
 
         // Sole opponent → forced choice, no prompt.

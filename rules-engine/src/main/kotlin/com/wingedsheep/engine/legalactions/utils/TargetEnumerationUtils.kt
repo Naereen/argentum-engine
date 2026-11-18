@@ -56,7 +56,9 @@ class TargetEnumerationUtils(
         else candidates.filterNot { UntargetableByRules.isBlocked(state, it, untargetableKeywords) }
         // CardsInZonesCantBeTargeted (Ground Seal; Tomik, Distinguished Advokist).
         val inRange = if (state.otaria == null) unblocked
-        else unblocked.filter { com.wingedsheep.engine.otaria.OtariaRange.contains(state, playerId, it) }
+        else unblocked.filter {
+            com.wingedsheep.engine.otaria.OtariaRange.containsForTarget(state, playerId, it, requirement)
+        }
         val zoneLocks = UntargetableByRules.zoneLocks(state)
         return if (zoneLocks.isEmpty()) inRange
         else inRange.filterNot { UntargetableByRules.isZoneLocked(state, it, playerId, zoneLocks, predicateEvaluator) }

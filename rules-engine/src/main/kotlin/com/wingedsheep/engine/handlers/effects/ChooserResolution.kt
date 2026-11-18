@@ -75,7 +75,8 @@ object ChooserResolution {
         Chooser.Controller -> Outcome.Resolved(context.controllerId)
 
         Chooser.Opponent -> {
-            val opponents = state.getOpponents(context.controllerId)
+            val opponents = com.wingedsheep.engine.otaria.OtariaRange
+                .opponentsInReach(state, context.controllerId)
             val alreadyPicked = context.opponentDeciderId
             when {
                 opponents.isEmpty() -> Outcome.Unresolvable("No opponent to make the choice")

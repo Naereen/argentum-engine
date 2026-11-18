@@ -157,7 +157,8 @@ private inline fun <reified T : ReplacementEffect> forEachApplicable(
                 Player.Each -> true
                 Player.You -> sourceControllerId != null && playerId == sourceControllerId
                 Player.EachOpponent ->
-                    sourceControllerId != null && state.isOpponentOf(playerId, sourceControllerId)
+                    sourceControllerId != null && com.wingedsheep.engine.otaria.OtariaRange
+                        .isOpponentInReach(state, sourceControllerId, playerId)
                 else -> false
             }
             if (!matchesPlayer) continue

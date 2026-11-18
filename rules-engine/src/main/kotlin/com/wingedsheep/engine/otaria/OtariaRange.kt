@@ -9,14 +9,75 @@ import com.wingedsheep.engine.state.components.stack.ActivatedAbilityOnStackComp
 import com.wingedsheep.engine.state.components.stack.SpellOnStackComponent
 import com.wingedsheep.engine.state.components.stack.TriggeredAbilityOnStackComponent
 import com.wingedsheep.sdk.model.EntityId
+import com.wingedsheep.sdk.scripting.targets.TargetOpponent
+import com.wingedsheep.sdk.scripting.targets.TargetOpponentOrPlaneswalker
+import com.wingedsheep.sdk.scripting.targets.TargetOther
+import com.wingedsheep.sdk.scripting.targets.TargetPermanentOrPlayer
+import com.wingedsheep.sdk.scripting.targets.TargetRequirement
 
 /** The source's space and its neighbours are the only spaces it can reach. */
 internal object OtariaRange {
+    private const val OPPONENT_REACH = 2L
+
     fun betweenControllers(state: GameState, sourceController: EntityId?, targetController: EntityId?): Boolean {
         val mode = state.otaria ?: return true
         val source = mode.players[sourceController]?.position ?: mode.encounters[sourceController]?.position ?: return false
         val destination = mode.players[targetController]?.position ?: mode.encounters[targetController]?.position ?: return false
         return OtariaBoard.distance(source, destination) <= 1
+    }
+
+    /** Opponents on the same hex or within two hexes for opponent-scoped effects. */
+    fun opponentsInReach(state: GameState, sourceController: EntityId): List<EntityId> {
+        val opponents = state.getOpponents(sourceController)
+        if (state.otaria == null) return opponents
+        return opponents.filter { isWithinOpponentReach(state, sourceController, it) }
+    }
+
+    fun isOpponentInReach(state: GameState, sourceController: EntityId, playerId: EntityId): Boolean =
+        playerId in opponentsInReach(state, sourceController)
+
+    fun containsForTarget(
+        state: GameState,
+        sourceController: EntityId,
+        target: EntityId,
+        requirement: TargetRequirement?,
+    ): Boolean {
+        val opponentTargetRequirement = when (requirement) {
+            is TargetOpponent, is TargetOpponentOrPlaneswalker -> true
+            is TargetPermanentOrPlayer -> requirement.opponentsOnly
+            is TargetOther -> return containsForTarget(state, sourceController, target, requirement.baseRequirement)
+            else -> false
+        }
+        return if (opponentTargetRequirement && isOpponentPlayerTarget(state, sourceController, target)) {
+            containsOpponentTarget(state, sourceController, target)
+        } else {
+            contains(state, sourceController, target)
+        }
+    }
+
+    fun containsOpponentTarget(state: GameState, sourceController: EntityId, target: EntityId): Boolean {
+        if (state.otaria == null) return true
+        val targetController = if (target in state.getBattlefield()) {
+            val projectedController = state.projectedState.getController(target)
+            controllerInProjection(state, target, projectedController) ?: return false
+        } else {
+            target
+        }
+        return isWithinOpponentReach(state, sourceController, targetController)
+    }
+
+    private fun isOpponentPlayerTarget(state: GameState, sourceController: EntityId, target: EntityId): Boolean =
+        target in state.turnOrder || OtariaTargeting.candidatePlayerId(state, sourceController, target) != null
+
+    private fun isWithinOpponentReach(
+        state: GameState,
+        sourceController: EntityId,
+        targetController: EntityId,
+    ): Boolean {
+        val mode = state.otaria ?: return true
+        val source = mode.players[sourceController]?.position ?: mode.encounters[sourceController]?.position ?: return false
+        val destination = mode.players[targetController]?.position ?: mode.encounters[targetController]?.position ?: return false
+        return OtariaBoard.distance(source, destination) <= OPPONENT_REACH
     }
 
     fun contains(state: GameState, sourceController: EntityId, target: EntityId): Boolean {

@@ -257,7 +257,8 @@ object ReplacementEffectUtils {
         when (placer) {
             Player.Any -> true
             Player.You -> placerId == sourceControllerId
-            Player.EachOpponent -> placerId != null && state.isOpponentOf(placerId, sourceControllerId)
+            Player.EachOpponent -> placerId != null &&
+                com.wingedsheep.engine.otaria.OtariaRange.isOpponentInReach(state, sourceControllerId, placerId)
             // Not a relation the placer can stand in (the SDK documents the three above).
             else -> false
         }

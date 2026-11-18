@@ -260,14 +260,16 @@ class ChangeTargetExecutor(
                     )
                 }
                 val players = state.turnOrder.filter {
-                    state.hasEntity(it) && (!requirement.opponentsOnly || state.isOpponentOf(it, controllerId))
+                    state.hasEntity(it) && (!requirement.opponentsOnly ||
+                        com.wingedsheep.engine.otaria.OtariaRange.isOpponentInReach(state, controllerId, it))
                 }
                 (permanents + players).filter { it != currentTargetId }
             }
 
             // TargetOpponentOrPlaneswalker: opponents + planeswalkers on battlefield
             requirement is TargetOpponentOrPlaneswalker -> {
-                val opponents = state.turnOrder.filter { it != controllerId && state.hasEntity(it) }
+                val opponents = com.wingedsheep.engine.otaria.OtariaRange
+                    .opponentsInReach(state, controllerId).filter(state::hasEntity)
                 val planeswalkers = state.getBattlefield().filter { entityId ->
                     projected.hasType(entityId, "PLANESWALKER")
                 }
