@@ -4,6 +4,7 @@ import { GameOverReason, entityId } from '@/types'
 import type { GameOverMessage } from '@/types'
 import type { GameStore, SpectatingState } from '../types'
 import { spectatorGameOverReason } from '@/components/spectating/SpectatorGameOverBanner'
+import i18n from '@/i18n'
 
 /**
  * A spectator used to be dropped to the overview the instant a watched game ended, never seeing
@@ -77,6 +78,15 @@ describe('spectator game over', () => {
     expect(spectatorGameOverReason({ ...result, reason: GameOverReason.CONCESSION }, seats)).toBe('Alice conceded the game.')
     expect(spectatorGameOverReason({ ...result, message: 'Nobody could break the loop.' }, seats)).toBe('Nobody could break the loop.')
     expect(spectatorGameOverReason({ winnerIds: [], reason: GameOverReason.DRAW, message: null }, seats)).toBe('Nobody won — the game is a draw.')
+  })
+
+  it('localizes structured spectator reasons but preserves server-authored messages', async () => {
+    const seats = [{ playerId: entityId('p1'), name: 'Alice' }, { playerId: entityId('p2'), name: 'Bob' }]
+    const result = { winnerIds: [entityId('p2')], reason: GameOverReason.LIFE_ZERO, message: null }
+    await i18n.changeLanguage('fr')
+    expect(spectatorGameOverReason(result, seats)).toContain('points de vie')
+    expect(spectatorGameOverReason({ ...result, message: 'A custom server message.' }, seats)).toBe('A custom server message.')
+    await i18n.changeLanguage('en')
   })
 
   it('explains a Mirari win instead of saying the winner outlasted the other seats', () => {

@@ -13,6 +13,8 @@
  */
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { isAppRoute } from '@/hooks/useHomeVisible'
 import { useGameStore } from '@/store/gameStore.ts'
 import styles from './ConnectionStatusLayer.module.css'
@@ -25,6 +27,7 @@ const LOST_RETRY_OFFER_MS = 10_000
 const BACK_NOTICE_MS = 4_000
 
 export default function ConnectionStatusLayer() {
+  const { t } = useTranslation()
   const { pathname } = useLocation()
   const serverRestart = useGameStore((s) => s.serverRestart)
   const serverBackAt = useGameStore((s) => s.serverBackAt)
@@ -67,7 +70,7 @@ export default function ConnectionStatusLayer() {
     return (
       <div className={`${styles.banner} ${styles.bannerBack}`} role="status">
         <span className={styles.check} aria-hidden>✓</span>
-        <span><strong>Update complete.</strong> You're back online.</span>
+        <span><strong>{t('connection.updateComplete')}</strong> {t('connection.backOnline')}</span>
       </div>
     )
   }
@@ -76,38 +79,37 @@ export default function ConnectionStatusLayer() {
 }
 
 function RestartCard({ elapsedMs, expectedSeconds }: { elapsedMs: number; expectedSeconds: number }) {
+  const { t } = useTranslation()
   const overdue = elapsedMs > expectedSeconds * 1000 * 1.5
   const progress = Math.min(elapsedMs / (expectedSeconds * 1000), 1)
   return (
     <div className={styles.scrim} role="alertdialog" aria-modal="true" aria-labelledby="restart-title" aria-describedby="restart-body">
       <div className={styles.card}>
-        <p className={styles.eyebrow}>Server update</p>
-        <h2 id="restart-title" className={styles.title}>Installing a new version</h2>
+        <p className={styles.eyebrow}>{t('connection.serverUpdate')}</p>
+        <h2 id="restart-title" className={styles.title}>{t('connection.installingUpdate')}</h2>
         <p id="restart-body" className={styles.body}>
-          Your game is saved and will pick up right where you left off — usually within {quote(expectedSeconds)}.
+          {t('connection.gameSaved', { duration: quote(expectedSeconds, t) })}
         </p>
         <div
           className={`${styles.track} ${overdue ? styles.trackWaiting : ''}`}
           role="progressbar"
-          aria-label="Time since the update started"
+          aria-label={t('connection.timeSinceUpdate')}
           aria-valuemin={0}
           aria-valuemax={expectedSeconds}
           aria-valuenow={Math.round(elapsedMs / 1000)}
-          aria-valuetext={`${formatElapsed(elapsedMs)} elapsed`}
+          aria-valuetext={t('connection.elapsed', { time: formatElapsed(elapsedMs) })}
         >
           <div className={styles.fill} style={{ width: `${progress * 100}%` }} />
         </div>
         <div className={styles.statusRow} aria-live="polite">
           <span className={styles.statusText}>
             <span className={styles.pulse} aria-hidden />
-            {overdue ? 'Taking a little longer than usual' : 'Reconnecting automatically'}
+            {overdue ? t('connection.takingLonger') : t('connection.reconnecting')}
           </span>
           <span className={styles.elapsed}>{formatElapsed(elapsedMs)}</span>
         </div>
         <p className={styles.hint}>
-          {overdue
-            ? "We'll keep trying every few seconds. No need to refresh."
-            : 'No need to refresh — this page reconnects on its own.'}
+          {overdue ? t('connection.keepTrying') : t('connection.noRefresh')}
         </p>
       </div>
     </div>
@@ -115,12 +117,13 @@ function RestartCard({ elapsedMs, expectedSeconds }: { elapsedMs: number; expect
 }
 
 function RestartBanner({ elapsedMs, expectedSeconds }: { elapsedMs: number; expectedSeconds: number }) {
+  const { t } = useTranslation()
   return (
     <div className={styles.banner} role="status">
       <span className={styles.pulse} aria-hidden />
       <span className={styles.bannerText}>
-        <strong>Server update in progress.</strong>{' '}
-        Back in about {quote(expectedSeconds)} — games in progress are saved.
+        <strong>{t('connection.updateInProgress')}</strong>{' '}
+        {t('connection.backIn', { duration: quote(expectedSeconds, t) })}
       </span>
       <span className={styles.elapsed}>{formatElapsed(elapsedMs)}</span>
     </div>
@@ -128,20 +131,19 @@ function RestartBanner({ elapsedMs, expectedSeconds }: { elapsedMs: number; expe
 }
 
 function LostCard({ offerRetry, onRetry }: { offerRetry: boolean; onRetry: () => void }) {
+  const { t } = useTranslation()
   return (
     <div className={styles.scrim} role="alertdialog" aria-modal="true" aria-labelledby="lost-title" aria-describedby="lost-body">
       <div className={styles.card}>
-        <p className={styles.eyebrow}>Connection lost</p>
-        <h2 id="lost-title" className={styles.title}>Reconnecting…</h2>
-        <p id="lost-body" className={styles.body}>
-          Your game is still on the server. You'll be back at the table as soon as the connection returns.
-        </p>
+        <p className={styles.eyebrow}>{t('connection.lost')}</p>
+        <h2 id="lost-title" className={styles.title}>{t('connection.reconnectingEllipsis')}</h2>
+        <p id="lost-body" className={styles.body}>{t('connection.gameStillSaved')}</p>
         <div className={`${styles.track} ${styles.trackWaiting}`} aria-hidden>
           <div className={styles.fill} />
         </div>
         {offerRetry && (
           <button type="button" className={styles.retry} onClick={onRetry}>
-            Try now
+            {t('connection.tryNow')}
           </button>
         )}
       </div>
@@ -150,10 +152,10 @@ function LostCard({ offerRetry, onRetry }: { offerRetry: boolean; onRetry: () =>
 }
 
 /** "1–2 minutes" for the deploy-sized default; plain minutes or seconds otherwise. */
-function quote(seconds: number): string {
-  if (seconds <= 45) return 'a minute'
-  if (seconds <= 120) return '1–2 minutes'
-  return `${Math.ceil(seconds / 60)} minutes`
+function quote(seconds: number, t: TFunction): string {
+  if (seconds <= 45) return t('connection.aboutMinute')
+  if (seconds <= 120) return t('connection.oneToTwoMinutes')
+  return t('connection.minutes', { count: Math.ceil(seconds / 60) })
 }
 
 function formatElapsed(ms: number): string {

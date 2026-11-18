@@ -1,4 +1,5 @@
 import { useGameStore } from '@/store/gameStore.ts'
+import { useTranslation } from 'react-i18next'
 import { SpectatorContext } from '../../contexts/SpectatorContext'
 import { GameBoard } from '../game/GameBoard'
 import { CombatArrows } from '../combat/CombatArrows'
@@ -152,17 +153,18 @@ function SpectatorLoadingView({
   player2Name: string
   onBack: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <div style={styles.container}>
       <div style={styles.loadingContent}>
         <div style={styles.spinner} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        <h2 style={styles.loadingTitle}>Connecting to match...</h2>
+        <h2 style={styles.loadingTitle}>{t('spectator.connecting')}</h2>
         <p style={styles.loadingSubtitle}>
           {player1Name} vs {player2Name}
         </p>
         <button onClick={onBack} style={styles.backButton}>
-          Back to Overview
+          {t('spectator.backToOverview')}
         </button>
       </div>
     </div>
@@ -190,10 +192,11 @@ function SpectatorHeader({
   /** Multiplayer pods: cycle which seat's perspective anchors the bottom half. */
   seatSwitcher?: { bottomName: string; onCycle: () => void }
 }) {
+  const { t } = useTranslation()
   return (
     <div style={styles.header}>
       <button onClick={onBack} style={styles.backButton}>
-        Back to Overview
+        {t('spectator.backToOverview')}
       </button>
       {/* 1v1: each player's face on their side of "A vs B", like a fight card. A pod's faces
           overlap ahead of the roster line instead. Seats without a portrait drop out. */}
@@ -208,7 +211,7 @@ function SpectatorHeader({
           <SeatPortrait playerId={seatIds[0]} size={36} ringColor={PLAYER_RING} ringWidth={2} />
         )}
         <div style={styles.headerTitle}>
-          <div style={styles.spectatingLabel}>Spectating</div>
+          <div style={styles.spectatingLabel}>{t('spectator.spectating')}</div>
           <div style={styles.matchupText}>
             {matchupOverride ?? `${player1Name} vs ${player2Name}`}
           </div>
@@ -218,10 +221,10 @@ function SpectatorHeader({
       {seatSwitcher ? (
         <button
           onClick={seatSwitcher.onCycle}
-          title="Cycle which player's view anchors the bottom of the board"
+          title={t('spectator.cycleBottomView')}
           style={{ ...styles.backButton, whiteSpace: 'nowrap' }}
         >
-          View: {seatSwitcher.bottomName} ⟳
+          {t('spectator.viewSeat', { name: seatSwitcher.bottomName })} ⟳
         </button>
       ) : (
         /* Spacer to balance the back button */

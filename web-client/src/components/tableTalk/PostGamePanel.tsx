@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import type { PostGameMessage } from '@/types'
 import { AvatarArt, hasAvatarArt } from '@/components/profile/AvatarArt'
 import { initialOf } from '@/components/profile/avatars'
@@ -13,6 +15,7 @@ import styles from './TableTalk.module.css'
  * is all that's left.
  */
 export function PostGamePanel({ postGame }: { postGame: PostGameMessage }) {
+  const { t } = useTranslation()
   const requestRematch = useTableTalkStore((s) => s.requestRematch)
   const addFriend = useTableTalkStore((s) => s.addFriend)
   const block = useTableTalkStore((s) => s.block)
@@ -26,14 +29,14 @@ export function PostGamePanel({ postGame }: { postGame: PostGameMessage }) {
   const { rematch, opponentLeft, blocked } = postGame
 
   return (
-    <section className={styles.postGame} aria-label={`Your opponent, ${name}`} data-testid="post-game">
+    <section className={styles.postGame} aria-label={t('postGame.opponent', { name })} data-testid="post-game">
       <div className={styles.opponentRow}>
         <span className={styles.avatar} data-portrait={portrait} aria-hidden>
           {portrait ? <AvatarArt avatar={opponentAvatar} /> : initialOf(name)}
         </span>
         <span className={styles.opponentText}>
           <span className={styles.opponentName}>{name}</span>
-          <span className={styles.opponentStatus} data-tone={statusTone(postGame)}>{statusLine(postGame)}</span>
+          <span className={styles.opponentStatus} data-tone={statusTone(postGame)}>{statusLine(postGame, t)}</span>
         </span>
         {!blocked && <FriendChip postGame={postGame} onAdd={addFriend} />}
       </div>
@@ -54,21 +57,21 @@ export function PostGamePanel({ postGame }: { postGame: PostGameMessage }) {
         {blocked ? (
           <>
             <span className={styles.blockedNote}>
-              Blocked — you won’t be matched with {name} again or see their emotes.
+              {t('postGame.blockedNotice', { name })}
             </span>
-            <button type="button" className={styles.linkButton} onClick={() => block(false)}>Undo</button>
+            <button type="button" className={styles.linkButton} onClick={() => block(false)}>{t('common.undo')}</button>
           </>
         ) : confirmingBlock ? (
           <>
-            <span className={styles.blockedNote}>Block {name}? You won’t be matched again or see their emotes.</span>
-            <button type="button" className={styles.linkButton} onClick={() => setConfirmingBlock(false)}>Cancel</button>
+            <span className={styles.blockedNote}>{t('postGame.confirmBlock', { name })}</span>
+            <button type="button" className={styles.linkButton} onClick={() => setConfirmingBlock(false)}>{t('common.cancel')}</button>
             <button
               type="button"
               className={`${styles.linkButton} ${styles.danger}`}
               onClick={() => { block(true); setConfirmingBlock(false) }}
               data-testid="post-game-block-confirm"
             >
-              Block
+              {t('postGame.block')}
             </button>
           </>
         ) : (
@@ -82,7 +85,7 @@ export function PostGamePanel({ postGame }: { postGame: PostGameMessage }) {
               <circle cx="12" cy="12" r="9" />
               <path d="M5.6 5.6l12.8 12.8" />
             </svg>
-            Block player
+            {t('postGame.blockPlayer')}
           </button>
         )}
       </div>
@@ -103,18 +106,19 @@ function RematchButton({
   onRequest: () => void
   onWithdraw: () => void
 }) {
+  const { t } = useTranslation()
   if (rematch.starting) {
     return (
       <button type="button" className={styles.rematch} disabled data-state="starting">
         <span className={styles.rematchSpinner} aria-hidden />
-        Starting rematch…
+        {t('postGame.startingRematch')}
       </button>
     )
   }
   if (disabled) {
     return (
       <button type="button" className={styles.rematch} disabled data-state="gone">
-        Rematch unavailable
+        {t('postGame.rematchUnavailable')}
       </button>
     )
   }
@@ -125,12 +129,12 @@ function RematchButton({
         className={styles.rematch}
         data-state="waiting"
         onClick={onWithdraw}
-        title="Click to withdraw"
+        title={t('postGame.withdrawRematch')}
         data-testid="post-game-rematch"
       >
         <span className={styles.rematchSpinner} aria-hidden />
-        <span>Waiting for {name}…</span>
-        <span className={styles.rematchHint}>Cancel</span>
+        <span>{t('postGame.waitingForRematch', { name })}</span>
+        <span className={styles.rematchHint}>{t('common.cancel')}</span>
       </button>
     )
   }
@@ -149,23 +153,24 @@ function RematchButton({
         <path d="M21 12a9 9 0 0 1-15.5 6.3L3 16" />
         <path d="M3 21v-5h5" />
       </svg>
-      {rematch.opponent ? 'Accept rematch' : 'Rematch'}
+      {rematch.opponent ? t('postGame.acceptRematch') : t('postGame.rematch')}
     </button>
   )
 }
 
 function FriendChip({ postGame, onAdd }: { postGame: PostGameMessage; onAdd: () => void }) {
+  const { t } = useTranslation()
   switch (postGame.friendship) {
     case 'UNAVAILABLE':
       return null
     case 'FRIENDS':
-      return <span className={styles.friendChip} data-state="done">✓ Friends</span>
+      return <span className={styles.friendChip} data-state="done">✓ {t('postGame.friends')}</span>
     case 'REQUEST_SENT':
-      return <span className={styles.friendChip} data-state="done">Request sent</span>
+      return <span className={styles.friendChip} data-state="done">{t('postGame.requestSent')}</span>
     case 'REQUEST_RECEIVED':
       return (
         <button type="button" className={styles.friendChip} data-state="invited" onClick={onAdd} data-testid="post-game-add-friend">
-          Accept friend
+          {t('postGame.acceptFriend')}
         </button>
       )
     case 'NONE':
@@ -176,20 +181,20 @@ function FriendChip({ postGame, onAdd }: { postGame: PostGameMessage; onAdd: () 
             <path d="M2 21a7 7 0 0 1 14 0" />
             <path d="M19 8v6M16 11h6" />
           </svg>
-          Add friend
+          {t('postGame.addFriend')}
         </button>
       )
   }
 }
 
-function statusLine(pg: PostGameMessage): string {
-  if (pg.blocked) return 'Blocked'
-  if (pg.rematch.starting) return 'Rematch starting'
-  if (pg.opponentLeft) return 'Left the table'
-  if (pg.rematch.opponent && !pg.rematch.you) return 'Wants a rematch!'
-  if (pg.friendship === 'REQUEST_RECEIVED') return 'Sent you a friend request'
-  if (pg.rematch.you) return 'Deciding…'
-  return 'Still at the table'
+function statusLine(pg: PostGameMessage, t: TFunction): string {
+  if (pg.blocked) return t('postGame.statusBlocked')
+  if (pg.rematch.starting) return t('postGame.statusRematchStarting')
+  if (pg.opponentLeft) return t('postGame.statusLeft')
+  if (pg.rematch.opponent && !pg.rematch.you) return t('postGame.statusWantsRematch')
+  if (pg.friendship === 'REQUEST_RECEIVED') return t('postGame.statusFriendRequest')
+  if (pg.rematch.you) return t('postGame.statusDeciding')
+  return t('postGame.statusStillHere')
 }
 
 function statusTone(pg: PostGameMessage): 'live' | 'gone' | 'quiet' {

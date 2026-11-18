@@ -21,6 +21,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store/gameStore'
 import { selectHasPriority, selectIsMyTurn, useStackCards } from '@/store/selectors'
 import { localizeNextStopPoint } from '@/i18n/gameText'
@@ -78,6 +79,7 @@ interface ShownNotice extends ActionNotice {
 }
 
 export function LearnCoach() {
+  const { t } = useTranslation()
   const [missionId] = useState(armedMission)
   const mission = useMemo(() => missionById(missionId), [missionId])
   const [tourStep, setTourStep] = useState<number | null>(() => (tourSeen() ? null : 0))
@@ -251,10 +253,10 @@ export function LearnCoach() {
         type="button"
         className={`${styles.pill} ${styles[tip.tone]}`}
         onClick={() => setCollapsed(false)}
-        aria-label="Show the coach"
+        aria-label={t('learnCoach.show')}
       >
         <span className={styles.pillDot} aria-hidden="true" />
-        Coach · {doneCount}/{objectives.length}
+        {t('learnCoach.progress', { done: doneCount, total: objectives.length })}
         <span className={styles.pillTitle}>· {tip.title}</span>
       </button>,
       document.body,
@@ -267,18 +269,18 @@ export function LearnCoach() {
   return createPortal(
     <>
       <LearnSpotlight spot={spot} ctx={spotCtx} strong={touring} />
-      <aside className={`${styles.coach} ${styles[tone]}`} aria-live="polite" aria-label="Coach">
+      <aside className={`${styles.coach} ${styles[tone]}`} aria-live="polite" aria-label={t('learnCoach.coach')}>
         <div className={styles.head}>
           <span className={styles.eyebrow}>
-            Mission {mission.number} · {mission.title}
+            {t('learnCoach.mission', { number: mission.number, title: mission.title })}
           </span>
           {!view.isGameOver && (
             <button
               type="button"
               className={styles.close}
               onClick={() => setCollapsed(true)}
-              aria-label="Tuck the coach away"
-              title="Tuck the coach away — click the pill to bring it back"
+              aria-label={t('learnCoach.hide')}
+              title={t('learnCoach.hideHint')}
             >
               –
             </button>
@@ -288,27 +290,27 @@ export function LearnCoach() {
         {touring && step ? (
           <div key={`tour-${tourStep}`} className={styles.body}>
             <div className={styles.tourCount}>
-              A look around the table · {tourStep + 1} of {mission.tour.length}
+              {t('learnCoach.tourProgress', { current: tourStep + 1, total: mission.tour.length })}
             </div>
             <div className={styles.title}>{wordTip(step.title, view)}</div>
             <p className={styles.text}>{wordTip(step.body, view)}</p>
             <div className={styles.tourNav}>
               {tourStep > 0 ? (
                 <button type="button" className={styles.link} onClick={() => setTourStep(tourStep - 1)}>
-                  ← Back
+                  {t('learnCoach.back')}
                 </button>
               ) : (
                 <button type="button" className={styles.link} onClick={endTour}>
-                  Skip the tour
+                  {t('learnCoach.skipTour')}
                 </button>
               )}
               {tourStep + 1 < mission.tour.length ? (
                 <button type="button" className={styles.primary} onClick={() => setTourStep(tourStep + 1)}>
-                  Next →
+                  {t('learnCoach.next')}
                 </button>
               ) : (
                 <button type="button" className={styles.primary} onClick={endTour}>
-                  Let’s play
+                  {t('learnCoach.letsPlay')}
                 </button>
               )}
             </div>
@@ -319,7 +321,7 @@ export function LearnCoach() {
             <p className={styles.text}>{tip.body}</p>
             {!view.conceded && (
               <>
-                <div className={styles.lessonsHead}>What you now know</div>
+                <div className={styles.lessonsHead}>{t('learnCoach.lessonsTitle')}</div>
                 <ul className={styles.lessons}>
                   {mission.lessons.map((line) => (
                     <li key={line}>{wordTip(line, view)}</li>
@@ -337,7 +339,7 @@ export function LearnCoach() {
                 </span>
                 <span>
                   {notice.text}
-                  {notice.endedTour && ' You are ahead of the tour, so it steps aside — the coach follows your moves from here.'}
+                  {notice.endedTour && ` ${t('learnCoach.aheadOfTour')}`}
                 </span>
               </div>
             )}
@@ -347,7 +349,7 @@ export function LearnCoach() {
         )}
 
         {!touring && !view.isGameOver && cardNote && (
-          <div key={cardNote.name} className={styles.note} aria-label={`About ${cardNote.name}`}>
+          <div key={cardNote.name} className={styles.note} aria-label={t('learnCoach.aboutCard', { cardName: cardNote.name })}>
             <span className={styles.noteGlyph} aria-hidden="true">
               ✦
             </span>
@@ -358,7 +360,7 @@ export function LearnCoach() {
           </div>
         )}
 
-        <ol className={styles.objectives} aria-label={`Objectives, ${doneCount} of ${objectives.length} done`}>
+        <ol className={styles.objectives} aria-label={t('learnCoach.objectives', { done: doneCount, total: objectives.length })}>
           {objectives.map((o) => (
             <li key={o.id} className={`${styles.objective} ${o.done ? styles.objectiveDone : ''}`}>
               <span className={styles.tick} aria-hidden="true">
@@ -373,19 +375,19 @@ export function LearnCoach() {
           <div className={styles.actions}>
             {view.conceded ? (
               <button type="button" className={styles.primary} onClick={() => leave(learnHref(mission.id))}>
-                Play it again →
+                {t('learnCoach.playAgain')}
               </button>
             ) : next ? (
               <button type="button" className={styles.primary} onClick={() => leave(learnHref(next.id))}>
-                Next: {next.title} →
+                {t('learnCoach.nextMission', { title: next.title })}
               </button>
             ) : (
               <button type="button" className={styles.primary} onClick={() => leave(learnHref())}>
-                Course complete →
+                {t('learnCoach.courseComplete')}
               </button>
             )}
             <button type="button" className={styles.link} onClick={() => leave(view.conceded ? learnHref() : learnHref(mission.id))}>
-              {view.conceded ? 'Back to the missions' : 'Play this one again'}
+              {view.conceded ? t('learnCoach.backToMissions') : t('learnCoach.playThisAgain')}
             </button>
           </div>
         )}

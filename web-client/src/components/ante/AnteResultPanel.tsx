@@ -1,23 +1,34 @@
 import type { AnteResult, AnteTransfer } from '@/types'
 import { AnteCardThumb, AnteCoinMark } from './AnteCardThumb'
-import { anteTransferCaption, viewAnteResult } from './anteResult'
+import { anteScopeLine, anteTransferCaption, viewAnteResult } from './anteResult'
 import s from './Ante.module.css'
+import { useTranslation } from 'react-i18next'
 
 /**
  * The "Ante" section of the game-over card (CR 407): what the viewer won and lost, or — for a
  * spectator or an uninvolved seat — who won what from whom. Server-decided; this only lays it out.
  */
 export function AnteResultPanel({ ante, viewerId }: { ante: AnteResult; viewerId: string | null }) {
+  const { t } = useTranslation()
   const view = viewAnteResult(ante, viewerId)
   return (
-    <section className={s.section} aria-label="Ante" data-testid="ante-result">
-      <h2 className={s.heading}><AnteCoinMark />Ante</h2>
-      {view.emptyLine && <p className={s.empty}>{view.emptyLine}</p>}
-      <Group label="You won" tone="won" transfers={view.won} />
-      <Group label="You lost" tone="lost" transfers={view.lost} />
-      <Group label={view.won.length + view.lost.length > 0 ? 'Elsewhere at the table' : null} tone="other" transfers={view.others} />
-      {view.refillLines.map((line) => <p key={line} className={s.subline}>{line}</p>)}
-      {view.scopeLine && <p className={s.subline}>{view.scopeLine}</p>}
+    <section className={s.section} aria-label={t('ante.title')} data-testid="ante-result">
+      <h2 className={s.heading}><AnteCoinMark />{t('ante.title')}</h2>
+      {view.empty && <p className={s.empty}>{t('ante.returnsToOwners')}</p>}
+      <Group label={t('ante.youWon')} tone="won" transfers={view.won} />
+      <Group label={t('ante.youLost')} tone="lost" transfers={view.lost} />
+      <Group label={view.won.length + view.lost.length > 0 ? t('ante.elsewhere') : null} tone="other" transfers={view.others} />
+      {view.refillTransfers.map(({ transfer, isViewer, cardName }) => (
+        <p key={`${transfer.cardName}-${transfer.fromPlayerId}`} className={s.subline}>
+          {t(isViewer ? 'ante.yourDeckRefilled' : 'ante.deckRefilled', {
+            playerName: transfer.fromPlayerName,
+            cardName,
+          })}
+        </p>
+      ))}
+      {view.won.length + view.lost.length + view.others.length > 0 && (
+        <p className={s.subline}>{anteScopeLine(view.scope, view.scopeSide, t)}</p>
+      )}
     </section>
   )
 }
