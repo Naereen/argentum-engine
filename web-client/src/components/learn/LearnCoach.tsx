@@ -23,6 +23,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useGameStore } from '@/store/gameStore'
 import { selectHasPriority, selectIsMyTurn, useStackCards } from '@/store/selectors'
+import { localizeNextStopPoint } from '@/i18n/gameText'
 import {
   armedMission,
   coachTip,
@@ -138,7 +139,7 @@ export function LearnCoach() {
       blockersLeft: mine.filter((c) => !c.isTapped && !selected.includes(c.id)).length,
       theirCreatures: theirs.length,
       conceded,
-      passLabel: nextStopPoint ?? 'Pass',
+      passLabel: localizeNextStopPoint(nextStopPoint),
       hasHover,
       isGameOver: gameState.isGameOver || gameOverState !== null,
       won,

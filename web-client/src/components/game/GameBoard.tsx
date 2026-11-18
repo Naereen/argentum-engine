@@ -28,6 +28,7 @@ import { TargetReselectedAnimations } from '../animations/TargetReselectedAnimat
 import { useResponsive, useViewportSize, MOBILE_BREAKPOINT } from '@/hooks/useResponsive'
 import { ManaSymbol } from '../ui/ManaSymbols'
 import { computeCoverage } from '../decisions/manaCoverage'
+import { localizeNextStopPoint } from '@/i18n/gameText'
 
 // Import extracted components
 import { SeatPortrait, useHasSeatPortrait } from './SeatPortrait'
@@ -861,7 +862,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
 
   const getPassButtonLabel = () => {
     if (nextStopPoint) {
-      return nextStopPoint
+      return localizeNextStopPoint(nextStopPoint)
     }
     // Fallback for full control mode (server sends null)
     if (stackCards.length > 0) {
@@ -2134,7 +2135,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                   border: '1px solid #757575',
                 }}
               >
-                Clear Attackers
+                {t('gameCore.clearAttackers')}
               </button>
             </>
           )}
@@ -2174,7 +2175,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                   border: '1px solid #ef5350',
                 }}
               >
-                Confirm Blocks
+                {t('gameCore.confirmBlocks')}
               </button>
               <button
                 onClick={clearBlockerAssignments}
@@ -2186,7 +2187,7 @@ export function GameBoard({ spectatorMode = false, topOffset = 0 }: GameBoardPro
                   border: '1px solid #757575',
                 }}
               >
-                Clear Blockers
+                {t('gameCore.clearBlockers')}
               </button>
             </>
           )}
