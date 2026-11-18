@@ -7,6 +7,8 @@ import com.wingedsheep.ai.llm.CardRuling
 import com.wingedsheep.ai.llm.CardSummary
 import com.wingedsheep.ai.llm.MulliganInfo
 import com.wingedsheep.engine.core.DeclareBlockers
+import com.wingedsheep.engine.core.ChooseColorDecision
+import com.wingedsheep.engine.core.ColorChosenResponse
 import com.wingedsheep.engine.core.GameAction
 import com.wingedsheep.engine.core.PassPriority
 import com.wingedsheep.engine.core.PendingDecision
@@ -35,6 +37,7 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 
 private val logger = LoggerFactory.getLogger(AiWebSocketSession::class.java)
+private const val PASS_PRIORITY_DELAY_MS = 250L
 
 /**
  * Virtual WebSocket session that intercepts outgoing messages and feeds them
@@ -300,6 +303,24 @@ class AiWebSocketSession(
             return
         }
 
+        if (pendingDecision is ChooseColorDecision &&
+            state.otaria != null &&
+            pendingDecision.context.sourceIsPrivate
+        ) {
+            val color = pendingDecision.availableColors.firstOrNull()
+            if (color != null) {
+                logger.debug("AI choosing encounter mana color immediately for face-down creature")
+                submitResponse(
+                    ActionResponse.SubmitDecision(
+                        pendingDecision.playerId,
+                        ColorChosenResponse(pendingDecision.id, color),
+                    ),
+                    interactionEpoch,
+                )
+                return
+            }
+        }
+
         // Team priority (CR 805.5) offers a bot its own actions while its human partner holds the
         // baton. The bot takes its window in baton order instead — GameState.hasPriority's KDoc:
         // widening permission never took a window away, and a bot racing its partner for every
@@ -313,12 +334,13 @@ class AiWebSocketSession(
             return
         }
 
-        if (!isOurDecision && state.otaria != null && !controlsOtariaTurn(state) &&
+        if (!isOurDecision &&
             legalActions.none { MeaningfulActionFilter.isMeaningful(it.asPriorityAction()) }
         ) {
             val pass = legalActions.firstOrNull { it.action is PassPriority }
             if (pass != null) {
-                logger.debug("AI passing an Otaria opponent-turn window with no meaningful response")
+                logger.debug("AI passing a priority window with no meaningful response")
+                if (thinkingDelayMs > 0) delay(PASS_PRIORITY_DELAY_MS)
                 submitResponse(ActionResponse.SubmitAction(pass.action), interactionEpoch)
                 return
             }

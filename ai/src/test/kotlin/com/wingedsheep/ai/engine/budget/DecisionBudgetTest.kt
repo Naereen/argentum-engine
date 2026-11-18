@@ -76,6 +76,13 @@ class DecisionBudgetTest : FunSpec({
         val default = TieredBudgetPolicy()
         BudgetTier.entries.forEach { default.millisFor(it) shouldBe it.millis }
     }
+    test("a tiered policy can cap every live decision at 250ms") {
+        val policy = TieredBudgetPolicy(normalMillis = 250, maxMillis = 250)
+        policy.millisFor(BudgetTier.TRIVIAL) shouldBe 0L
+        policy.millisFor(BudgetTier.ROUTINE) shouldBe 25L
+        policy.millisFor(BudgetTier.NORMAL) shouldBe 250L
+        policy.millisFor(BudgetTier.CRITICAL) shouldBe 250L
+    }
 
     test("a policy names itself, because an arena report identifies an agent by it") {
         LegacyBudgetPolicy.toString() shouldBe "legacy"

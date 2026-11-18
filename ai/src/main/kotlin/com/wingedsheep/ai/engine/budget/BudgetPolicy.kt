@@ -106,6 +106,11 @@ class RolloutBudgetPolicy(private val playouts: Int) : BudgetPolicy {
 class TieredBudgetPolicy(
     val normalMillis: Long = BudgetTier.NORMAL.millis,
     /**
+     * Optional hard ceiling for every tier. Live play uses this to bound expensive board states;
+     * arena policies leave it unset so their measurements remain unchanged.
+     */
+    val maxMillis: Long = Long.MAX_VALUE,
+    /**
      * Grade the window between "blockers are declared" and "damage is dealt" as
      * [BudgetTier.NORMAL] rather than [BudgetTier.ROUTINE].
      *
@@ -149,9 +154,9 @@ class TieredBudgetPolicy(
 
     fun millisFor(tier: BudgetTier): Long = when (tier) {
         BudgetTier.TRIVIAL -> 0
-        BudgetTier.ROUTINE -> normalMillis / 10
-        BudgetTier.NORMAL -> normalMillis
-        BudgetTier.CRITICAL -> normalMillis * 5 / 2
+        BudgetTier.ROUTINE -> (normalMillis / 10).coerceAtMost(maxMillis)
+        BudgetTier.NORMAL -> normalMillis.coerceAtMost(maxMillis)
+        BudgetTier.CRITICAL -> (normalMillis * 5 / 2).coerceAtMost(maxMillis)
     }
 
     fun tierFor(
@@ -189,7 +194,9 @@ class TieredBudgetPolicy(
     // The suffix is conditional so every arena report already published under `tiered(2000ms)`
     // still names the agent it named.
     override fun toString(): String =
-        "tiered(${normalMillis}ms" + (if (preDamageCombatIsNormal) ", pre-damage=normal)" else ")")
+        "tiered(${normalMillis}ms" +
+            (if (preDamageCombatIsNormal) ", pre-damage=normal" else "") +
+            (if (maxMillis == Long.MAX_VALUE) ")" else ", max=${maxMillis}ms)")
 
     /**
      * Is either side one combat step away from dying?

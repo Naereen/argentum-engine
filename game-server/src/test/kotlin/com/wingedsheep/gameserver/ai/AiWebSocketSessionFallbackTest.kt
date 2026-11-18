@@ -48,9 +48,8 @@ class AiWebSocketSessionFallbackTest : FunSpec({
         combat = null,
     )
 
-    test("external delta without a baseline cannot submit a heuristic and a full update restores controller use") {
+    test("external delta without a baseline cannot submit a heuristic and a full update fast-passes") {
         val controller = mockk<AiPlayerController>()
-        every { controller.chooseAction(any(), any(), any(), any()) } returns ActionResponse.SubmitAction(pass)
         val submitted = mutableListOf<Pair<GameAction, String?>>()
         val socket = AiWebSocketSession(
             aiPlayerId = player,
@@ -88,10 +87,7 @@ class AiWebSocketSessionFallbackTest : FunSpec({
             ))
 
             submitted shouldBe listOf(pass to "full", pass to "delta")
-            verify(exactly = 1) { controller.chooseAction(state, actions, null, emptyList()) }
-            verify(exactly = 1) {
-                controller.chooseAction(state.copy(turnNumber = 3), actions, null, emptyList())
-            }
+            verify(exactly = 0) { controller.chooseAction(any(), any(), any(), any()) }
         } finally {
             socket.close()
         }
@@ -114,7 +110,7 @@ class AiWebSocketSessionFallbackTest : FunSpec({
         val socket = AiWebSocketSession(
             aiPlayerId = player,
             controller = controller,
-            thinkingDelayMs = 10_000,
+            thinkingDelayMs = 0,
             onActionReady = { _, action, epoch -> submitted.add(action to epoch) },
             onMulliganKeep = {},
             onMulliganTake = {},
@@ -135,7 +131,7 @@ class AiWebSocketSessionFallbackTest : FunSpec({
         }
     }
 
-    test("an AI managing an Otaria encounter still handles that encounter's turn") {
+    test("an AI managing an Otaria encounter fast-passes a no-response encounter turn") {
         val actor = EntityId.of("encounter")
         val otaria = ClientOtariaState(
             tiles = emptyList(),
@@ -155,9 +151,6 @@ class AiWebSocketSessionFallbackTest : FunSpec({
         )
         val encounterState = state.copy(activePlayerId = actor, otaria = otaria)
         val controller = mockk<AiPlayerController>()
-        every {
-            controller.chooseAction(encounterState, actions, null, emptyList())
-        } returns ActionResponse.SubmitAction(pass)
         val submitted = mutableListOf<Pair<GameAction, String?>>()
         val socket = AiWebSocketSession(
             aiPlayerId = player,
@@ -177,7 +170,7 @@ class AiWebSocketSessionFallbackTest : FunSpec({
             ))
 
             submitted shouldBe listOf(pass to "otaria-managed-encounter")
-            verify(exactly = 1) { controller.chooseAction(encounterState, actions, null, emptyList()) }
+            verify(exactly = 0) { controller.chooseAction(any(), any(), any(), any()) }
         } finally {
             socket.close()
         }
@@ -246,6 +239,54 @@ class AiWebSocketSessionFallbackTest : FunSpec({
             ))
 
             submitted shouldBe listOf(pass to "fallback-origin")
+            verify(exactly = 0) { controller.chooseAction(any(), any(), any(), any()) }
+        } finally {
+            socket.close()
+        }
+    }
+
+    test("a face-down Otaria encounter color is chosen immediately without controller search") {
+        val actor = EntityId.of("encounter")
+        val otaria = ClientOtariaState(
+            tiles = emptyList(),
+            players = emptyList(),
+            locations = emptyList(),
+            starPile = ClientOtariaPile(0, 0),
+            colorPiles = emptyMap(),
+            treasureCount = 0,
+            locationCount = 0,
+        )
+        val otariaState = state.copy(otaria = otaria)
+        val decision = ChooseColorDecision(
+            "mana",
+            actor,
+            "Choose a color for face-down creature's encounter mana",
+            DecisionContext(sourceIsPrivate = true),
+            setOf(Color.GREEN, Color.BLUE),
+        )
+        val controller = mockk<AiPlayerController>()
+        val submitted = mutableListOf<Pair<GameAction, String?>>()
+        val socket = AiWebSocketSession(
+            aiPlayerId = player,
+            controller = controller,
+            thinkingDelayMs = 10_000,
+            onActionReady = { _, action, epoch -> submitted.add(action to epoch) },
+            onMulliganKeep = {},
+            onMulliganTake = {},
+            onBottomCards = { _, _ -> },
+        )
+        try {
+            socket.handleServerMessage(ServerMessage.StateUpdate(
+                state = otariaState,
+                events = emptyList(),
+                legalActions = emptyList(),
+                pendingDecision = decision,
+                interactionEpoch = "face-down-mana",
+            ))
+
+            submitted shouldBe listOf(
+                SubmitDecision(actor, ColorChosenResponse("mana", Color.GREEN)) to "face-down-mana",
+            )
             verify(exactly = 0) { controller.chooseAction(any(), any(), any(), any()) }
         } finally {
             socket.close()

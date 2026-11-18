@@ -192,6 +192,24 @@ class OtariaEncounterStateTest : FunSpec({
         nextSeat.state.pendingDecision?.playerId shouldBe players[1]
     }
 
+    test("a cleared encounter does not receive another synthetic turn") {
+        val initial = state()
+        val mode = requireNotNull(initial.otaria)
+        val encounter = mode.encounters.getValue(actor).copy(participants = emptySet())
+        val cleared = initial.copy(
+            activePlayerId = explorer,
+            priorityPlayerId = explorer,
+            otaria = mode.copy(encounters = mapOf(actor to encounter)),
+        )
+
+        cleared.priorityParticipants shouldBe players
+        val encounterTurn = services.turnManager.passTurn(cleared)
+        encounterTurn.error shouldBe null
+        encounterTurn.state.activePlayerId shouldBe players[1]
+        encounterTurn.state.priorityPlayerId shouldBe null
+        encounterTurn.state.pendingDecision?.playerId shouldBe players[1]
+    }
+
     test("an encounter turn after the final seat wraps the round only for the next human") {
         val initial = state()
         val mode = requireNotNull(initial.otaria)

@@ -12,6 +12,7 @@ import com.wingedsheep.ai.insight.AiInsightSink
 import com.wingedsheep.ai.llm.BottomCardsInfo
 import com.wingedsheep.ai.llm.CardSummary
 import com.wingedsheep.ai.llm.MulliganInfo
+import com.wingedsheep.ai.engine.budget.TieredBudgetPolicy
 import com.wingedsheep.engine.core.*
 import com.wingedsheep.engine.registry.CardRegistry
 import com.wingedsheep.engine.state.GameState
@@ -71,6 +72,14 @@ class EngineAiPlayerController(
             cardRegistry, playerId, profile, insightSink = insightSink,
         )
 
+    private val otariaAiPlayer =
+        AIPlayer.create(
+            cardRegistry,
+            playerId,
+            profile.copy(budgetPolicy = TieredBudgetPolicy(normalMillis = 250, maxMillis = 250)),
+            insightSink = insightSink,
+        )
+
     override fun wantsPriority(state: GameState): Boolean = aiPlayer.wantsWindowItWouldAutoPass(state)
 
     override fun chooseAction(
@@ -88,7 +97,21 @@ class EngineAiPlayerController(
 
         // Handle pending decisions using the engine AI's responder
         if (pendingDecision != null && gameState.actorFor(pendingDecision.playerId) == playerId) {
-            val response = playerFor(pendingDecision.playerId).respondToDecision(gameState, pendingDecision)
+            if (pendingDecision is ChooseColorDecision &&
+                gameState.otaria != null &&
+                pendingDecision.context.sourceIsPrivate
+            ) {
+                val color = pendingDecision.availableColors.firstOrNull()
+                if (color != null) {
+                    logger.debug("Engine AI choosing face-down encounter mana color immediately")
+                    return ActionResponse.SubmitDecision(
+                        pendingDecision.playerId,
+                        ColorChosenResponse(pendingDecision.id, color),
+                    )
+                }
+            }
+            val response = playerFor(pendingDecision.playerId, gameState.otaria != null)
+                .respondToDecision(gameState, pendingDecision)
             logger.info("Engine AI decision: {} → {}", pendingDecision::class.simpleName, response::class.simpleName)
             return ActionResponse.SubmitDecision(pendingDecision.playerId, response)
         }
@@ -121,16 +144,28 @@ class EngineAiPlayerController(
 
         // Use the engine AI to choose the best action from the real game state
         val actingSeat = legalActions.first().action.playerId
-        val action = playerFor(actingSeat).chooseAction(gameState)
+        val action = playerFor(actingSeat, gameState.otaria != null).chooseAction(gameState)
         logger.info("Engine AI chose: {}", action::class.simpleName)
         return ActionResponse.SubmitAction(action)
     }
 
     private val seatPlayers = mutableMapOf<EntityId, AIPlayer>()
+    private val otariaSeatPlayers = mutableMapOf<EntityId, AIPlayer>()
 
-    private fun playerFor(seat: EntityId): AIPlayer =
-        if (seat == playerId) aiPlayer
-        else seatPlayers.getOrPut(seat) { AIPlayer.create(cardRegistry, seat, profile) }
+    private fun playerFor(seat: EntityId, otaria: Boolean): AIPlayer {
+        if (otaria) {
+            if (seat == playerId) return otariaAiPlayer
+            return otariaSeatPlayers.getOrPut(seat) {
+                AIPlayer.create(
+                    cardRegistry,
+                    seat,
+                    profile.copy(budgetPolicy = TieredBudgetPolicy(normalMillis = 250, maxMillis = 250)),
+                )
+            }
+        }
+        if (seat == playerId) return aiPlayer
+        return seatPlayers.getOrPut(seat) { AIPlayer.create(cardRegistry, seat, profile) }
+    }
 
     /**
      * The [offered] declaration's seat owes, chosen by an engine AI playing that seat. It doesn't
@@ -140,7 +175,7 @@ class EngineAiPlayerController(
      */
     private fun declarationFor(offered: GameAction, gameState: GameState): GameAction {
         val seat = offered.playerId
-        val chosen = playerFor(seat).chooseAction(gameState)
+        val chosen = playerFor(seat, gameState.otaria != null).chooseAction(gameState)
         return if (chosen::class == offered::class && chosen.playerId == seat) chosen else offered
     }
 

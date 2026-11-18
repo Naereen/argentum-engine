@@ -1037,7 +1037,12 @@ data class GameState(
                     addAll(encounters.entries.asSequence()
                         .filter { (_, encounter) -> encounter.explorerId == seat }
                         .map { it.key }
-                        .filter { getEntity(it) != null }
+                        .filter {
+                            val encounter = encounters[it]
+                            encounter != null &&
+                                encounter.participants.isNotEmpty() &&
+                                getEntity(it) != null
+                        }
                         .sortedBy { it.value })
                 }
             }

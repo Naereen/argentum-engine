@@ -353,10 +353,16 @@ class TurnManager(
     private fun nextTurnTeam(state: GameState, after: EntityId): EntityId {
         val encounters = state.otaria?.encounters.orEmpty()
         if (encounters.isEmpty()) return state.getNextTeam(after)
+        val clearedEncounter = encounters[after]?.takeIf { it.participants.isEmpty() }
+        if (clearedEncounter != null) return state.getNextTeam(clearedEncounter.explorerId)
         val eligible = state.priorityParticipants.toSet()
         val order = state.turnOrder.flatMap { seat ->
             listOf(seat) + encounters.entries.asSequence()
-                .filter { it.value.explorerId == seat && state.getEntity(it.key) != null }
+                .filter {
+                    it.value.explorerId == seat &&
+                        it.value.participants.isNotEmpty() &&
+                        state.getEntity(it.key) != null
+                }
                 .map { it.key }
                 .sortedBy { it.value }
                 .toList()
